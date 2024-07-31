@@ -38,6 +38,7 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
       - New 'escape-hatch' feature: Allow sending tokio_xmpp::Stanza directly
         instead of having to go through xmpp-rs' API when it's lacking. This
         is meant to stay behind a feature.
+      - Added documentation on `Event` enum.
     * Fixes:
       - Use tokio::sync::RwLock not std::sync::RwLock (!432)
       - The default caps node has been shortened to https://xmpp.rs since we
