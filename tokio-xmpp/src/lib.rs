@@ -81,3 +81,6 @@ mod tests {
         use crate::parsers;
     }
 }
+
+// Re-export for debug purposes
+pub use xso::asxml::PrintRawXml;

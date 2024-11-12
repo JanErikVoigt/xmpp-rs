@@ -87,6 +87,8 @@ pub use text::TextCodec;
 #[doc(inline)]
 pub use rxml_util::Item;
 
+pub use asxml::PrintRawXml;
+
 #[doc = include_str!("from_xml_doc.md")]
 #[doc(inline)]
 #[cfg(feature = "macros")]

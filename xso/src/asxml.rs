@@ -18,6 +18,10 @@ use crate::error::Error;
 use crate::rxml_util::Item;
 use crate::AsXml;
 
+use core::fmt;
+
+use bytes::BytesMut;
+
 /// Helper iterator to convert an `Option<T>` to XML.
 pub struct OptionAsXml<T: Iterator>(Option<T>);
 
@@ -94,6 +98,32 @@ where
             Self::Ok(v) => Ok(v.as_xml_iter()?),
             Self::Err(e) => Err(e.into()),
         }
+    }
+}
+
+/// Provides a helper which implements Display printing raw XML
+pub struct PrintRawXml<'x, T>(pub &'x T);
+
+impl<'x, T: AsXml> fmt::Display for PrintRawXml<'x, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let iter = match self.0.as_xml_iter() {
+            Ok(iter) => iter,
+            Err(err) => return write!(f, "<failed to serialize PrintRawXml: {:?}>", err),
+        };
+        let mut writer = rxml::writer::Encoder::new();
+        let mut buf = BytesMut::new();
+        for item in iter {
+            let item = match item {
+                Ok(item) => item,
+                Err(err) => return write!(f, "<failed to serialize PrintRawXml: {:?}>", err),
+            };
+            if let Err(err) = writer.encode(item.as_rxml_item(), &mut buf) {
+                return write!(f, "<failed to serialize PrintRawXml: {:?}>", err);
+            }
+        }
+        // TODO: rxml guarantees us that we have utf8 here. This unwrap can nonetheless be removed
+        // if Write is implemented for rxml.
+        write!(f, "{}", std::str::from_utf8(&buf).unwrap())
     }
 }
 
