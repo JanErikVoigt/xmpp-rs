@@ -46,7 +46,7 @@ mod helpers {
 
 use self::helpers::{parse_str, roundtrip_full};
 
-use xso::{AsXml, FromXml};
+use xso::{AsXml, FromXml, PrintRawXml};
 
 // these are adverserial local names in order to trigger any issues with
 // unqualified names in the macro expansions.
@@ -2190,4 +2190,13 @@ fn flag_absent_roundtrip() {
         result::Result::{Err, Ok},
     };
     roundtrip_full::<Flag>("<foo xmlns='urn:example:ns1'/>");
+}
+
+#[test]
+fn printrawxml() {
+    let text = TextString {
+        text: String::from("hello world"),
+    };
+    let display = format!("{}", PrintRawXml(&text));
+    assert_eq!(display, "<text xmlns='urn:example:ns1'>hello world</text>");
 }
