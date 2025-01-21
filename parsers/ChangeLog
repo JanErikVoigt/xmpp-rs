@@ -1,6 +1,9 @@
 Version NEXT:
 XXXX-YY-ZZ RELEASER <admin@example.com>
     * Breaking
+      - MIX (XEP-0369) has been removed, it has failed to gain any traction in
+        the XMPP ecosystem and is actively being replaced with better
+        alternatives based on MUC.
       - The `alternate_address` field of
         `xmpp_parsers::stanza_error::StanzaError` has been moved into the
         corresponding enum variants of the

@@ -243,23 +243,6 @@ pub const SID: &str = "urn:xmpp:sid:0";
 /// XEP-0363: HTTP File Upload
 pub const HTTP_UPLOAD: &str = "urn:xmpp:http:upload:0";
 
-/// XEP-0369: Mediated Information eXchange (MIX)
-pub const MIX_CORE: &str = "urn:xmpp:mix:core:1";
-/// XEP-0369: Mediated Information eXchange (MIX)
-pub const MIX_CORE_SEARCHABLE: &str = "urn:xmpp:mix:core:1#searchable";
-/// XEP-0369: Mediated Information eXchange (MIX)
-pub const MIX_CORE_CREATE_CHANNEL: &str = "urn:xmpp:mix:core:1#create-channel";
-/// XEP-0369: Mediated Information eXchange (MIX)
-pub const MIX_NODES_PRESENCE: &str = "urn:xmpp:mix:nodes:presence";
-/// XEP-0369: Mediated Information eXchange (MIX)
-pub const MIX_NODES_PARTICIPANTS: &str = "urn:xmpp:mix:nodes:participants";
-/// XEP-0369: Mediated Information eXchange (MIX)
-pub const MIX_NODES_MESSAGES: &str = "urn:xmpp:mix:nodes:messages";
-/// XEP-0369: Mediated Information eXchange (MIX)
-pub const MIX_NODES_CONFIG: &str = "urn:xmpp:mix:nodes:config";
-/// XEP-0369: Mediated Information eXchange (MIX)
-pub const MIX_NODES_INFO: &str = "urn:xmpp:mix:nodes:info";
-
 /// XEP-0373: OpenPGP for XMPP
 pub const OX: &str = "urn:xmpp:openpgp:0";
 /// XEP-0373: OpenPGP for XMPP

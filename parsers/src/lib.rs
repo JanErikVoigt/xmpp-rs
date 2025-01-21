@@ -251,9 +251,6 @@ pub mod stanza_id;
 /// XEP-0363: HTTP File Upload
 pub mod http_upload;
 
-/// XEP-0369: Mediated Information eXchange (MIX)
-pub mod mix;
-
 /// XEP-0373: OpenPGP for XMPP
 pub mod openpgp;
 
