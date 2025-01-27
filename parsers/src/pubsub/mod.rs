@@ -15,7 +15,7 @@ pub mod owner;
 pub mod pubsub;
 
 pub use self::event::Event;
-pub use self::owner::PubSubOwner;
+pub use self::owner::Owner;
 pub use self::pubsub::PubSub;
 
 use minidom::Element;

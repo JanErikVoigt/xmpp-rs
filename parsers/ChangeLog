@@ -62,6 +62,8 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
         having been exchanged, and the stream_id is now a String instead of
         &str.
       - Add a lang property in Presence, to avoid parser errors.
+      - pubsub::Owner is now a wrapper for the pubsub::owner::Paylolad enum,
+        and all its direct children have been merged into this enum (!532)
     * New parsers/serialisers:
       - Stream Features (RFC 6120) (!400)
       - Spam Reporting (XEP-0377) (!506)
