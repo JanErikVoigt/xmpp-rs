@@ -49,7 +49,7 @@ use core::num::NonZeroU16;
 use core::ops::Deref;
 use core::str::FromStr;
 
-use memchr::memchr;
+use memchr::memchr2_iter;
 
 use stringprep::{nameprep, nodeprep, resourceprep};
 
@@ -170,67 +170,87 @@ impl Jid {
     /// ```
     pub fn new(unnormalized: &str) -> Result<Jid, Error> {
         let bytes = unnormalized.as_bytes();
-        let mut orig_at = memchr(b'@', bytes);
-        let mut orig_slash = memchr(b'/', bytes);
-        if orig_at.is_some() && orig_slash.is_some() && orig_at > orig_slash {
-            // This is part of the resource, not a node@domain separator.
-            orig_at = None;
-        }
+        let orig_at;
+        let orig_slash;
+        let mut iter = memchr2_iter(b'@', b'/', bytes);
+        let normalized = if let Some(first_index) = iter.next() {
+            let byte = bytes[first_index];
+            if byte == b'@' {
+                if let Some(second_index) = iter.next() {
+                    let byte = bytes[second_index];
+                    if byte == b'/' {
+                        let node =
+                            nodeprep(&unnormalized[..first_index]).map_err(|_| Error::NodePrep)?;
+                        length_check(node.len(), Error::NodeEmpty, Error::NodeTooLong)?;
 
-        let normalized = match (orig_at, orig_slash) {
-            (Some(at), Some(slash)) => {
-                let node = nodeprep(&unnormalized[..at]).map_err(|_| Error::NodePrep)?;
-                length_check(node.len(), Error::NodeEmpty, Error::NodeTooLong)?;
+                        let domain = nameprep(&unnormalized[first_index + 1..second_index])
+                            .map_err(|_| Error::NamePrep)?;
+                        length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
 
-                let domain = nameprep(&unnormalized[at + 1..slash]).map_err(|_| Error::NamePrep)?;
-                length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
+                        let resource = resourceprep(&unnormalized[second_index + 1..])
+                            .map_err(|_| Error::ResourcePrep)?;
+                        length_check(resource.len(), Error::ResourceEmpty, Error::ResourceTooLong)?;
 
-                let resource =
-                    resourceprep(&unnormalized[slash + 1..]).map_err(|_| Error::ResourcePrep)?;
-                length_check(resource.len(), Error::ResourceEmpty, Error::ResourceTooLong)?;
-
-                orig_at = Some(node.len());
-                orig_slash = Some(node.len() + domain.len() + 1);
-                match (node, domain, resource) {
-                    (Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_)) => {
-                        unnormalized.to_string()
+                        orig_at = Some(node.len());
+                        orig_slash = Some(node.len() + domain.len() + 1);
+                        match (node, domain, resource) {
+                            (Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_)) => {
+                                unnormalized.to_string()
+                            }
+                            (node, domain, resource) => format!("{node}@{domain}/{resource}"),
+                        }
+                    } else
+                    /* This is another '@' character. */
+                    {
+                        return Err(Error::TooManyAts);
                     }
-                    (node, domain, resource) => format!("{node}@{domain}/{resource}"),
-                }
-            }
-            (Some(at), None) => {
-                let node = nodeprep(&unnormalized[..at]).map_err(|_| Error::NodePrep)?;
-                length_check(node.len(), Error::NodeEmpty, Error::NodeTooLong)?;
+                } else {
+                    // That is a node@domain JID.
 
-                let domain = nameprep(&unnormalized[at + 1..]).map_err(|_| Error::NamePrep)?;
+                    let node =
+                        nodeprep(&unnormalized[..first_index]).map_err(|_| Error::NodePrep)?;
+                    length_check(node.len(), Error::NodeEmpty, Error::NodeTooLong)?;
+
+                    let domain =
+                        nameprep(&unnormalized[first_index + 1..]).map_err(|_| Error::NamePrep)?;
+                    length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
+
+                    orig_at = Some(node.len());
+                    orig_slash = None;
+                    match (node, domain) {
+                        (Cow::Borrowed(_), Cow::Borrowed(_)) => unnormalized.to_string(),
+                        (node, domain) => format!("{node}@{domain}"),
+                    }
+                }
+            } else
+            /* This is a '/' character. */
+            {
+                // The JID is of the form domain/resource, we can stop looking for further
+                // characters.
+
+                let domain = nameprep(&unnormalized[..first_index]).map_err(|_| Error::NamePrep)?;
                 length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
 
-                orig_at = Some(node.len());
-                match (node, domain) {
-                    (Cow::Borrowed(_), Cow::Borrowed(_)) => unnormalized.to_string(),
-                    (node, domain) => format!("{node}@{domain}"),
-                }
-            }
-            (None, Some(slash)) => {
-                let domain = nameprep(&unnormalized[..slash]).map_err(|_| Error::NamePrep)?;
-                length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
-
-                let resource =
-                    resourceprep(&unnormalized[slash + 1..]).map_err(|_| Error::ResourcePrep)?;
+                let resource = resourceprep(&unnormalized[first_index + 1..])
+                    .map_err(|_| Error::ResourcePrep)?;
                 length_check(resource.len(), Error::ResourceEmpty, Error::ResourceTooLong)?;
 
+                orig_at = None;
                 orig_slash = Some(domain.len());
                 match (domain, resource) {
                     (Cow::Borrowed(_), Cow::Borrowed(_)) => unnormalized.to_string(),
                     (domain, resource) => format!("{domain}/{resource}"),
                 }
             }
-            (None, None) => {
-                let domain = nameprep(unnormalized).map_err(|_| Error::NamePrep)?;
-                length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
+        } else {
+            // Last possible case, just a domain JID.
 
-                domain.into_owned()
-            }
+            let domain = nameprep(unnormalized).map_err(|_| Error::NamePrep)?;
+            length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
+
+            orig_at = None;
+            orig_slash = None;
+            domain.into_owned()
         };
 
         Ok(Self {
@@ -1059,6 +1079,8 @@ mod tests {
             Err(Error::ResourceMissingInFullJid)
         );
         assert_eq!(BareJid::from_str("a@b/c"), Err(Error::ResourceInBareJid));
+        assert_eq!(BareJid::from_str("a@b@c"), Err(Error::TooManyAts));
+        assert_eq!(FullJid::from_str("a@b@c/d"), Err(Error::TooManyAts));
     }
 
     #[test]

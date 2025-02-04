@@ -46,6 +46,9 @@ pub enum Error {
 
     /// Happens when parsing a bare JID and there is a resource.
     ResourceInBareJid,
+
+    /// Happens when parsing a JID which has two @ before the resource.
+    TooManyAts,
 }
 
 impl core::error::Error for Error {}
@@ -64,6 +67,7 @@ impl fmt::Display for Error {
             Error::ResourcePrep => "resource doesn’t pass resourceprep validation",
             Error::ResourceMissingInFullJid => "no resource found in this full JID",
             Error::ResourceInBareJid => "resource found while parsing a bare JID",
+            Error::TooManyAts => "second @ found before parsing the resource",
         })
     }
 }

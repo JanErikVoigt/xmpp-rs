@@ -1,3 +1,9 @@
+Version NEXT:
+  * Additions:
+    - Add missing check for JIDs with too many `@` before the resource, such as
+      `a@b@c` or `a@b@c/d` which should clearly be invalid.  The new error it
+      produces is named `TooManyAts`.
+
 Version 0.11.1, release 2024-07-23:
   * Breaking:
     - Move InnerJid into Jid and reformulate BareJid and FullJid in terms of
