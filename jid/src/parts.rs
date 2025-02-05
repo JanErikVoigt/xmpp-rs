@@ -8,19 +8,9 @@ use core::str::FromStr;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use stringprep::{nameprep, nodeprep, resourceprep};
 
+use crate::{domain_check, node_check, resource_check};
 use crate::{BareJid, Error, Jid};
-
-fn length_check(len: usize, error_empty: Error, error_too_long: Error) -> Result<(), Error> {
-    if len == 0 {
-        Err(error_empty)
-    } else if len > 1023 {
-        Err(error_too_long)
-    } else {
-        Ok(())
-    }
-}
 
 macro_rules! def_part_parse_doc {
     ($name:ident, $other:ident, $more:expr) => {
@@ -57,7 +47,7 @@ macro_rules! def_part_into_inner_doc {
 macro_rules! def_part_types {
     (
         $(#[$mainmeta:meta])*
-        pub struct $name:ident(String) use $prepfn:ident(err = $preperr:path, empty = $emptyerr:path, long = $longerr:path);
+        pub struct $name:ident(String) use $check_fn:ident();
 
         $(#[$refmeta:meta])*
         pub struct ref $borrowed:ident(str);
@@ -70,9 +60,8 @@ macro_rules! def_part_types {
         impl $name {
             #[doc = def_part_parse_doc!($name, str, "Depending on whether the contents are changed by normalisation operations, this function either returns a copy or a reference to the original data.")]
             pub fn new(s: &str) -> Result<Cow<'_, $borrowed>, Error> {
-                let node = $prepfn(s).map_err(|_| $preperr)?;
-                length_check(node.len(), $emptyerr, $longerr)?;
-                match node {
+                let part = $check_fn(s)?;
+                match part {
                     Cow::Borrowed(v) => Ok(Cow::Borrowed($borrowed::from_str_unchecked(v))),
                     Cow::Owned(v) => Ok(Cow::Owned(Self(v))),
                 }
@@ -213,7 +202,7 @@ def_part_types! {
     ///
     /// The corresponding slice type is [`NodeRef`].
     #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-    pub struct NodePart(String) use nodeprep(err = Error::NodePrep, empty = Error::NodeEmpty, long = Error::NodeTooLong);
+    pub struct NodePart(String) use node_check();
 
     /// `str`-like type which conforms to the requirements of [`NodePart`].
     ///
@@ -227,7 +216,7 @@ def_part_types! {
     /// (optional) `/` in any [`Jid`][crate::Jid], whether
     /// [`BareJid`][crate::BareJid] or [`FullJid`][crate::FullJid].
     #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-    pub struct DomainPart(String) use nameprep(err = Error::NamePrep, empty = Error::DomainEmpty, long = Error::DomainTooLong);
+    pub struct DomainPart(String) use domain_check();
 
     /// `str`-like type which conforms to the requirements of [`DomainPart`].
     ///
@@ -240,7 +229,7 @@ def_part_types! {
     /// The [`ResourcePart`] is the optional part after the `/` in a
     /// [`Jid`][crate::Jid]. It is mandatory in [`FullJid`][crate::FullJid].
     #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-    pub struct ResourcePart(String) use resourceprep(err = Error::ResourcePrep, empty = Error::ResourceEmpty, long = Error::ResourceTooLong);
+    pub struct ResourcePart(String) use resource_check();
 
     /// `str`-like type which conforms to the requirements of
     /// [`ResourcePart`].

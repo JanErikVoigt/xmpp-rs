@@ -16,18 +16,11 @@ pub enum Error {
     /// Happens when the node is empty, that is the string starts with a @.
     NodeEmpty,
 
-    /// Happens when there is no domain, that is either the string is empty,
-    /// starts with a /, or contains the @/ sequence.
-    DomainEmpty,
-
     /// Happens when the resource is empty, that is the string ends with a /.
     ResourceEmpty,
 
     /// Happens when the localpart is longer than 1023 bytes.
     NodeTooLong,
-
-    /// Happens when the domain is longer than 1023 bytes.
-    DomainTooLong,
 
     /// Happens when the resource is longer than 1023 bytes.
     ResourceTooLong,
@@ -60,10 +53,8 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(match self {
             Error::NodeEmpty => "nodepart empty despite the presence of a @",
-            Error::DomainEmpty => "no domain found in this JID",
             Error::ResourceEmpty => "resource empty despite the presence of a /",
             Error::NodeTooLong => "localpart longer than 1023 bytes",
-            Error::DomainTooLong => "domain longer than 1023 bytes",
             Error::ResourceTooLong => "resource longer than 1023 bytes",
             Error::NodePrep => "localpart doesn’t pass nodeprep validation",
             Error::NamePrep => "domain doesn’t pass nameprep validation",
