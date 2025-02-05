@@ -82,6 +82,18 @@ fn length_check(len: usize, error_empty: Error, error_too_long: Error) -> Result
     }
 }
 
+fn node_check(node: &str) -> Result<Cow<'_, str>, Error> {
+    let node = nodeprep(node).map_err(|_| Error::NodePrep)?;
+    length_check(node.len(), Error::NodeEmpty, Error::NodeTooLong)?;
+    Ok(node)
+}
+
+fn resource_check(resource: &str) -> Result<Cow<'_, str>, Error> {
+    let resource = resourceprep(resource).map_err(|_| Error::ResourcePrep)?;
+    length_check(resource.len(), Error::ResourceEmpty, Error::ResourceTooLong)?;
+    Ok(resource)
+}
+
 fn domain_check(mut domain: &str) -> Result<Cow<'_, str>, Error> {
     // First, check if this is an IPv4 address.
     if Ipv4Addr::from_str(domain).is_ok() {
@@ -212,15 +224,9 @@ impl Jid {
                 if let Some(second_index) = iter.next() {
                     let byte = bytes[second_index];
                     if byte == b'/' {
-                        let node =
-                            nodeprep(&unnormalized[..first_index]).map_err(|_| Error::NodePrep)?;
-                        length_check(node.len(), Error::NodeEmpty, Error::NodeTooLong)?;
-
+                        let node = node_check(&unnormalized[..first_index])?;
                         let domain = domain_check(&unnormalized[first_index + 1..second_index])?;
-
-                        let resource = resourceprep(&unnormalized[second_index + 1..])
-                            .map_err(|_| Error::ResourcePrep)?;
-                        length_check(resource.len(), Error::ResourceEmpty, Error::ResourceTooLong)?;
+                        let resource = resource_check(&unnormalized[second_index + 1..])?;
 
                         orig_at = Some(node.len());
                         orig_slash = Some(node.len() + domain.len() + 1);
@@ -238,10 +244,7 @@ impl Jid {
                 } else {
                     // That is a node@domain JID.
 
-                    let node =
-                        nodeprep(&unnormalized[..first_index]).map_err(|_| Error::NodePrep)?;
-                    length_check(node.len(), Error::NodeEmpty, Error::NodeTooLong)?;
-
+                    let node = node_check(&unnormalized[..first_index])?;
                     let domain = domain_check(&unnormalized[first_index + 1..])?;
 
                     orig_at = Some(node.len());
@@ -258,10 +261,7 @@ impl Jid {
                 // characters.
 
                 let domain = domain_check(&unnormalized[..first_index])?;
-
-                let resource = resourceprep(&unnormalized[first_index + 1..])
-                    .map_err(|_| Error::ResourcePrep)?;
-                length_check(resource.len(), Error::ResourceEmpty, Error::ResourceTooLong)?;
+                let resource = resource_check(&unnormalized[first_index + 1..])?;
 
                 orig_at = None;
                 orig_slash = Some(domain.len());
