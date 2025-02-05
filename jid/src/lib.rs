@@ -45,12 +45,14 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::mem;
+use core::net::{Ipv4Addr, Ipv6Addr};
 use core::num::NonZeroU16;
 use core::ops::Deref;
 use core::str::FromStr;
 
 use memchr::memchr2_iter;
 
+use idna::uts46::{AsciiDenyList, DnsLength, Hyphens, Uts46};
 use stringprep::{nameprep, nodeprep, resourceprep};
 
 #[cfg(feature = "serde")]
@@ -78,6 +80,37 @@ fn length_check(len: usize, error_empty: Error, error_too_long: Error) -> Result
     } else {
         Ok(())
     }
+}
+
+fn domain_check(mut domain: &str) -> Result<Cow<'_, str>, Error> {
+    // First, check if this is an IPv4 address.
+    if Ipv4Addr::from_str(domain).is_ok() {
+        return Ok(Cow::Borrowed(domain));
+    }
+
+    // Then if this is an IPv6 address.
+    if domain.starts_with('[') && domain.ends_with(']') {
+        if Ipv6Addr::from_str(&domain[1..domain.len() - 1]).is_ok() {
+            return Ok(Cow::Borrowed(domain));
+        }
+    }
+
+    // idna can handle the root dot for us, but we still want to remove it for normalization
+    // purposes.
+    if domain.ends_with('.') {
+        domain = &domain[..domain.len() - 1];
+    }
+
+    Uts46::new()
+        .to_ascii(
+            domain.as_bytes(),
+            AsciiDenyList::URL,
+            Hyphens::Check,
+            DnsLength::Verify,
+        )
+        .map_err(|_| Error::Idna)?;
+    let domain = nameprep(domain).map_err(|_| Error::NamePrep)?;
+    Ok(domain)
 }
 
 /// A struct representing a Jabber ID (JID).
@@ -183,9 +216,7 @@ impl Jid {
                             nodeprep(&unnormalized[..first_index]).map_err(|_| Error::NodePrep)?;
                         length_check(node.len(), Error::NodeEmpty, Error::NodeTooLong)?;
 
-                        let domain = nameprep(&unnormalized[first_index + 1..second_index])
-                            .map_err(|_| Error::NamePrep)?;
-                        length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
+                        let domain = domain_check(&unnormalized[first_index + 1..second_index])?;
 
                         let resource = resourceprep(&unnormalized[second_index + 1..])
                             .map_err(|_| Error::ResourcePrep)?;
@@ -211,9 +242,7 @@ impl Jid {
                         nodeprep(&unnormalized[..first_index]).map_err(|_| Error::NodePrep)?;
                     length_check(node.len(), Error::NodeEmpty, Error::NodeTooLong)?;
 
-                    let domain =
-                        nameprep(&unnormalized[first_index + 1..]).map_err(|_| Error::NamePrep)?;
-                    length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
+                    let domain = domain_check(&unnormalized[first_index + 1..])?;
 
                     orig_at = Some(node.len());
                     orig_slash = None;
@@ -228,8 +257,7 @@ impl Jid {
                 // The JID is of the form domain/resource, we can stop looking for further
                 // characters.
 
-                let domain = nameprep(&unnormalized[..first_index]).map_err(|_| Error::NamePrep)?;
-                length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
+                let domain = domain_check(&unnormalized[..first_index])?;
 
                 let resource = resourceprep(&unnormalized[first_index + 1..])
                     .map_err(|_| Error::ResourcePrep)?;
@@ -244,9 +272,7 @@ impl Jid {
             }
         } else {
             // Last possible case, just a domain JID.
-
-            let domain = nameprep(unnormalized).map_err(|_| Error::NamePrep)?;
-            length_check(domain.len(), Error::DomainEmpty, Error::DomainTooLong)?;
+            let domain = domain_check(unnormalized)?;
 
             orig_at = None;
             orig_slash = None;
@@ -1063,15 +1089,15 @@ mod tests {
 
     #[test]
     fn invalid_jids() {
-        assert_eq!(BareJid::from_str(""), Err(Error::DomainEmpty));
-        assert_eq!(BareJid::from_str("/c"), Err(Error::DomainEmpty));
-        assert_eq!(BareJid::from_str("a@/c"), Err(Error::DomainEmpty));
+        assert_eq!(BareJid::from_str(""), Err(Error::Idna));
+        assert_eq!(BareJid::from_str("/c"), Err(Error::Idna));
+        assert_eq!(BareJid::from_str("a@/c"), Err(Error::Idna));
         assert_eq!(BareJid::from_str("@b"), Err(Error::NodeEmpty));
         assert_eq!(BareJid::from_str("b/"), Err(Error::ResourceEmpty));
 
-        assert_eq!(FullJid::from_str(""), Err(Error::DomainEmpty));
-        assert_eq!(FullJid::from_str("/c"), Err(Error::DomainEmpty));
-        assert_eq!(FullJid::from_str("a@/c"), Err(Error::DomainEmpty));
+        assert_eq!(FullJid::from_str(""), Err(Error::Idna));
+        assert_eq!(FullJid::from_str("/c"), Err(Error::Idna));
+        assert_eq!(FullJid::from_str("a@/c"), Err(Error::Idna));
         assert_eq!(FullJid::from_str("@b"), Err(Error::NodeEmpty));
         assert_eq!(FullJid::from_str("b/"), Err(Error::ResourceEmpty));
         assert_eq!(
@@ -1146,6 +1172,31 @@ mod tests {
     #[test]
     fn invalid_stringprep() {
         FullJid::from_str("a@b/🎉").unwrap_err();
+    }
+
+    #[test]
+    fn idna() {
+        let bare = BareJid::from_str("Weiß.com.").unwrap();
+        let equiv = BareJid::new("weiss.com").unwrap();
+        assert_eq!(bare, equiv);
+        BareJid::from_str("127.0.0.1").unwrap();
+        BareJid::from_str("[::1]").unwrap();
+        BareJid::from_str("domain.tld.").unwrap();
+    }
+
+    #[test]
+    fn invalid_idna() {
+        BareJid::from_str("a@b@c").unwrap_err();
+        FullJid::from_str("a@b@c/d").unwrap_err();
+        BareJid::from_str("[::1234").unwrap_err();
+        BareJid::from_str("1::1234]").unwrap_err();
+        BareJid::from_str("domain.tld:5222").unwrap_err();
+        BareJid::from_str("-domain.tld").unwrap_err();
+        BareJid::from_str("domain.tld-").unwrap_err();
+        BareJid::from_str("domain..tld").unwrap_err();
+        BareJid::from_str("domain.tld..").unwrap_err();
+        BareJid::from_str("1234567890123456789012345678901234567890123456789012345678901234.com")
+            .unwrap_err();
     }
 
     #[test]
@@ -1364,21 +1415,30 @@ mod tests {
 
     #[test]
     fn reject_long_domainpart() {
-        let mut long = Vec::with_capacity(1028);
+        let mut long = Vec::with_capacity(66);
         long.push(b'x');
         long.push(b'@');
-        long.resize(1026, b'a');
+        long.resize(66, b'a');
         let long = String::from_utf8(long).unwrap();
 
-        match Jid::new(&long) {
-            Err(Error::DomainTooLong) => (),
-            other => panic!("unexpected result: {:?}", other),
-        }
+        Jid::new(&long).unwrap_err();
+        BareJid::new(&long).unwrap_err();
 
-        match BareJid::new(&long) {
-            Err(Error::DomainTooLong) => (),
-            other => panic!("unexpected result: {:?}", other),
-        }
+        // A domain can be up to 253 bytes.
+        let mut long = Vec::with_capacity(256);
+        long.push(b'x');
+        long.push(b'@');
+        long.resize(65, b'a');
+        long.push(b'.');
+        long.resize(129, b'b');
+        long.push(b'.');
+        long.resize(193, b'c');
+        long.push(b'.');
+        long.resize(256, b'd');
+        let long = String::from_utf8(long).unwrap();
+
+        Jid::new(&long).unwrap_err();
+        BareJid::new(&long).unwrap_err();
     }
 
     #[test]

@@ -3,6 +3,8 @@ Version NEXT:
     - Add missing check for JIDs with too many `@` before the resource, such as
       `a@b@c` or `a@b@c/d` which should clearly be invalid.  The new error it
       produces is named `TooManyAts`.
+    - domainparts are now checked much more in-depth, using the idna crate and
+      various custom rules.
 
 Version 0.11.1, release 2024-07-23:
   * Breaking:

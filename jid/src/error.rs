@@ -49,6 +49,9 @@ pub enum Error {
 
     /// Happens when parsing a JID which has two @ before the resource.
     TooManyAts,
+
+    /// Happens when the domain is invalid according to idna.
+    Idna,
 }
 
 impl core::error::Error for Error {}
@@ -68,6 +71,7 @@ impl fmt::Display for Error {
             Error::ResourceMissingInFullJid => "no resource found in this full JID",
             Error::ResourceInBareJid => "resource found while parsing a bare JID",
             Error::TooManyAts => "second @ found before parsing the resource",
+            Error::Idna => "domain doesn’t pass idna validation",
         })
     }
 }

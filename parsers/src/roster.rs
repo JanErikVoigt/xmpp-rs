@@ -312,7 +312,7 @@ mod tests {
         let error = Roster::try_from(elem).unwrap_err();
         assert_eq!(
             format!("{error}"),
-            "text parse error: no domain found in this JID"
+            "text parse error: domain doesn’t pass idna validation"
         );
     }
 
