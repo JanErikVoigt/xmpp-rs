@@ -33,6 +33,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
         actual encryption and decryption to the kernel, which in turn can
         delegate it to a hardware implementations if available.  This depends
         on the `tls-rust-ktls` feature. (!458, !490)
+      - Building with insecure-tcp and no other feature got fixed.
 
 Version 4.0.0:
 2024-07-26 Maxime “pep” Buquet <pep@bouah.net>

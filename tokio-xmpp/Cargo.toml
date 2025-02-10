@@ -52,7 +52,7 @@ tls-rust-webpki-roots = ["tls-rust", "webpki-roots"]
 tls-native = ["tokio-native-tls", "native-tls"]
 starttls-native = ["starttls", "tls-native"]
 starttls-rust = ["starttls", "tls-rust"]
-insecure-tcp = []
+insecure-tcp = ["tokio/io-util"]
 syntax-highlighting = ["syntect"]
 # Enable serde support in jid crate
 serde = [ "xmpp-parsers/serde" ]
