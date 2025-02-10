@@ -104,6 +104,20 @@ mod tests {
     use minidom::Element;
     use xso::error::{Error, FromElementError};
 
+    #[cfg(target_pointer_width = "32")]
+    #[test]
+    fn test_size() {
+        assert_size!(History, 40);
+        assert_size!(Muc, 52);
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn test_size() {
+        assert_size!(History, 40);
+        assert_size!(Muc, 64);
+    }
+
     #[test]
     fn test_muc_simple() {
         let elem: Element = "<x xmlns='http://jabber.org/protocol/muc'/>"

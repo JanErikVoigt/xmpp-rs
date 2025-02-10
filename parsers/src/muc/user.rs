@@ -346,6 +346,36 @@ mod tests {
     use minidom::Element;
     use xso::error::{Error, FromElementError};
 
+    #[cfg(target_pointer_width = "32")]
+    #[test]
+    fn test_size() {
+        assert_size!(Status, 1);
+        assert_size!(Actor, 28);
+        assert_size!(Continue, 12);
+        assert_size!(Reason, 12);
+        assert_size!(Affiliation, 1);
+        assert_size!(Role, 1);
+        assert_size!(Item, 84);
+        assert_size!(Invite, 44);
+        assert_size!(Decline, 44);
+        assert_size!(MucUser, 112);
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn test_size() {
+        assert_size!(Status, 1);
+        assert_size!(Actor, 56);
+        assert_size!(Continue, 24);
+        assert_size!(Reason, 24);
+        assert_size!(Affiliation, 1);
+        assert_size!(Role, 1);
+        assert_size!(Item, 168);
+        assert_size!(Invite, 88);
+        assert_size!(Decline, 88);
+        assert_size!(MucUser, 224);
+    }
+
     #[test]
     fn test_simple() {
         let elem: Element = "<x xmlns='http://jabber.org/protocol/muc#user'/>"
