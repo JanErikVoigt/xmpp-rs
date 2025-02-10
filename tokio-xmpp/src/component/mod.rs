@@ -87,7 +87,6 @@ impl<C: ServerConnector> Component<C> {
         timeouts: Timeouts,
     ) -> Result<Self, Error> {
         let jid = Jid::from_str(jid)?;
-        let password = password.to_owned();
         let stream = component_login(connector, jid.clone(), password, timeouts).await?;
         Ok(Component { jid, stream })
     }

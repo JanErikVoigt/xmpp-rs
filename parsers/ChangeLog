@@ -54,6 +54,10 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - pubsub::Event is now the wrapper for the pubsub::event::Payload enum,
         and the PublishedItems and RetractedItems have been merged into the
         Items sub-struct.  These replace the previous PubSubEvent enum (!531)
+      - Handshake::from_password_and_stream_id() became
+        Handshake::from_stream_id_and_password(), with the two parameters
+        having been exchanged, and the stream_id is now a String instead of
+        &str.
     * New parsers/serialisers:
       - Stream Features (RFC 6120) (!400)
       - Spam Reporting (XEP-0377) (!506)

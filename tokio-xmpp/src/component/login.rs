@@ -12,15 +12,14 @@ use crate::xmlstream::{ReadError, Timeouts, XmppStream, XmppStreamElement};
 pub async fn component_login<C: ServerConnector>(
     connector: C,
     jid: Jid,
-    password: String,
+    password: &str,
     timeouts: Timeouts,
 ) -> Result<XmppStream<C::Stream>, Error> {
-    let password = password;
     let (mut stream, _) = connector.connect(&jid, ns::COMPONENT, timeouts).await?;
     let header = stream.take_header();
     let mut stream = stream.skip_features();
     let stream_id = match header.id {
-        Some(ref v) => &**v,
+        Some(id) => id.into_owned(),
         None => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -29,16 +28,16 @@ pub async fn component_login<C: ServerConnector>(
             .into())
         }
     };
-    auth(&mut stream, stream_id, &password).await?;
+    auth(&mut stream, stream_id, password).await?;
     Ok(stream)
 }
 
 pub async fn auth<S: AsyncBufRead + AsyncWrite + Unpin>(
     stream: &mut XmppStream<S>,
-    stream_id: &str,
+    stream_id: String,
     password: &str,
 ) -> Result<(), Error> {
-    let nonza = Handshake::from_password_and_stream_id(password, stream_id);
+    let nonza = Handshake::from_stream_id_and_password(stream_id, password);
     stream
         .send(&XmppStreamElement::ComponentHandshake(nonza))
         .await?;

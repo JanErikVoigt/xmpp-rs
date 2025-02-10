@@ -31,8 +31,8 @@ impl Handshake {
     }
 
     /// Creates an authentication request from the component.
-    pub fn from_password_and_stream_id(password: &str, stream_id: &str) -> Handshake {
-        let input = String::from(stream_id) + password;
+    pub fn from_stream_id_and_password(stream_id: String, password: &str) -> Handshake {
+        let input = stream_id + password;
         let hash = Sha1::digest(input.as_bytes());
         Handshake {
             data: Some(hash.into()),
@@ -76,7 +76,9 @@ mod tests {
         let handshake = Handshake::new();
         assert_eq!(handshake.data, None);
 
-        let handshake = Handshake::from_password_and_stream_id("123456", "sid");
+        let stream_id = String::from("sid");
+        let password = "123456";
+        let handshake = Handshake::from_stream_id_and_password(stream_id, password);
         assert_eq!(
             handshake.data,
             Some([
