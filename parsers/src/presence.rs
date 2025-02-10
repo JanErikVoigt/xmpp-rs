@@ -157,6 +157,11 @@ pub struct Presence {
     #[xml(attribute(default))]
     pub type_: Type,
 
+    /// The xml:lang of this presence stanza.
+    // TODO: Remove that, it has no place here but helps parsing valid presences.
+    #[xml(attribute(default, name = "xml:lang"))]
+    pub lang: Option<Lang>,
+
     /// The availability of the sender of this presence.
     #[xml(extract(name = "show", default, fields(text(type_ = Show))))]
     pub show: Option<Show>,
@@ -186,6 +191,7 @@ impl Presence {
             to: None,
             id: None,
             type_,
+            lang: None,
             show: None,
             statuses: BTreeMap::new(),
             priority: Priority(0i8),
@@ -292,14 +298,14 @@ impl Presence {
 mod tests {
     use super::*;
     use jid::{BareJid, FullJid};
-    use xso::error::{Error, FromElementError};
+    use xso::error::FromElementError;
 
     #[cfg(target_pointer_width = "32")]
     #[test]
     fn test_size() {
         assert_size!(Show, 1);
         assert_size!(Type, 1);
-        assert_size!(Presence, 72);
+        assert_size!(Presence, 84);
     }
 
     #[cfg(target_pointer_width = "64")]
@@ -307,7 +313,7 @@ mod tests {
     fn test_size() {
         assert_size!(Show, 1);
         assert_size!(Type, 1);
-        assert_size!(Presence, 144);
+        assert_size!(Presence, 168);
     }
 
     #[test]
@@ -621,5 +627,23 @@ mod tests {
             Presence::new(Type::None).with_to(FullJid::new("test@localhost/coucou").unwrap());
         let elem: Element = presence.into();
         assert_eq!(elem.attr("to"), Some("test@localhost/coucou"));
+    }
+
+    #[test]
+    fn test_xml_lang() {
+        #[cfg(not(feature = "component"))]
+        let elem: Element = "<presence xmlns='jabber:client' xml:lang='fr'/>"
+            .parse()
+            .unwrap();
+        #[cfg(feature = "component")]
+        let elem: Element = "<presence xmlns='jabber:component:accept' xml:lang='fr'/>"
+            .parse()
+            .unwrap();
+        let presence = Presence::try_from(elem).unwrap();
+        assert_eq!(presence.from, None);
+        assert_eq!(presence.to, None);
+        assert_eq!(presence.id, None);
+        assert_eq!(presence.type_, Type::None);
+        assert!(presence.payloads.is_empty());
     }
 }

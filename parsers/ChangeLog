@@ -58,6 +58,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
         Handshake::from_stream_id_and_password(), with the two parameters
         having been exchanged, and the stream_id is now a String instead of
         &str.
+      - Add a lang property in Presence, to avoid parser errors.
     * New parsers/serialisers:
       - Stream Features (RFC 6120) (!400)
       - Spam Reporting (XEP-0377) (!506)
