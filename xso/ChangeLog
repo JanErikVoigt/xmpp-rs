@@ -34,6 +34,8 @@ Version NEXT:
       - New `codec` field on `attribute` meta, to support decoding and
         encoding using any `TextCodec`.
       - Support for `no_std` usage (the alloc crate is required, though).
+      - Add a PrintRawXml helper struct to be able to display raw xml, useful
+        for debug logs.
     * Changes
       - Generated AsXml iterator and FromXml builder types are now
         doc(hidden), to not clutter hand-written documentation with auto
