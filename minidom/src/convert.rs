@@ -49,13 +49,13 @@ impl IntoAttributeValue for String {
     }
 }
 
-impl<'a> IntoAttributeValue for &'a String {
+impl IntoAttributeValue for &String {
     fn into_attribute_value(self) -> Option<String> {
         Some(self.to_owned())
     }
 }
 
-impl<'a> IntoAttributeValue for &'a str {
+impl IntoAttributeValue for &str {
     fn into_attribute_value(self) -> Option<String> {
         Some(self.to_owned())
     }

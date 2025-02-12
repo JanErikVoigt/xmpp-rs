@@ -806,7 +806,7 @@ pub struct ContentsAsChildren<'a> {
     iter: alloc::vec::Drain<'a, Node>,
 }
 
-impl<'a> Iterator for ContentsAsChildren<'a> {
+impl Iterator for ContentsAsChildren<'_> {
     type Item = Element;
 
     fn next(&mut self) -> Option<Element> {

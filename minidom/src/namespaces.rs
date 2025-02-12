@@ -26,7 +26,7 @@ impl<'a> From<&'a str> for NSChoice<'a> {
     }
 }
 
-impl<'a> NSChoice<'a> {
+impl NSChoice<'_> {
     pub(crate) fn compare(&self, ns: &str) -> bool {
         match (ns, &self) {
             (_, NSChoice::None) => false,
