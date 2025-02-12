@@ -280,14 +280,14 @@ pub trait AsXmlText {
 impl AsXmlText for String {
     /// Return the borrowed string contents.
     fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
-        Ok(Cow::Borrowed(self.as_str()))
+        Ok(Cow::Borrowed(self))
     }
 }
 
 impl AsXmlText for str {
     /// Return the borrowed string contents.
     fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
-        Ok(Cow::Borrowed(&*self))
+        Ok(Cow::Borrowed(self))
     }
 }
 
@@ -301,7 +301,7 @@ impl<T: AsXmlText> AsXmlText for Box<T> {
 impl<B: AsXmlText + ToOwned> AsXmlText for Cow<'_, B> {
     /// Return the borrowed [`Cow`] contents.
     fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
-        B::as_xml_text(self.as_ref())
+        B::as_xml_text(self)
     }
 }
 

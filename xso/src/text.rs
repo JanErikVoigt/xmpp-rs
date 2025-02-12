@@ -235,8 +235,7 @@ where
             .as_ref()
             .map(AsXmlText::as_xml_text)
             .transpose()?
-            .map(|v| (!v.is_empty()).then_some(v))
-            .flatten())
+            .and_then(|v| (!v.is_empty()).then_some(v)))
     }
 }
 

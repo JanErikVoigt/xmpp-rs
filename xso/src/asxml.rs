@@ -75,7 +75,7 @@ impl<T: AsXml> AsXml for Box<T> {
         T: 'x;
 
     fn as_xml_iter(&self) -> Result<Self::ItemIter<'_>, Error> {
-        Ok(BoxAsXml(Box::new(T::as_xml_iter(&self)?)))
+        Ok(BoxAsXml(Box::new(T::as_xml_iter(self)?)))
     }
 }
 

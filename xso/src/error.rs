@@ -76,7 +76,7 @@ impl Error {
 impl From<&Error> for Error {
     fn from(other: &Error) -> Self {
         match other {
-            Self::XmlError(e) => Self::XmlError(e.clone()),
+            Self::XmlError(e) => Self::XmlError(*e),
             Self::TextParseError(e) => Self::TextParseError(Box::new(OpaqueError(e.to_string()))),
             Self::Other(e) => Self::Other(e),
             Self::TypeMismatch => Self::TypeMismatch,

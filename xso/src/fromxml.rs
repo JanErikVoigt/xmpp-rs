@@ -24,7 +24,7 @@ impl<T: FromEventsBuilder> FromEventsBuilder for OptionBuilder<T> {
     type Output = Option<T::Output>;
 
     fn feed(&mut self, ev: rxml::Event) -> Result<Option<Self::Output>, Error> {
-        self.0.feed(ev).map(|ok| ok.map(|value| Some(value)))
+        self.0.feed(ev).map(|ok| ok.map(Some))
     }
 }
 
@@ -52,7 +52,7 @@ impl<T: FromEventsBuilder> FromEventsBuilder for BoxBuilder<T> {
     type Output = Box<T::Output>;
 
     fn feed(&mut self, ev: rxml::Event) -> Result<Option<Self::Output>, Error> {
-        self.0.feed(ev).map(|ok| ok.map(|value| Box::new(value)))
+        self.0.feed(ev).map(|ok| ok.map(Box::new))
     }
 }
 
@@ -233,7 +233,7 @@ impl<T: FromXml, E: From<Error>> FromXml for Result<T, E> {
 
 /// Builder which discards an entire child tree without inspecting the
 /// contents.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Discard {
     depth: usize,
 }
@@ -241,7 +241,7 @@ pub struct Discard {
 impl Discard {
     /// Create a new discarding builder.
     pub fn new() -> Self {
-        Self { depth: 0 }
+        Self::default()
     }
 }
 
