@@ -73,6 +73,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - Message Displayed Synchronization (XEP-0490)
       - RFC 6120 stream errors
       - XEP-0045 mediated invites
+      - Push Notifications (XEP-0357) (!543)
     * Improvements:
       - Add support for `<optional/> in XEP-0198 feature advertisment
       - Add support application-specific error conditions in XEP-0198

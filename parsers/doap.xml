@@ -548,6 +548,14 @@
     </implements>
     <implements>
         <xmpp:SupportedXep>
+            <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0357.html"/>
+            <xmpp:status>complete</xmpp:status>
+            <xmpp:version>0.4.1</xmpp:version>
+            <xmpp:since>NEXT</xmpp:since>
+        </xmpp:SupportedXep>
+    </implements>
+    <implements>
+        <xmpp:SupportedXep>
             <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0359.html"/>
             <xmpp:status>complete</xmpp:status>
             <xmpp:version>0.6.0</xmpp:version>

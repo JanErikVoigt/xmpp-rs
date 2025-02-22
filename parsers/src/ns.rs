@@ -237,6 +237,9 @@ pub const CSI: &str = "urn:xmpp:csi:0";
 /// XEP-0353: Jingle Message Initiation
 pub const JINGLE_MESSAGE: &str = "urn:xmpp:jingle-message:0";
 
+/// XEP-0357: Push Notifications
+pub const PUSH: &str = "urn:xmpp:push:0";
+
 /// XEP-0359: Unique and Stable Stanza IDs
 pub const SID: &str = "urn:xmpp:sid:0";
 

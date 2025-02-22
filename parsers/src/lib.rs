@@ -245,6 +245,9 @@ pub mod csi;
 /// XEP-0353: Jingle Message Initiation
 pub mod jingle_message;
 
+/// XEP-0357: Push Notifications
+pub mod push;
+
 /// XEP-0359: Unique and Stable Stanza IDs
 pub mod stanza_id;
 
