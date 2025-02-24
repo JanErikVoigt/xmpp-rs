@@ -1,10 +1,20 @@
-Version NEXT:
+Version 0.12.0, release 2025-01-25:
+  * Breaking:
+    - domainparts are now checked much more in-depth, using the idna crate for
+      domains and `Ipv*Addr` checks for IP domainparts.  This removes some
+      prior errors which are now covered by `Error::Idna`: `Error::DomainEmpty`
+      and `Error::DomainTooLong`
   * Additions:
-    - Add missing check for JIDs with too many `@` before the resource, such as
-      `a@b@c` or `a@b@c/d` which should clearly be invalid.  The new error it
-      produces is named `TooManyAts`.
-    - domainparts are now checked much more in-depth, using the idna crate and
-      various custom rules.
+    - xso::FromXmlText and xso::AsXmlText are now implemented for NodePart,
+      DomainPart, and ResourcePart (!485)
+    - serde::Serialize and serde::Deserialize are now derived for NodePart,
+      DomainPart, and ResourcePart when serde feature flag is enabled (!499)
+    - This crate is now entirely `no_std`, with no remaining dependency on std!
+    - When using the crate from a cloned git repository, the minidom dependency
+      is now relative too, which simplifies working on a different project
+      while making modifications to this workspace.
+    - Make Debug more readable, just `Jid("foo@bar/baz")` instead of exposing
+      the internally-cached position of the '@' and '/' signs.
 
 Version 0.11.1, release 2024-07-23:
   * Breaking:
@@ -40,10 +50,6 @@ Version 0.11.1, release 2024-07-23:
     - Improve perfs of comparison operators (#123)
     - Add more test cases
     - Fix clippy lints, cargo doc, and other warnings
-    - xso::FromXmlText and xso::AsXmlText are now implemented for NodePart,
-      DomainPart, and ResourcePart (!485)
-    - serde::Serialize and serde::Deserialize are now derived for NodePart,
-      DomainPart, and ResourcePart when serde feature flag is enabled (!499)
 
 
 Version 0.11.0, release 2024-07-23 [YANKED]
