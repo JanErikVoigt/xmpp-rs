@@ -21,7 +21,7 @@ xso_proc = { version = "0.1", path = "../xso-proc", optional = true }
 # defaults to picking the highest matching version by default, the only
 # sensible thing we can do here is to depend on the least version of the most
 # recent semver of each crate.
-jid = { version = "0.11", path = "../jid", optional = true }
+jid = { version = "0.12", path = "../jid", optional = true }
 uuid = { version = "1", optional = true }
 base64 = { version = "0.22", optional = true }
 

@@ -23,7 +23,7 @@ blake2 = "0.10.4"
 chrono = { version = "0.4.5", default-features = false, features = ["std"] }
 log = { version = "0.4", optional = true }
 # same repository dependencies
-jid = { version = "0.11", path = "../jid", features = ["minidom"] }
+jid = { version = "0.12", path = "../jid", features = ["minidom"] }
 minidom = { version = "0.16", path = "../minidom" }
 xso = { version = "0.1", path = "../xso", features = ["macros", "minidom", "panicking-into-impl", "jid", "uuid", "base64"] }
 uuid = { version = "1.9.1", features = ["v4"] }
