@@ -19,10 +19,10 @@ use crate::node::Node;
 use crate::prefixes::{Namespace, Prefix, Prefixes};
 use crate::tree_builder::TreeBuilder;
 
-use alloc::{
-    borrow::Cow,
-    collections::btree_map::{self, BTreeMap},
-};
+use alloc::borrow::Cow;
+use alloc::collections::btree_map::{self, BTreeMap};
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use core::slice;
 use core::str::FromStr;
@@ -360,7 +360,7 @@ impl Element {
         reader: R,
         prefixes: P,
     ) -> Result<Element> {
-        let mut tree_builder = TreeBuilder::new().with_prefixes_stack(vec![prefixes.into()]);
+        let mut tree_builder = TreeBuilder::new().with_prefixes_stack([prefixes.into()].into());
         let mut driver = RawReader::new(reader);
         while let Some(event) = driver.read()? {
             tree_builder.process_event(event)?;
@@ -964,7 +964,7 @@ mod tests {
             "name".to_owned(),
             "namespace".to_owned(),
             (None, "namespace".to_owned()),
-            BTreeMap::from_iter(vec![("name".to_string(), "value".to_string())].into_iter()),
+            BTreeMap::from_iter([("name".to_string(), "value".to_string())].into_iter()),
             Vec::new(),
         );
 

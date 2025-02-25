@@ -4,8 +4,11 @@
 
 use crate::prefixes::{Prefix, Prefixes};
 use crate::{Element, Error};
+use alloc::collections::BTreeMap;
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
 use rxml::RawEvent;
-use std::collections::BTreeMap;
 
 /// Tree-building parser state
 pub struct TreeBuilder {
@@ -30,8 +33,8 @@ impl TreeBuilder {
     pub fn new() -> Self {
         TreeBuilder {
             next_tag: None,
-            stack: vec![],
-            prefixes_stack: vec![],
+            stack: Vec::new(),
+            prefixes_stack: Vec::new(),
             root: None,
         }
     }
@@ -143,8 +146,7 @@ impl TreeBuilder {
                         .lookup_prefix(&prefix.map(|prefix| prefix.as_str().to_owned()))
                         .ok_or(Error::MissingNamespace)?
                         .to_owned();
-                    let el =
-                        Element::new(name.as_str().to_owned(), namespace, prefixes, attrs, vec![]);
+                    let el = Element::new(name.to_owned(), namespace, prefixes, attrs, Vec::new());
                     self.stack.push(el);
                 }
             }

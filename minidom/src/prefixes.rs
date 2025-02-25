@@ -7,8 +7,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use alloc::collections::BTreeMap;
+use alloc::string::String;
 use core::fmt;
-use std::collections::BTreeMap;
 
 pub type Prefix = Option<String>;
 pub type Namespace = String;
@@ -23,15 +24,11 @@ impl fmt::Debug for Prefixes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Prefixes(")?;
         for (prefix, namespace) in &self.prefixes {
-            write!(
-                f,
-                "xmlns{}={:?} ",
-                match prefix {
-                    None => String::new(),
-                    Some(prefix) => format!(":{}", prefix),
-                },
-                namespace
-            )?;
+            if let Some(prefix) = prefix {
+                write!(f, "xmlns:{prefix}={namespace:?} ")?;
+            } else {
+                write!(f, "xmlns={namespace:?} ")?;
+            }
         }
         write!(f, ")")
     }

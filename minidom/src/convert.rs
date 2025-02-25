@@ -7,6 +7,8 @@
 
 //! A module which exports a few traits for converting types to elements and attributes.
 
+use alloc::string::String;
+
 /// A trait for types which can be converted to an attribute value.
 pub trait IntoAttributeValue {
     /// Turns this into an attribute string, or None if it shouldn't be added.
@@ -17,7 +19,7 @@ macro_rules! impl_into_attribute_value {
     ($t:ty) => {
         impl IntoAttributeValue for $t {
             fn into_attribute_value(self) -> Option<String> {
-                Some(format!("{}", self))
+                Some(self.to_string())
             }
         }
     };

@@ -10,6 +10,7 @@
 
 use crate::element::{Element, ElementBuilder, ItemWriter};
 use crate::error::Result;
+use alloc::string::String;
 
 use rxml::writer::Item;
 

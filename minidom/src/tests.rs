@@ -12,6 +12,9 @@
 
 use crate::element::Element;
 use crate::error::Error;
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 const TEST_STRING: &'static [u8] = br#"<root xmlns='root_ns' a="b" xml:lang="en">meow<child c="d"/><child xmlns='child_ns' d="e" xml:lang="fr"/>nya</root>"#;
 
@@ -82,7 +85,7 @@ fn test_real_data() {
         .append(body)
         .append(correction)
         .build();
-    let stream = Element::builder("stream", "http://etherx.jabber.org/streams")
+    let _stream = Element::builder("stream", "http://etherx.jabber.org/streams")
         .prefix(
             Some(String::from("stream")),
             "http://etherx.jabber.org/streams",
@@ -92,7 +95,6 @@ fn test_real_data() {
         .unwrap()
         .append(message)
         .build();
-    println!("{}", String::from(&stream));
 
     let jid = Element::builder("jid", "urn:xmpp:presence:0").build();
     let nick = Element::builder("nick", "urn:xmpp:presence:0").build();
@@ -119,7 +121,7 @@ fn test_real_data() {
     let iq = Element::builder("iq", "jabber:client")
         .append(pubsub)
         .build();
-    let stream = Element::builder("stream", "http://etherx.jabber.org/streams")
+    let _stream = Element::builder("stream", "http://etherx.jabber.org/streams")
         .prefix(
             Some(String::from("stream")),
             "http://etherx.jabber.org/streams",
@@ -129,8 +131,6 @@ fn test_real_data() {
         .unwrap()
         .append(iq)
         .build();
-
-    println!("{}", String::from(&stream));
 }
 
 #[test]

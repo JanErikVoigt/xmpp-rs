@@ -1,3 +1,7 @@
+Version NEXT:
+  * Changes
+    * Almost make the whole crate `no_std`, only `std::io` is still remaining.
+
 Version 0.16, released 2024-07-23:
   * Breaking
     * Element comparison returns unequal when number of nodes is unequal.
