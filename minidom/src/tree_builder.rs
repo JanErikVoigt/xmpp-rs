@@ -26,6 +26,7 @@ impl Default for TreeBuilder {
 
 impl TreeBuilder {
     /// Create a new one
+    #[must_use]
     pub fn new() -> Self {
         TreeBuilder {
             next_tag: None,
@@ -39,17 +40,20 @@ impl TreeBuilder {
     ///
     /// Useful to provide knowledge of namespaces that would have been declared on parent elements
     /// not present in the reader.
+    #[must_use]
     pub fn with_prefixes_stack(mut self, prefixes_stack: Vec<Prefixes>) -> Self {
         self.prefixes_stack = prefixes_stack;
         self
     }
 
     /// Stack depth
+    #[must_use]
     pub fn depth(&self) -> usize {
         self.stack.len()
     }
 
     /// Get the top-most element from the stack but don't remove it
+    #[must_use]
     pub fn top(&mut self) -> Option<&Element> {
         self.stack.last()
     }
@@ -71,6 +75,7 @@ impl TreeBuilder {
     }
 
     /// Lookup XML namespace declaration for given prefix (or no prefix)
+    #[must_use]
     fn lookup_prefix(&self, prefix: &Option<String>) -> Option<&str> {
         for nss in self.prefixes_stack.iter().rev() {
             if let Some(ns) = nss.get(prefix) {
@@ -81,7 +86,7 @@ impl TreeBuilder {
         None
     }
 
-    fn process_end_tag(&mut self) -> Result<(), Error> {
+    fn process_end_tag(&mut self) {
         if let Some(el) = self.pop() {
             if self.depth() > 0 {
                 let top = self.stack.len() - 1;
@@ -90,8 +95,6 @@ impl TreeBuilder {
                 self.root = Some(el);
             }
         }
-
-        Ok(())
     }
 
     fn process_text(&mut self, text: String) {
@@ -101,7 +104,7 @@ impl TreeBuilder {
         }
     }
 
-    /// Process a Event that you got out of a RawParser
+    /// Process an event that you got out of a `RawParser`.
     pub fn process_event(&mut self, event: RawEvent) -> Result<(), Error> {
         match event {
             RawEvent::XmlDeclaration(_, _) => {}
@@ -112,7 +115,7 @@ impl TreeBuilder {
                     name.as_str().to_owned(),
                     Prefixes::default(),
                     BTreeMap::new(),
-                ))
+                ));
             }
 
             RawEvent::Attribute(_, (prefix, name), value) => {
@@ -123,7 +126,7 @@ impl TreeBuilder {
                             prefixes.insert(Some(prefix.as_str().to_owned()), value);
                         }
                         (Some(prefix), name) => {
-                            attrs.insert(format!("{}:{}", prefix, name), value.as_str().to_owned());
+                            attrs.insert(format!("{prefix}:{name}"), value.as_str().to_owned());
                         }
                         (None, name) => {
                             attrs.insert(name.as_str().to_owned(), value.as_str().to_owned());
@@ -137,7 +140,7 @@ impl TreeBuilder {
                     self.prefixes_stack.push(prefixes.clone());
 
                     let namespace = self
-                        .lookup_prefix(&prefix.clone().map(|prefix| prefix.as_str().to_owned()))
+                        .lookup_prefix(&prefix.map(|prefix| prefix.as_str().to_owned()))
                         .ok_or(Error::MissingNamespace)?
                         .to_owned();
                     let el =
@@ -146,7 +149,7 @@ impl TreeBuilder {
                 }
             }
 
-            RawEvent::ElementFoot(_) => self.process_end_tag()?,
+            RawEvent::ElementFoot(_) => self.process_end_tag(),
 
             RawEvent::Text(_, text) => self.process_text(text.as_str().to_owned()),
         }

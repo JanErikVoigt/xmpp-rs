@@ -48,10 +48,10 @@ impl StdError for Error {
         match self {
             Error::XmlError(e) => Some(e),
             Error::Io(e) => Some(e),
-            Error::EndOfDocument => None,
-            Error::InvalidPrefix => None,
-            Error::MissingNamespace => None,
-            Error::DuplicatePrefix => None,
+            Error::EndOfDocument
+            | Error::InvalidPrefix
+            | Error::MissingNamespace
+            | Error::DuplicatePrefix => None,
         }
     }
 }
@@ -68,8 +68,8 @@ impl From<io::Error> for Error {
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::XmlError(e) => write!(fmt, "XML error: {}", e),
-            Error::Io(e) => write!(fmt, "I/O error: {}", e),
+            Error::XmlError(e) => write!(fmt, "XML error: {e}"),
+            Error::Io(e) => write!(fmt, "I/O error: {e}"),
             Error::EndOfDocument => {
                 write!(fmt, "the end of the document has been reached prematurely")
             }

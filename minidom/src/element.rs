@@ -73,13 +73,14 @@ pub type ItemWriter<W> = CustomItemWriter<W, rxml::writer::SimpleNamespaces>;
 /// helper function to escape a `&[u8]` and replace all
 /// xml special characters (<, >, &, ', ") with their corresponding
 /// xml escaped value.
+#[must_use]
 pub fn escape(raw: &[u8]) -> Cow<[u8]> {
-    let mut escapes: Vec<(usize, &'static [u8])> = Vec::new();
-    let mut bytes = raw.iter();
     fn to_escape(b: u8) -> bool {
         matches!(b, b'<' | b'>' | b'\'' | b'&' | b'"')
     }
 
+    let mut escapes: Vec<(usize, &'static [u8])> = Vec::new();
+    let mut bytes = raw.iter();
     let mut loc = 0;
     while let Some(i) = bytes.position(|&b| to_escape(b)) {
         loc += i;
@@ -89,7 +90,7 @@ pub fn escape(raw: &[u8]) -> Cow<[u8]> {
             b'\'' => escapes.push((loc, b"&apos;")),
             b'&' => escapes.push((loc, b"&amp;")),
             b'"' => escapes.push((loc, b"&quot;")),
-            _ => unreachable!("Only '<', '>','\', '&' and '\"' are escaped"),
+            _ => unreachable!("Only '<', '>', '\'', '&' and '\"' are escaped"),
         }
         loc += 1;
     }
@@ -228,16 +229,19 @@ impl Element {
     }
 
     /// Returns a reference to the local name of this element (that is, without a possible prefix).
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
 
     /// Returns a reference to the namespace of this element.
+    #[must_use]
     pub fn ns(&self) -> String {
         self.namespace.clone()
     }
 
     /// Returns a reference to the value of the given attribute, if it exists, else `None`.
+    #[must_use]
     pub fn attr(&self, name: &str) -> Option<&str> {
         if let Some(value) = self.attributes.get(name) {
             return Some(value);
@@ -259,6 +263,7 @@ impl Element {
     /// assert_eq!(iter.next().unwrap(), ("a", "b"));
     /// assert_eq!(iter.next(), None);
     /// ```
+    #[must_use]
     pub fn attrs(&self) -> Attrs {
         Attrs {
             iter: self.attributes.iter(),
@@ -267,6 +272,7 @@ impl Element {
 
     /// Returns an iterator over the attributes of this element, with the value being a mutable
     /// reference.
+    #[must_use]
     pub fn attrs_mut(&mut self) -> AttrsMut {
         AttrsMut {
             iter: self.attributes.iter_mut(),
@@ -401,7 +407,7 @@ impl Element {
         let namespace: RxmlNamespace = self.namespace.clone().into();
         writer.write(Item::ElementHeadStart(&namespace, (*self.name).try_into()?))?;
 
-        for (key, value) in self.attributes.iter() {
+        for (key, value) in &self.attributes {
             let (prefix, name) = <&rxml::NameStr>::try_from(&**key)
                 .unwrap()
                 .split_name()
@@ -418,7 +424,7 @@ impl Element {
 
         if !self.children.is_empty() {
             writer.write(Item::ElementHeadEnd)?;
-            for child in self.children.iter() {
+            for child in &self.children {
                 child.write_to_inner(writer)?;
             }
         }
@@ -477,6 +483,7 @@ impl Element {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
+    #[must_use]
     pub fn children(&self) -> Children {
         Children {
             iter: self.children.iter(),
@@ -485,6 +492,7 @@ impl Element {
 
     /// Returns an iterator over mutable references to every child element of this element.
     #[inline]
+    #[must_use]
     pub fn children_mut(&mut self) -> ChildrenMut {
         ChildrenMut {
             iter: self.children.iter_mut(),
@@ -522,6 +530,7 @@ impl Element {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
+    #[must_use]
     pub fn texts(&self) -> Texts {
         Texts {
             iter: self.children.iter(),
@@ -530,6 +539,7 @@ impl Element {
 
     /// Returns an iterator over mutable references to every text node of this element.
     #[inline]
+    #[must_use]
     pub fn texts_mut(&mut self) -> TextsMut {
         TextsMut {
             iter: self.children.iter_mut(),
@@ -643,6 +653,7 @@ impl Element {
     ///
     /// assert_eq!(elem.text(), "hello, world!");
     /// ```
+    #[must_use]
     pub fn text(&self) -> String {
         self.texts().fold(String::new(), |ret, new| ret + new)
     }
@@ -907,6 +918,7 @@ impl ElementBuilder {
     }
 
     /// Sets an attribute.
+    #[must_use]
     pub fn attr<S: Into<String>, V: IntoAttributeValue>(
         mut self,
         name: S,
@@ -917,12 +929,14 @@ impl ElementBuilder {
     }
 
     /// Appends anything implementing `Into<Node>` into the tree.
+    #[must_use]
     pub fn append<T: Into<Node>>(mut self, node: T) -> ElementBuilder {
         self.root.append_node(node.into());
         self
     }
 
     /// Appends an iterator of things implementing `Into<Node>` into the tree.
+    #[must_use]
     pub fn append_all<T: Into<Node>, I: IntoIterator<Item = T>>(
         mut self,
         iter: I,
@@ -934,6 +948,7 @@ impl ElementBuilder {
     }
 
     /// Builds the `Element`.
+    #[must_use]
     pub fn build(self) -> Element {
         self.root
     }

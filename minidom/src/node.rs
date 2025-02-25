@@ -39,6 +39,7 @@ impl Node {
     /// assert_eq!(elm.as_element().unwrap().name(), "meow");
     /// assert_eq!(txt.as_element(), None);
     /// ```
+    #[must_use]
     pub fn as_element(&self) -> Option<&Element> {
         match *self {
             Node::Element(ref e) => Some(e),
@@ -60,6 +61,7 @@ impl Node {
     /// assert_eq!(elm.as_element_mut().unwrap().name(), "meow");
     /// assert_eq!(txt.as_element_mut(), None);
     /// ```
+    #[must_use]
     pub fn as_element_mut(&mut self) -> Option<&mut Element> {
         match *self {
             Node::Element(ref mut e) => Some(e),
@@ -81,6 +83,7 @@ impl Node {
     /// assert_eq!(elm.into_element().unwrap().name(), "meow");
     /// assert_eq!(txt.into_element(), None);
     /// ```
+    #[must_use]
     pub fn into_element(self) -> Option<Element> {
         match self {
             Node::Element(e) => Some(e),
@@ -102,6 +105,7 @@ impl Node {
     /// assert_eq!(elm.as_text(), None);
     /// assert_eq!(txt.as_text().unwrap(), "meow");
     /// ```
+    #[must_use]
     pub fn as_text(&self) -> Option<&str> {
         match *self {
             Node::Element(_) => None,
@@ -129,6 +133,7 @@ impl Node {
     /// }
     /// assert_eq!(txt.as_text().unwrap(), "meowzies");
     /// ```
+    #[must_use]
     pub fn as_text_mut(&mut self) -> Option<&mut String> {
         match *self {
             Node::Element(_) => None,
@@ -150,6 +155,7 @@ impl Node {
     /// assert_eq!(elm.into_text(), None);
     /// assert_eq!(txt.into_text().unwrap(), "meow");
     /// ```
+    #[must_use]
     pub fn into_text(self) -> Option<String> {
         match self {
             Node::Element(_) => None,
