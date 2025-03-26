@@ -90,6 +90,7 @@ pub enum Event {
 }
 
 /// Frontend interface to a reliable, always-online stanza stream.
+#[derive(Debug)]
 pub struct StanzaStream {
     rx: mpsc::Receiver<Event>,
     tx: mpsc::Sender<QueueEntry>,

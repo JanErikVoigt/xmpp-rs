@@ -36,6 +36,7 @@ pub use iq::{IqFailure, IqRequest, IqResponse, IqResponseToken};
 ///
 /// To send stanzas, the [`send_stanza`][`Client::send_stanza`] method can be
 /// used.
+#[derive(Debug)]
 pub struct Client {
     stream: StanzaStream,
     bound_jid: Option<Jid>,

@@ -31,6 +31,7 @@ use crate::{
 };
 
 /// An IQ request payload
+#[derive(Debug)]
 pub enum IqRequest {
     /// Payload for a `type="get"` request
     Get(Element),
@@ -49,6 +50,7 @@ impl From<IqRequest> for IqType {
 }
 
 /// An IQ response payload
+#[derive(Debug)]
 pub enum IqResponse {
     /// Payload for a `type="result"` response.
     Result(Option<Element>),
@@ -102,6 +104,7 @@ impl Error for IqFailure {
 type IqKey = (Option<Jid>, String);
 type IqMap = BTreeMap<IqKey, IqResponseSink>;
 
+#[derive(Debug)]
 struct IqMapEntryHandle {
     key: IqKey,
     map: Weak<Mutex<IqMap>>,
@@ -134,6 +137,7 @@ pin_project_lite::pin_project! {
     ///
     /// Dropping (cancelling) an `IqResponseToken` removes the internal
     /// bookkeeping required for tracking the response.
+    #[derive(Debug)]
     pub struct IqResponseToken {
         entry: Option<IqMapEntryHandle>,
         #[pin]
@@ -217,6 +221,7 @@ impl Future for IqResponseToken {
     }
 }
 
+#[derive(Debug)]
 struct IqResponseSink {
     inner: oneshot::Sender<Result<IqResponse, IqFailure>>,
 }
@@ -228,6 +233,7 @@ impl IqResponseSink {
 }
 
 /// Utility struct to track IQ responses.
+#[derive(Debug)]
 pub struct IqResponseTracker {
     map: Arc<Mutex<IqMap>>,
 }
