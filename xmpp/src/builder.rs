@@ -6,10 +6,7 @@
 
 #[cfg(any(feature = "starttls-rust", feature = "starttls-native"))]
 use crate::tokio_xmpp::connect::{DnsConfig, StartTlsServerConnector};
-use alloc::sync::Arc;
 use core::str::FromStr;
-use std::collections::HashMap;
-use tokio::sync::RwLock;
 
 use crate::{
     jid::{BareJid, Jid, ResourceRef},
@@ -172,17 +169,6 @@ impl<C: ServerConnector> ClientBuilder<'_, C> {
         let disco = self.make_disco();
         let node = self.website;
 
-        Agent {
-            client,
-            default_nick: Arc::new(RwLock::new(self.default_nick)),
-            lang: Arc::new(self.lang),
-            disco,
-            node,
-            uploads: Vec::new(),
-            awaiting_disco_bookmarks_type: false,
-            rooms_joined: HashMap::new(),
-            rooms_joining: HashMap::new(),
-            rooms_leaving: HashMap::new(),
-        }
+        Agent::new(client, self.default_nick, self.lang, disco, node)
     }
 }

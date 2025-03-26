@@ -33,6 +33,27 @@ pub struct Agent {
 }
 
 impl Agent {
+    pub fn new(
+        client: TokioXmppClient,
+        default_nick: RoomNick,
+        lang: Vec<String>,
+        disco: DiscoInfoResult,
+        node: String,
+    ) -> Agent {
+        Agent {
+            client,
+            default_nick: Arc::new(RwLock::new(default_nick)),
+            lang: Arc::new(lang),
+            disco,
+            node,
+            uploads: Vec::new(),
+            awaiting_disco_bookmarks_type: false,
+            rooms_joined: HashMap::new(),
+            rooms_joining: HashMap::new(),
+            rooms_leaving: HashMap::new(),
+        }
+    }
+
     pub async fn disconnect(self) -> Result<(), Error> {
         self.client.send_end().await
     }
