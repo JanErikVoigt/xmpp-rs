@@ -108,7 +108,8 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - Push Notifications (XEP-0357) (!543)
       - JSON Containers (XEP-0335) (!546)
     * Improvements:
-      - Add support for `<optional/> in XEP-0198 feature advertisment
+      - Add support for `<optional/>` and `<required/>` in XEP-0198 feature
+        advertisment.
       - Add support application-specific error conditions in XEP-0198
       - Keep unsupported vCard elements as `minidom::Element`, so that they
         get serialized back instead of being dropped.  We now also test for
