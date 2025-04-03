@@ -64,6 +64,9 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - Add a lang property in Presence, to avoid parser errors.
       - pubsub::Owner is now a wrapper for the pubsub::owner::Paylolad enum,
         and all its direct children have been merged into this enum (!532)
+      - time::TimeResult has been ported to use xso. Use From/Into to convert
+        it to/from chrono::DateTime values. The numbered member `0` does not
+        exist anymore (!551).
     * New parsers/serialisers:
       - Stream Features (RFC 6120) (!400)
       - Spam Reporting (XEP-0377) (!506)

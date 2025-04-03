@@ -4,15 +4,40 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use alloc::borrow::Cow;
+
 use xso::{AsXml, FromXml};
 
-use crate::date::DateTime;
+use crate::date::Xep0082;
 use crate::iq::{IqGetPayload, IqResultPayload};
 use crate::ns;
-use chrono::FixedOffset;
+use chrono::{DateTime, FixedOffset, Utc};
 use core::str::FromStr;
-use minidom::Element;
-use xso::error::{Error, FromElementError};
+use xso::{error::Error, text::TextCodec};
+
+struct ColonSeparatedOffset;
+
+impl TextCodec<FixedOffset> for ColonSeparatedOffset {
+    fn decode(&self, s: String) -> Result<FixedOffset, Error> {
+        Ok(FixedOffset::from_str(&s).map_err(Error::text_parse_error)?)
+    }
+
+    fn encode<'x>(&self, value: &'x FixedOffset) -> Result<Option<Cow<'x, str>>, Error> {
+        let offset = value.local_minus_utc();
+        let nminutes = offset / 60;
+        let nseconds = offset % 60;
+        let nhours = nminutes / 60;
+        let nminutes = nminutes % 60;
+        if nseconds == 0 {
+            Ok(Some(Cow::Owned(format!("{:+03}:{:02}", nhours, nminutes))))
+        } else {
+            Ok(Some(Cow::Owned(format!(
+                "{:+03}:{:02}:{:02}",
+                nhours, nminutes, nseconds
+            ))))
+        }
+    }
+}
 
 /// An entity time query.
 #[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
@@ -22,76 +47,57 @@ pub struct TimeQuery;
 impl IqGetPayload for TimeQuery {}
 
 /// An entity time result, containing an unique DateTime.
-#[derive(Debug, Clone)]
-pub struct TimeResult(pub DateTime);
+#[derive(Debug, Clone, Copy, FromXml, AsXml)]
+#[xml(namespace = ns::TIME, name = "time")]
+pub struct TimeResult {
+    /// The UTC offset
+    #[xml(extract(name = "tzo", fields(text(codec = ColonSeparatedOffset))))]
+    pub tz_offset: FixedOffset,
+
+    /// The UTC timestamp
+    #[xml(extract(name = "utc", fields(text(codec = Xep0082))))]
+    pub utc: DateTime<Utc>,
+}
 
 impl IqResultPayload for TimeResult {}
 
-impl TryFrom<Element> for TimeResult {
-    type Error = FromElementError;
-
-    fn try_from(elem: Element) -> Result<TimeResult, FromElementError> {
-        check_self!(elem, "time", TIME);
-        check_no_attributes!(elem, "time");
-
-        let mut tzo = None;
-        let mut utc = None;
-
-        for child in elem.children() {
-            if child.is("tzo", ns::TIME) {
-                if tzo.is_some() {
-                    return Err(Error::Other("More than one tzo element in time.").into());
-                }
-                check_no_children!(child, "tzo");
-                check_no_attributes!(child, "tzo");
-                // TODO: Add a FromStr implementation to FixedOffset to avoid this hack.
-                let fake_date = format!("{}{}", "2019-04-22T11:38:00", child.text());
-                let date_time = DateTime::from_str(&fake_date).map_err(Error::text_parse_error)?;
-                tzo = Some(date_time.timezone());
-            } else if child.is("utc", ns::TIME) {
-                if utc.is_some() {
-                    return Err(Error::Other("More than one utc element in time.").into());
-                }
-                check_no_children!(child, "utc");
-                check_no_attributes!(child, "utc");
-                let date_time =
-                    DateTime::from_str(&child.text()).map_err(Error::text_parse_error)?;
-                match FixedOffset::east_opt(0) {
-                    Some(tz) if date_time.timezone() == tz => (),
-                    _ => return Err(Error::Other("Non-UTC timezone for utc element.").into()),
-                }
-                utc = Some(date_time);
-            } else {
-                return Err(Error::Other("Unknown child in time element.").into());
-            }
-        }
-
-        let tzo = tzo.ok_or(Error::Other("Missing tzo child in time element."))?;
-        let utc = utc.ok_or(Error::Other("Missing utc child in time element."))?;
-        let date = utc.with_timezone(tzo);
-
-        Ok(TimeResult(date))
+impl From<TimeResult> for DateTime<FixedOffset> {
+    fn from(time: TimeResult) -> Self {
+        time.utc.with_timezone(&time.tz_offset)
     }
 }
 
-impl From<TimeResult> for Element {
-    fn from(time: TimeResult) -> Element {
-        Element::builder("time", ns::TIME)
-            .append(Element::builder("tzo", ns::TIME).append(format!("{}", time.0.timezone())))
-            .append(
-                Element::builder("utc", ns::TIME).append(
-                    time.0
-                        .with_timezone(FixedOffset::east_opt(0).unwrap())
-                        .format("%FT%TZ"),
-                ),
-            )
-            .build()
+impl From<TimeResult> for DateTime<Utc> {
+    fn from(time: TimeResult) -> Self {
+        time.utc.into()
+    }
+}
+
+impl From<DateTime<FixedOffset>> for TimeResult {
+    fn from(dt: DateTime<FixedOffset>) -> Self {
+        let tz_offset = *dt.offset();
+        let utc = dt.with_timezone(&Utc);
+        TimeResult {
+            tz_offset,
+            utc: utc.into(),
+        }
+    }
+}
+
+impl From<DateTime<Utc>> for TimeResult {
+    fn from(dt: DateTime<Utc>) -> Self {
+        TimeResult {
+            tz_offset: FixedOffset::east_opt(0).unwrap(),
+            utc: dt.into(),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use minidom::Element;
 
     // DateTime’s size doesn’t depend on the architecture.
     #[test]
@@ -108,10 +114,11 @@ mod tests {
                 .unwrap();
         let elem1 = elem.clone();
         let time = TimeResult::try_from(elem).unwrap();
-        assert_eq!(time.0.timezone(), FixedOffset::west_opt(6 * 3600).unwrap());
+        let dt = DateTime::<FixedOffset>::from(time);
+        assert_eq!(dt.timezone(), FixedOffset::west_opt(6 * 3600).unwrap());
         assert_eq!(
-            time.0,
-            DateTime::from_str("2006-12-19T12:58:35-05:00").unwrap()
+            dt,
+            DateTime::<FixedOffset>::from_str("2006-12-19T12:58:35-05:00").unwrap()
         );
         let elem2 = Element::from(time);
         assert_eq!(elem1, elem2);

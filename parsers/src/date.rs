@@ -7,10 +7,64 @@
 use alloc::borrow::Cow;
 use core::str::FromStr;
 
-use xso::{error::Error, AsXmlText, FromXmlText};
+use xso::{error::Error, AsXmlText, FromXmlText, TextCodec};
 
-use chrono::{DateTime as ChronoDateTime, FixedOffset};
+use chrono::{DateTime as ChronoDateTime, FixedOffset, Utc};
 use minidom::{IntoAttributeValue, Node};
+
+/// Text codec for
+/// [XEP-0082](https://xmpp.org/extensions/xep-0082.html)-compliant formatting
+/// of dates and times.
+pub struct Xep0082;
+
+impl TextCodec<ChronoDateTime<FixedOffset>> for Xep0082 {
+    fn decode(&self, s: String) -> Result<ChronoDateTime<FixedOffset>, Error> {
+        Ok(ChronoDateTime::parse_from_rfc3339(&s).map_err(Error::text_parse_error)?)
+    }
+
+    fn encode<'x>(
+        &self,
+        value: &'x ChronoDateTime<FixedOffset>,
+    ) -> Result<Option<Cow<'x, str>>, Error> {
+        if value.offset().utc_minus_local() == 0 {
+            Ok(Some(Cow::Owned(
+                value.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            )))
+        } else {
+            Ok(Some(Cow::Owned(value.to_rfc3339())))
+        }
+    }
+}
+
+impl TextCodec<ChronoDateTime<Utc>> for Xep0082 {
+    fn decode(&self, s: String) -> Result<ChronoDateTime<Utc>, Error> {
+        Ok(ChronoDateTime::<FixedOffset>::parse_from_rfc3339(&s)
+            .map_err(Error::text_parse_error)?
+            .into())
+    }
+
+    fn encode<'x>(&self, value: &'x ChronoDateTime<Utc>) -> Result<Option<Cow<'x, str>>, Error> {
+        Ok(Some(Cow::Owned(
+            value.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        )))
+    }
+}
+
+impl<T> TextCodec<Option<T>> for Xep0082
+where
+    Xep0082: TextCodec<T>,
+{
+    fn decode(&self, s: String) -> Result<Option<T>, Error> {
+        Ok(Some(self.decode(s)?))
+    }
+
+    fn encode<'x>(&self, value: &'x Option<T>) -> Result<Option<Cow<'x, str>>, Error> {
+        value
+            .as_ref()
+            .and_then(|x| self.encode(x).transpose())
+            .transpose()
+    }
+}
 
 /// Implements the DateTime profile of XEP-0082, which represents a
 /// non-recurring moment in time, with an accuracy of seconds or fraction of
