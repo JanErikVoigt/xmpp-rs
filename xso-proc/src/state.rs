@@ -456,6 +456,7 @@ impl FromEventsStateMachine {
         builder_ty_ident: &Ident,
         state_ty_ident: &Ident,
         output_ty: &Type,
+        validate_fn: Option<&Path>,
     ) -> Result<TokenStream> {
         let Self {
             defs,
@@ -487,6 +488,18 @@ impl FromEventsStateMachine {
         let output_ty_ref = make_ty_ref(output_ty);
 
         let docstr = format!("Build a {0} from XML events.\n\nThis type is generated using the [`macro@xso::FromXml`] derive macro and implements [`xso::FromEventsBuilder`] for {0}.", output_ty_ref);
+
+        let validate_call = match validate_fn {
+            None => quote! {
+                // needed to avoid unused_mut warning.
+                let _ = &mut value;
+            },
+            Some(validate_fn) => {
+                quote! {
+                    #validate_fn(&mut value)?;
+                }
+            }
+        };
 
         Ok(quote! {
             #defs
@@ -529,7 +542,10 @@ impl FromEventsStateMachine {
                 fn feed(&mut self, ev: ::xso::exports::rxml::Event) -> ::core::result::Result<::core::option::Option<Self::Output>, ::xso::error::Error> {
                     let inner = self.0.take().expect("feed called after completion");
                     match inner.advance(ev)? {
-                        ::core::ops::ControlFlow::Continue(value) => ::core::result::Result::Ok(::core::option::Option::Some(value)),
+                        ::core::ops::ControlFlow::Continue(mut value) => {
+                            #validate_call
+                            ::core::result::Result::Ok(::core::option::Option::Some(value))
+                        }
                         ::core::ops::ControlFlow::Break(st) => {
                             self.0 = ::core::option::Option::Some(st);
                             ::core::result::Result::Ok(::core::option::Option::None)

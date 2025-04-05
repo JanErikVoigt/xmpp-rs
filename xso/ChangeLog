@@ -40,6 +40,7 @@ Version NEXT:
         parsing (!552).
       - Implement `AsXml` and `FromXml` for serde_json::Value` behind
         `serde_json` feature.
+      - Support for a post-deserialization callback function call. (!553)
     * Changes
       - Generated AsXml iterator and FromXml builder types are now
         doc(hidden), to not clutter hand-written documentation with auto

@@ -50,6 +50,7 @@ impl NameVariant {
             on_unknown_child,
             transparent,
             discard,
+            deserialize_callback,
         } = XmlCompoundMeta::parse_from_attributes(&decl.attrs)?;
 
         reject_key!(debug flag not on "enum variants" only on "enums and structs");
@@ -58,6 +59,7 @@ impl NameVariant {
         reject_key!(builder not on "enum variants" only on "enums and structs");
         reject_key!(iterator not on "enum variants" only on "enums and structs");
         reject_key!(transparent flag not on "named enum variants" only on "structs");
+        reject_key!(deserialize_callback not on "enum variants" only on "enums and structs");
 
         let Some(name) = name else {
             return Err(Error::new(meta_span, "`name` is required on enum variants"));
@@ -278,12 +280,14 @@ impl DynamicVariant {
             on_unknown_child: _,     // used by StructInner
             transparent: _,          // used by StructInner
             discard: _,              // used by StructInner
+            ref deserialize_callback,
         } = meta;
 
         reject_key!(debug flag not on "enum variants" only on "enums and structs");
         reject_key!(exhaustive flag not on "enum variants" only on "enums");
         reject_key!(builder not on "enum variants" only on "enums and structs");
         reject_key!(iterator not on "enum variants" only on "enums and structs");
+        reject_key!(deserialize_callback not on "enum variants" only on "enums and structs");
 
         let inner = StructInner::new(meta, &variant.fields)?;
         Ok(Self { ident, inner })
@@ -395,6 +399,7 @@ impl EnumInner {
             on_unknown_child,
             transparent,
             discard,
+            deserialize_callback,
         } = meta;
 
         // These must've been cleared by the caller. Because these being set
@@ -403,6 +408,7 @@ impl EnumInner {
         assert!(builder.is_none());
         assert!(iterator.is_none());
         assert!(!debug.is_set());
+        assert!(deserialize_callback.is_none());
 
         reject_key!(name not on "enums" only on "their variants");
         reject_key!(transparent flag not on "enums" only on "structs");
@@ -476,6 +482,9 @@ pub(crate) struct EnumDef {
 
     /// Flag whether debug mode is enabled.
     debug: bool,
+
+    /// Optional validator function to call.
+    deserialize_callback: Option<Path>,
 }
 
 impl EnumDef {
@@ -496,6 +505,7 @@ impl EnumDef {
         };
 
         let debug = meta.debug.take().is_set();
+        let deserialize_callback = meta.deserialize_callback.take();
 
         Ok(Self {
             inner: EnumInner::new(meta, variant_iter)?,
@@ -503,6 +513,7 @@ impl EnumDef {
             builder_ty_ident,
             item_iter_ty_ident,
             debug,
+            deserialize_callback,
         })
     }
 }
@@ -530,6 +541,7 @@ impl ItemDef for EnumDef {
                     path: target_ty_ident.clone().into(),
                 }
                 .into(),
+                self.deserialize_callback.as_ref(),
             )?;
 
         Ok(FromXmlParts {

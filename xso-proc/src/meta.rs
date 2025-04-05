@@ -447,6 +447,9 @@ pub(crate) struct XmlCompoundMeta {
 
     /// Items to discard.
     pub(crate) discard: Vec<DiscardSpec>,
+
+    /// The value assigned to `deserialize_callback` inside `#[xml(..)]`, if any.
+    pub(crate) deserialize_callback: Option<Path>,
 }
 
 impl XmlCompoundMeta {
@@ -464,6 +467,7 @@ impl XmlCompoundMeta {
         let mut exhaustive = Flag::Absent;
         let mut transparent = Flag::Absent;
         let mut discard = Vec::new();
+        let mut deserialize_callback = None;
 
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("debug") {
@@ -520,6 +524,15 @@ impl XmlCompoundMeta {
                     Ok(())
                 })?;
                 Ok(())
+            } else if meta.path.is_ident("deserialize_callback") {
+                if deserialize_callback.is_some() {
+                    return Err(Error::new_spanned(
+                        meta.path,
+                        "duplicate `deserialize_callback` key",
+                    ));
+                }
+                deserialize_callback = Some(meta.value()?.parse()?);
+                Ok(())
             } else {
                 match qname.parse_incremental_from_meta(meta)? {
                     None => Ok(()),
@@ -539,6 +552,7 @@ impl XmlCompoundMeta {
             exhaustive,
             transparent,
             discard,
+            deserialize_callback,
         })
     }
 

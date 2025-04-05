@@ -73,6 +73,7 @@ impl StructInner {
             on_unknown_child,
             transparent,
             discard,
+            deserialize_callback,
         } = meta;
 
         // These must've been cleared by the caller. Because these being set
@@ -81,6 +82,7 @@ impl StructInner {
         assert!(builder.is_none());
         assert!(iterator.is_none());
         assert!(!debug.is_set());
+        assert!(deserialize_callback.is_none());
 
         reject_key!(exhaustive flag not on "structs" only on "enums");
 
@@ -322,6 +324,9 @@ pub(crate) struct StructDef {
 
     /// The matching logic and contents of the struct.
     inner: StructInner,
+
+    /// Optional validator function to call.
+    deserialize_callback: Option<Path>,
 }
 
 impl StructDef {
@@ -338,6 +343,7 @@ impl StructDef {
         };
 
         let debug = meta.debug.take();
+        let deserialize_callback = meta.deserialize_callback.take();
 
         let inner = StructInner::new(meta, fields)?;
 
@@ -347,6 +353,7 @@ impl StructDef {
             builder_ty_ident,
             item_iter_ty_ident,
             debug: debug.is_set(),
+            deserialize_callback,
         })
     }
 }
@@ -379,6 +386,7 @@ impl ItemDef for StructDef {
                     path: target_ty_ident.clone().into(),
                 }
                 .into(),
+                self.deserialize_callback.as_ref(),
             )?;
 
         Ok(FromXmlParts {

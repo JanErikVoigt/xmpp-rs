@@ -71,6 +71,7 @@ The following keys are defined on structs:
 | `on_unknown_attribute` | optional *ident* | Name of an [`UnknownAttributePolicy`] member, controlling how unknown attributes are handled. |
 | `on_unknown_child` | optional *ident* | Name of an [`UnknownChildPolicy`] member, controlling how unknown children are handled. |
 | `discard` | optional *nested* | Contains field specifications of content to ignore. See below for details. |
+| `deserialize_callback` | optional *path* | Path to a `fn(&mut T) -> Result<(), Error>` which is called on the deserialized struct after deserialization. |
 
 Note that the `name` value must be a valid XML element name, without colons.
 The namespace prefix, if any, is assigned automatically at serialisation time
@@ -142,6 +143,7 @@ The following keys are defined on name-switched enums:
 | `iterator` | optional *ident* | The name to use for the generated iterator type. |
 | `exhaustive` | *flag* | If present, the enum considers itself authoritative for its namespace; unknown elements within the namespace are rejected instead of treated as mismatch. |
 | `discard` | optional *nested* | Contains field specifications of content to ignore. See the struct meta docs for details. |
+| `deserialize_callback` | optional *path* | Path to a `fn(&mut T) -> Result<(), Error>` which is called on the deserialized enum after deserialization. |
 
 All variants of a name-switched enum live within the same namespace and are
 distinguished exclusively by their XML name within that namespace. The
@@ -211,6 +213,7 @@ The following keys are defined on dynamic enums:
 | `builder` | optional *ident* | The name to use for the generated builder type. |
 | `iterator` | optional *ident* | The name to use for the generated iterator type. |
 | `discard` | optional *nested* | Contains field specifications of content to ignore. See the struct meta docs for details. |
+| `deserialize_callback` | optional *path* | Path to a `fn(&mut T) -> Result<(), Error>` which is called on the deserialized enum after deserialization. |
 
 For details on `builder` and `iterator`, see the [Struct meta](#struct-meta)
 documentation above.

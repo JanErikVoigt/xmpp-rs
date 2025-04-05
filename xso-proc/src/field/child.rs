@@ -303,6 +303,7 @@ impl ExtractDef {
             &from_xml_builder_ty_ident,
             &state_ty_ident,
             &self.parts.to_tuple_ty().into(),
+            None,
         )?;
         let from_xml_builder_ty = ty_from_ident(from_xml_builder_ty_ident.clone()).into();
 

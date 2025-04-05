@@ -2299,3 +2299,140 @@ fn discard_text_absent_roundtrip() {
     };
     roundtrip_full::<DiscardText>("<foo xmlns='urn:example:ns1'/>");
 }
+
+fn transform_test_struct(
+    v: &mut DeserializeCallback,
+) -> ::core::result::Result<(), ::xso::error::Error> {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    use xso::error::Error;
+    if v.outcome == 0 {
+        return Err(Error::Other("saw outcome == 0"));
+    }
+    if v.outcome == 1 {
+        v.outcome = 0;
+    }
+    Ok(())
+}
+
+#[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
+#[xml(namespace = NS1, name = "foo", deserialize_callback = transform_test_struct)]
+struct DeserializeCallback {
+    #[xml(attribute)]
+    outcome: u32,
+}
+
+#[test]
+fn deserialize_callback_roundtrip() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<DeserializeCallback>("<foo xmlns='urn:example:ns1' outcome='2'/>");
+}
+
+#[test]
+fn deserialize_callback_can_mutate() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<DeserializeCallback>("<foo xmlns='urn:example:ns1' outcome='1'/>") {
+        Ok(DeserializeCallback { outcome }) => {
+            assert_eq!(outcome, 0);
+        }
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn deserialize_callback_can_fail() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<DeserializeCallback>("<foo xmlns='urn:example:ns1' outcome='0'/>") {
+        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+            assert_eq!(e, "saw outcome == 0");
+        }
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+fn transform_test_enum(
+    v: &mut DeserializeCallbackEnum,
+) -> ::core::result::Result<(), ::xso::error::Error> {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    use xso::error::Error;
+    match v {
+        DeserializeCallbackEnum::Foo { ref mut outcome } => {
+            if *outcome == 0 {
+                return Err(Error::Other("saw outcome == 0"));
+            }
+            if *outcome == 1 {
+                *outcome = 0;
+            }
+            Ok(())
+        }
+    }
+}
+
+#[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
+#[xml(namespace = NS1, deserialize_callback = transform_test_enum)]
+enum DeserializeCallbackEnum {
+    #[xml(name = "foo")]
+    Foo {
+        #[xml(attribute)]
+        outcome: u32,
+    },
+}
+
+#[test]
+fn enum_deserialize_callback_roundtrip() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<DeserializeCallbackEnum>("<foo xmlns='urn:example:ns1' outcome='2'/>");
+}
+
+#[test]
+fn enum_deserialize_callback_can_mutate() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<DeserializeCallbackEnum>("<foo xmlns='urn:example:ns1' outcome='1'/>") {
+        Ok(DeserializeCallbackEnum::Foo { outcome }) => {
+            assert_eq!(outcome, 0);
+        }
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn enum_deserialize_callback_can_fail() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<DeserializeCallbackEnum>("<foo xmlns='urn:example:ns1' outcome='0'/>") {
+        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+            assert_eq!(e, "saw outcome == 0");
+        }
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
