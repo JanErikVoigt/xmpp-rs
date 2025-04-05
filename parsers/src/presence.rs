@@ -154,7 +154,7 @@ pub struct Presence {
     pub id: Option<String>,
 
     /// The type of this presence stanza.
-    #[xml(attribute(default))]
+    #[xml(attribute(default, name = "type"))]
     pub type_: Type,
 
     /// The xml:lang of this presence stanza.
