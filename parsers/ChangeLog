@@ -67,6 +67,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - time::TimeResult has been ported to use xso. Use From/Into to convert
         it to/from chrono::DateTime values. The numbered member `0` does not
         exist anymore (!551).
+      - stanza_error::StanzaError has been ported to use xso (!552).
     * New parsers/serialisers:
       - Stream Features (RFC 6120) (!400)
       - Spam Reporting (XEP-0377) (!506)

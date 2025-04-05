@@ -10,10 +10,8 @@ use crate::message::MessagePayload;
 use crate::ns;
 use crate::presence::PresencePayload;
 use alloc::collections::BTreeMap;
-use core::convert::TryFrom;
 use jid::Jid;
 use minidom::Element;
-use xso::error::{Error, FromElementError};
 
 generate_attribute!(
     /// The type of the error.
@@ -36,8 +34,10 @@ generate_attribute!(
 );
 
 /// List of valid error conditions.
+// NOTE: This MUST NOT be marked as exhaustive, because the <text/> elements
+// use the same namespace!
 #[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
-#[xml(namespace = ns::XMPP_STANZAS, exhaustive)]
+#[xml(namespace = ns::XMPP_STANZAS)]
 pub enum DefinedCondition {
     /// The sender has sent a stanza containing XML that does not conform
     /// to the appropriate schema or that cannot be processed (e.g., an IQ
@@ -228,21 +228,30 @@ pub enum DefinedCondition {
 type Lang = String;
 
 /// The representation of a stanza error.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, FromXml, AsXml)]
+#[xml(namespace = ns::DEFAULT_NS, name = "error", discard(attribute = "code"))]
 pub struct StanzaError {
     /// The type of this error.
+    #[xml(attribute = "type")]
     pub type_: ErrorType,
 
     /// The JID of the entity who set this error.
+    #[xml(attribute(name = "by", default))]
     pub by: Option<Jid>,
 
     /// One of the defined conditions for this error to happen.
+    #[xml(child)]
     pub defined_condition: DefinedCondition,
 
     /// Human-readable description of this error.
+    #[xml(extract(n = .., namespace = ns::XMPP_STANZAS, name = "text", fields(
+        attribute(name = "xml:lang", type_ = Lang, default),
+        text(type_ = String),
+    )))]
     pub texts: BTreeMap<Lang, String>,
 
     /// A protocol-specific extension for this error.
+    #[xml(element(default))]
     pub other: Option<Element>,
 }
 
@@ -275,79 +284,11 @@ impl StanzaError {
     }
 }
 
-impl TryFrom<Element> for StanzaError {
-    type Error = FromElementError;
-
-    fn try_from(elem: Element) -> Result<StanzaError, FromElementError> {
-        check_self!(elem, "error", DEFAULT_NS);
-        // The code attribute has been deprecated in [XEP-0086](https://xmpp.org/extensions/xep-0086.html)
-        // which was deprecated in 2007. We don't error when it's here, but don't include it in the final struct.
-        check_no_unknown_attributes!(elem, "error", ["type", "by", "code"]);
-
-        let mut stanza_error = StanzaError {
-            type_: get_attr!(elem, "type", Required),
-            by: get_attr!(elem, "by", Option),
-            defined_condition: DefinedCondition::UndefinedCondition,
-            texts: BTreeMap::new(),
-            other: None,
-        };
-        let mut defined_condition = None;
-
-        for child in elem.children() {
-            if child.is("text", ns::XMPP_STANZAS) {
-                check_no_children!(child, "text");
-                check_no_unknown_attributes!(child, "text", ["xml:lang"]);
-                let lang = get_attr!(child, "xml:lang", Default);
-                if stanza_error.texts.insert(lang, child.text()).is_some() {
-                    return Err(
-                        Error::Other("Text element present twice for the same xml:lang.").into(),
-                    );
-                }
-            } else if child.has_ns(ns::XMPP_STANZAS) {
-                if defined_condition.is_some() {
-                    return Err(Error::Other(
-                        "Error must not have more than one defined-condition.",
-                    )
-                    .into());
-                }
-                check_no_children!(child, "defined-condition");
-                check_no_attributes!(child, "defined-condition");
-                defined_condition = Some(DefinedCondition::try_from(child.clone())?);
-            } else {
-                if stanza_error.other.is_some() {
-                    return Err(
-                        Error::Other("Error must not have more than one other element.").into(),
-                    );
-                }
-                stanza_error.other = Some(child.clone());
-            }
-        }
-        stanza_error.defined_condition =
-            defined_condition.ok_or(Error::Other("Error must have a defined-condition."))?;
-
-        Ok(stanza_error)
-    }
-}
-
-impl From<StanzaError> for Element {
-    fn from(err: StanzaError) -> Element {
-        Element::builder("error", ns::DEFAULT_NS)
-            .attr("type", err.type_)
-            .attr("by", err.by)
-            .append(err.defined_condition)
-            .append_all(err.texts.into_iter().map(|(lang, text)| {
-                Element::builder("text", ns::XMPP_STANZAS)
-                    .attr("xml:lang", lang)
-                    .append(text)
-            }))
-            .append_all(err.other)
-            .build()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use xso::error::{Error, FromElementError};
 
     #[cfg(target_pointer_width = "32")]
     #[test]
@@ -390,7 +331,10 @@ mod tests {
             FromElementError::Invalid(Error::Other(string)) => string,
             _ => panic!(),
         };
-        assert_eq!(message, "Required attribute 'type' missing.");
+        assert_eq!(
+            message,
+            "Required attribute field 'type_' on StanzaError element missing."
+        );
 
         #[cfg(not(feature = "component"))]
         let elem: Element = "<error xmlns='jabber:client' type='coucou'/>"
@@ -423,7 +367,10 @@ mod tests {
             FromElementError::Invalid(Error::Other(string)) => string,
             _ => panic!(),
         };
-        assert_eq!(message, "Error must have a defined-condition.");
+        assert_eq!(
+            message,
+            "Missing child field 'defined_condition' in StanzaError element."
+        );
     }
 
     #[test]
