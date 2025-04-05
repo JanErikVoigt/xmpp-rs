@@ -72,6 +72,7 @@ impl StructInner {
             on_unknown_attribute,
             on_unknown_child,
             transparent,
+            discard,
         } = meta;
 
         // These must've been cleared by the caller. Because these being set
@@ -88,6 +89,7 @@ impl StructInner {
             reject_key!(name not on "transparent structs");
             reject_key!(on_unknown_attribute not on "transparent structs");
             reject_key!(on_unknown_child not on "transparent structs");
+            reject_key!(discard vec not on "transparent structs");
 
             let fields_span = fields.span();
             let fields = match fields {
@@ -152,6 +154,7 @@ impl StructInner {
                     &xml_namespace,
                     on_unknown_attribute,
                     on_unknown_child,
+                    discard,
                 )?,
                 xml_namespace,
                 xml_name,

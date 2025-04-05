@@ -70,6 +70,7 @@ The following keys are defined on structs:
 | `iterator` | optional *ident* | The name to use for the generated iterator type. |
 | `on_unknown_attribute` | optional *ident* | Name of an [`UnknownAttributePolicy`] member, controlling how unknown attributes are handled. |
 | `on_unknown_child` | optional *ident* | Name of an [`UnknownChildPolicy`] member, controlling how unknown children are handled. |
+| `discard` | optional *nested* | Contains field specifications of content to ignore. See below for details. |
 
 Note that the `name` value must be a valid XML element name, without colons.
 The namespace prefix, if any, is assigned automatically at serialisation time
@@ -97,6 +98,20 @@ If the struct is marked as `transparent`, it must not have a `namespace` or
 implement [`FromXml`] in order to derive `FromXml` and [`AsXml`] in order to
 derive `AsXml`. The struct will be (de-)serialised exactly like the type of
 that single field. This allows a newtype-like pattern for XSO structs.
+
+`discard` may contain zero or more field meta which describe XML content to
+silently ignore. The syntax is the same as within the `#[xml(..)]` meta used
+on fields, however, any parameters which aren't strictly needed to match the
+content are rejected (for example, you cannot set the codec on a discarded
+attribute because it is irrelevant). Discarded content is never emitted during
+serialisation. Its absence does not cause errors.
+
+```
+# use xso::FromXml;
+#[derive(FromXml, Debug, PartialEq)]
+#[xml(namespace = "urn:example", name = "foo", discard(text))]
+struct Foo;
+```
 
 ## Enums
 
@@ -126,6 +141,7 @@ The following keys are defined on name-switched enums:
 | `builder` | optional *ident* | The name to use for the generated builder type. |
 | `iterator` | optional *ident* | The name to use for the generated iterator type. |
 | `exhaustive` | *flag* | If present, the enum considers itself authoritative for its namespace; unknown elements within the namespace are rejected instead of treated as mismatch. |
+| `discard` | optional *nested* | Contains field specifications of content to ignore. See the struct meta docs for details. |
 
 All variants of a name-switched enum live within the same namespace and are
 distinguished exclusively by their XML name within that namespace. The
@@ -194,6 +210,7 @@ The following keys are defined on dynamic enums:
 | --- | --- | --- |
 | `builder` | optional *ident* | The name to use for the generated builder type. |
 | `iterator` | optional *ident* | The name to use for the generated iterator type. |
+| `discard` | optional *nested* | Contains field specifications of content to ignore. See the struct meta docs for details. |
 
 For details on `builder` and `iterator`, see the [Struct meta](#struct-meta)
 documentation above.

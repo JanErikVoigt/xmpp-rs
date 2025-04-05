@@ -391,8 +391,12 @@ fn new_field(
                     &xml_namespace,
                 ));
             }
-            let parts =
-                Compound::from_field_defs(field_defs, on_unknown_attribute, on_unknown_child)?;
+            let parts = Compound::from_field_defs(
+                field_defs,
+                on_unknown_attribute,
+                on_unknown_child,
+                vec![],
+            )?;
 
             Ok(Box::new(ChildField {
                 default_,

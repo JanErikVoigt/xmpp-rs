@@ -36,6 +36,8 @@ Version NEXT:
       - Support for `no_std` usage (the alloc crate is required, though).
       - Add a PrintRawXml helper struct to be able to display raw xml, useful
         for debug logs.
+      - Support to selectively discard attributes or text content during
+        parsing (!552).
     * Changes
       - Generated AsXml iterator and FromXml builder types are now
         doc(hidden), to not clutter hand-written documentation with auto

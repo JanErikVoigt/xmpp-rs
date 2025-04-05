@@ -2200,3 +2200,102 @@ fn printrawxml() {
     let display = format!("{}", PrintRawXml(&text));
     assert_eq!(display, "<text xmlns='urn:example:ns1'>hello world</text>");
 }
+
+#[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
+#[xml(namespace = NS1, name = "foo", discard(attribute = "bar"))]
+struct DiscardAttribute;
+
+#[test]
+fn discard_attribute_ignore_if_present() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<DiscardAttribute>("<foo xmlns='urn:example:ns1' bar='baz'/>") {
+        Ok(DiscardAttribute) => (),
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn discard_attribute_ignore_if_absent() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<DiscardAttribute>("<foo xmlns='urn:example:ns1'/>") {
+        Ok(DiscardAttribute) => (),
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn discard_attribute_absent_roundtrip() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<DiscardAttribute>("<foo xmlns='urn:example:ns1'/>");
+}
+
+#[test]
+#[cfg_attr(
+    feature = "disable-validation",
+    should_panic = "unexpected result: Ok("
+)]
+fn discard_attribute_fails_on_other_unexpected_attributes() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<DiscardAttribute>("<foo xmlns='urn:example:ns1' fnord='bar'/>") {
+        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+            assert_eq!(e, "Unknown attribute in DiscardAttribute element.");
+        }
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
+#[xml(namespace = NS1, name = "foo", discard(text))]
+struct DiscardText;
+
+#[test]
+fn discard_text_ignore_if_present() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<DiscardText>("<foo xmlns='urn:example:ns1'>quak</foo>") {
+        Ok(DiscardText) => (),
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn discard_text_ignore_if_absent() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<DiscardText>("<foo xmlns='urn:example:ns1'/>") {
+        Ok(DiscardText) => (),
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn discard_text_absent_roundtrip() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<DiscardText>("<foo xmlns='urn:example:ns1'/>");
+}

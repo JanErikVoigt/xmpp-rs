@@ -60,6 +60,25 @@ macro_rules! reject_key {
             ));
         }
     };
+
+    ($key:ident vec not on $not_allowed_on:literal $(only on $only_allowed_on:literal)?) => {
+        if let Some(ref $key) = $key.first() {
+            return Err(Error::new(
+                $key.span(),
+                concat!(
+                    "`",
+                    stringify!($key),
+                    "` is not allowed on ",
+                    $not_allowed_on,
+                    $(
+                        " (only on ",
+                        $only_allowed_on,
+                        ")",
+                    )?
+                ),
+            ));
+        }
+    };
 }
 
 pub(crate) use reject_key;
@@ -328,6 +347,69 @@ impl QNameRef {
     }
 }
 
+/// Identifies XML content to discard.
+#[derive(Debug)]
+pub(crate) enum DiscardSpec {
+    /// `#[xml(discard(attribute..))]`
+    Attribute {
+        /// The span of the nested meta from which this was parsed.
+        ///
+        /// This is useful for error messages.
+        span: Span,
+
+        /// The value assigned to `namespace` and `name` fields inside
+        /// `#[xml(discard(attribute(..)))]`, if any.
+        qname: QNameRef,
+    },
+
+    /// `#[xml(discard(text))]`
+    Text {
+        /// The span of the nested meta from which this was parsed.
+        ///
+        /// This is useful for error messages.
+        span: Span,
+    },
+}
+
+impl DiscardSpec {
+    pub(crate) fn span(&self) -> Span {
+        match self {
+            Self::Attribute { ref span, .. } => *span,
+            Self::Text { ref span, .. } => *span,
+        }
+    }
+}
+
+impl TryFrom<XmlFieldMeta> for DiscardSpec {
+    type Error = syn::Error;
+
+    fn try_from(other: XmlFieldMeta) -> Result<Self> {
+        match other {
+            XmlFieldMeta::Attribute {
+                span,
+                qname,
+                default_,
+                type_,
+                codec,
+            } => {
+                reject_key!(default_ flag not on "discard specifications" only on "fields");
+                reject_key!(type_ not on "discard specifications" only on "fields");
+                reject_key!(codec not on "discard specifications" only on "fields");
+                Ok(Self::Attribute { span, qname })
+            }
+            XmlFieldMeta::Text { span, type_, codec } => {
+                reject_key!(type_ not on "discard specifications" only on "fields");
+                reject_key!(codec not on "discard specifications" only on "fields");
+                Ok(Self::Text { span })
+            }
+            other => Err(Error::new(
+                other.span(),
+                "cannot discard this kind of child",
+            )),
+        }
+    }
+}
+
 /// Contents of an `#[xml(..)]` attribute on a struct, enum variant, or enum.
 #[derive(Debug)]
 pub(crate) struct XmlCompoundMeta {
@@ -362,6 +444,9 @@ pub(crate) struct XmlCompoundMeta {
 
     /// The transparent flag.
     pub(crate) transparent: Flag,
+
+    /// Items to discard.
+    pub(crate) discard: Vec<DiscardSpec>,
 }
 
 impl XmlCompoundMeta {
@@ -378,6 +463,7 @@ impl XmlCompoundMeta {
         let mut debug = Flag::Absent;
         let mut exhaustive = Flag::Absent;
         let mut transparent = Flag::Absent;
+        let mut discard = Vec::new();
 
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("debug") {
@@ -428,6 +514,12 @@ impl XmlCompoundMeta {
                 }
                 transparent = (&meta.path).into();
                 Ok(())
+            } else if meta.path.is_ident("discard") {
+                meta.parse_nested_meta(|meta| {
+                    discard.push(XmlFieldMeta::parse_from_meta(meta)?.try_into()?);
+                    Ok(())
+                })?;
+                Ok(())
             } else {
                 match qname.parse_incremental_from_meta(meta)? {
                     None => Ok(()),
@@ -446,6 +538,7 @@ impl XmlCompoundMeta {
             on_unknown_child,
             exhaustive,
             transparent,
+            discard,
         })
     }
 

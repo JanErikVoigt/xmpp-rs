@@ -49,6 +49,7 @@ impl NameVariant {
             on_unknown_attribute,
             on_unknown_child,
             transparent,
+            discard,
         } = XmlCompoundMeta::parse_from_attributes(&decl.attrs)?;
 
         reject_key!(debug flag not on "enum variants" only on "enums and structs");
@@ -70,6 +71,7 @@ impl NameVariant {
                 enum_namespace,
                 on_unknown_attribute,
                 on_unknown_child,
+                discard,
             )?,
         })
     }
@@ -275,6 +277,7 @@ impl DynamicVariant {
             on_unknown_attribute: _, // used by StructInner
             on_unknown_child: _,     // used by StructInner
             transparent: _,          // used by StructInner
+            discard: _,              // used by StructInner
         } = meta;
 
         reject_key!(debug flag not on "enum variants" only on "enums and structs");
@@ -391,6 +394,7 @@ impl EnumInner {
             on_unknown_attribute,
             on_unknown_child,
             transparent,
+            discard,
         } = meta;
 
         // These must've been cleared by the caller. Because these being set
@@ -404,6 +408,7 @@ impl EnumInner {
         reject_key!(transparent flag not on "enums" only on "structs");
         reject_key!(on_unknown_attribute not on "enums" only on "enum variants and structs");
         reject_key!(on_unknown_child not on "enums" only on "enum variants and structs");
+        reject_key!(discard vec not on "enums" only on "enum variants and structs");
 
         if let Some(namespace) = namespace {
             Ok(Self::NameSwitched(NameSwitchedEnum::new(

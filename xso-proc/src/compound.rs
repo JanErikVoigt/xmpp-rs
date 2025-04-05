@@ -7,12 +7,12 @@
 //! Handling of the insides of compound structures (structs and enum variants)
 
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{spanned::Spanned, *};
 
 use crate::error_message::ParentRef;
 use crate::field::{FieldBuilderPart, FieldDef, FieldIteratorPart, FieldTempInit, NestedMatcher};
-use crate::meta::NamespaceRef;
+use crate::meta::{DiscardSpec, Flag, NameRef, NamespaceRef, QNameRef};
 use crate::scope::{mangle_member, AsItemsScope, FromEventsScope};
 use crate::state::{AsItemsSubmachine, FromEventsSubmachine, State};
 use crate::types::{
@@ -55,6 +55,12 @@ pub(crate) struct Compound {
 
     /// Policy defining how to handle unknown children.
     unknown_child_policy: Expr,
+
+    /// Attributes to discard.
+    discard_attr: Vec<(Option<NamespaceRef>, NameRef)>,
+
+    /// Text to discard.
+    discard_text: Flag,
 }
 
 impl Compound {
@@ -63,6 +69,7 @@ impl Compound {
         compound_fields: I,
         unknown_attribute_policy: Option<Ident>,
         unknown_child_policy: Option<Ident>,
+        discard: Vec<DiscardSpec>,
     ) -> Result<Self> {
         let unknown_attribute_policy = resolve_policy(
             unknown_attribute_policy,
@@ -96,10 +103,60 @@ impl Compound {
 
             fields.push(field);
         }
+
+        let mut discard_text = Flag::Absent;
+        let mut discard_attr = Vec::new();
+        for spec in discard {
+            match spec {
+                DiscardSpec::Text { span } => {
+                    if let Some(field) = text_field.as_ref() {
+                        let mut err = Error::new(
+                            *field,
+                            "cannot combine `#[xml(text)]` field with `discard(text)`",
+                        );
+                        err.combine(Error::new(
+                            spec.span(),
+                            "the discard(text) attribute is here",
+                        ));
+                        return Err(err);
+                    }
+                    if let Flag::Present(other) = discard_text {
+                        let mut err = Error::new(
+                            span,
+                            "only one `discard(text)` meta is allowed per compound",
+                        );
+                        err.combine(Error::new(other, "the discard(text) meta is here"));
+                        return Err(err);
+                    }
+
+                    discard_text = Flag::Present(span);
+                }
+
+                DiscardSpec::Attribute {
+                    qname: QNameRef { namespace, name },
+                    span,
+                } => {
+                    let xml_namespace = namespace;
+                    let xml_name = match name {
+                        Some(v) => v,
+                        None => {
+                            return Err(Error::new(
+                                span,
+                                "discard(attribute) must specify a name, e.g. via discard(attribute = \"some-name\")",
+                            ));
+                        }
+                    };
+                    discard_attr.push((xml_namespace, xml_name));
+                }
+            }
+        }
+
         Ok(Self {
             fields,
             unknown_attribute_policy,
             unknown_child_policy,
+            discard_attr,
+            discard_text,
         })
     }
 
@@ -109,6 +166,7 @@ impl Compound {
         container_namespace: &NamespaceRef,
         unknown_attribute_policy: Option<Ident>,
         unknown_child_policy: Option<Ident>,
+        discard: Vec<DiscardSpec>,
     ) -> Result<Self> {
         Self::from_field_defs(
             compound_fields.iter().enumerate().map(|(i, field)| {
@@ -127,6 +185,7 @@ impl Compound {
             }),
             unknown_attribute_policy,
             unknown_child_policy,
+            discard,
         )
     }
 
@@ -165,7 +224,15 @@ impl Compound {
         let mut output_cons = TokenStream::default();
         let mut child_matchers = TokenStream::default();
         let mut fallback_child_matcher = None;
-        let mut text_handler = None;
+        let mut text_handler = if self.discard_text.is_set() {
+            Some(quote! {
+                ::core::result::Result::Ok(::core::ops::ControlFlow::Break(
+                    Self::#default_state_ident { #builder_data_ident }
+                ))
+            })
+        } else {
+            None
+        };
         let mut extra_defs = TokenStream::default();
         let is_tuple = !output_name.is_path();
 
@@ -329,6 +396,19 @@ impl Compound {
             }
         }
 
+        let mut discard_attr = TokenStream::default();
+        for (xml_namespace, xml_name) in self.discard_attr.iter() {
+            let xml_namespace = match xml_namespace {
+                Some(v) => v.to_token_stream(),
+                None => quote! {
+                    ::xso::exports::rxml::Namespace::none()
+                },
+            };
+            discard_attr.extend(quote! {
+                let _ = #attrs.remove(#xml_namespace, #xml_name);
+            });
+        }
+
         let text_handler = match text_handler {
             Some(v) => v,
             None => quote! {
@@ -442,6 +522,7 @@ impl Compound {
                 let #builder_data_ident = #builder_data_ty {
                     #builder_data_init
                 };
+                #discard_attr
                 if #attrs.len() > 0 {
                     let _: () = #unknown_attribute_policy.apply_policy(#unknown_attr_err)?;
                 }
