@@ -227,7 +227,6 @@ mod tests {
     #[test]
     fn test_xep_ex2() {
         let elem: Element = r#"<x xmlns='jabber:x:data' type='form'>
-  [ ... ]
   <field var='ocr'>
     <media xmlns='urn:xmpp:media-element'
            height='80'
@@ -236,7 +235,6 @@ mod tests {
       <uri type='image/jpeg'>cid:sha1+f24030b8d91d233bac14777be5ab531ca3b9f102@bob.xmpp.org</uri>
     </media>
   </field>
-  [ ... ]
 </x>"#
             .parse()
             .unwrap();

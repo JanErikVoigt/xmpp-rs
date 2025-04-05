@@ -36,11 +36,14 @@ impl TryFrom<DataForm> for ServerInfo {
         if form.type_ != DataFormType::Result_ {
             return Err(Error::Other("Wrong type of form."));
         }
-        if form.form_type != Some(String::from(ns::SERVER_INFO)) {
+        if form.form_type() != Some(ns::SERVER_INFO) {
             return Err(Error::Other("Wrong FORM_TYPE for form."));
         }
         let mut server_info = ServerInfo::default();
         for field in form.fields {
+            if field.var.as_deref().unwrap_or("") == "FORM_TYPE" {
+                continue;
+            }
             if field.type_ != FieldType::ListMulti {
                 return Err(Error::Other("Field is not of the required type."));
             }
@@ -67,9 +70,8 @@ impl TryFrom<DataForm> for ServerInfo {
 
 impl From<ServerInfo> for DataForm {
     fn from(server_info: ServerInfo) -> DataForm {
-        DataForm {
+        let mut form = DataForm {
             type_: DataFormType::Result_,
-            form_type: Some(String::from(ns::SERVER_INFO)),
             title: None,
             instructions: None,
             fields: vec![
@@ -80,7 +82,9 @@ impl From<ServerInfo> for DataForm {
                 generate_address_field("security-addresses", server_info.security),
                 generate_address_field("support-addresses", server_info.support),
             ],
-        }
+        };
+        form.set_form_type(ns::SERVER_INFO.to_owned());
+        form
     }
 }
 

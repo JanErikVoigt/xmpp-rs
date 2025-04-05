@@ -251,7 +251,7 @@ mod tests {
         assert_eq!(query.identities.len(), 1);
         assert_eq!(query.features.len(), 1);
         assert_eq!(query.extensions.len(), 1);
-        assert_eq!(query.extensions[0].form_type, Some(String::from("example")));
+        assert_eq!(query.extensions[0].form_type(), Some("example"));
 
         let elem2 = query.into();
         assert_eq!(elem1, elem2);

@@ -4,16 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use xso::{
-    error::{Error, FromElementError, FromEventsError},
-    exports::rxml,
-    minidom_compat, AsXml, FromXml,
-};
+use xso::{error::Error, AsXml, FromXml};
 
 use crate::data_forms_validate::Validate;
 use crate::media_element::MediaElement;
 use crate::ns;
-use minidom::Element;
 
 /// Represents one of the possible values for a list- field.
 #[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
@@ -73,34 +68,56 @@ generate_attribute!(
     }, Default = TextSingle
 );
 
+fn validate_field(field: &mut Field) -> Result<(), Error> {
+    if field.type_ != FieldType::Fixed && field.var.is_none() {
+        return Err(Error::Other("Required attribute 'var' missing.").into());
+    }
+
+    if !field.is_list() && field.options.len() > 0 {
+        return Err(Error::Other("Option element found in non-list field.").into());
+    }
+
+    Ok(())
+}
+
 /// Represents a field in a [data form](struct.DataForm.html).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(FromXml, AsXml, Debug, Clone, PartialEq)]
+#[xml(namespace = ns::DATA_FORMS, name = "field", deserialize_callback = validate_field)]
 pub struct Field {
     /// The unique identifier for this field, in the form.
+    #[xml(attribute(default))]
     pub var: Option<String>,
 
     /// The type of this field.
+    #[xml(attribute(name = "type", default))]
     pub type_: FieldType,
 
     /// The label to be possibly displayed to the user for this field.
+    #[xml(attribute(default))]
     pub label: Option<String>,
 
     /// The form will be rejected if this field isn’t present.
+    #[xml(flag)]
     pub required: bool,
 
     /// The natural-language description of the field, intended for presentation in a user-agent
+    #[xml(extract(default, fields(text(type_ = String))))]
     pub desc: Option<String>,
 
     /// A list of allowed values.
+    #[xml(child(n = ..))]
     pub options: Vec<Option_>,
 
     /// The values provided for this field.
+    #[xml(extract(n = .., name = "value", fields(text(type_ = String))))]
     pub values: Vec<String>,
 
     /// A list of media related to this field.
+    #[xml(child(n = ..))]
     pub media: Vec<MediaElement>,
 
     /// Validation rules for this field.
+    #[xml(child(default))]
     pub validate: Option<Validate>,
 }
 
@@ -173,92 +190,6 @@ impl Field {
     }
 }
 
-impl TryFrom<Element> for Field {
-    type Error = FromElementError;
-
-    fn try_from(elem: Element) -> Result<Field, FromElementError> {
-        check_self!(elem, "field", DATA_FORMS);
-        check_no_unknown_attributes!(elem, "field", ["label", "type", "var"]);
-        let mut field = Field {
-            var: get_attr!(elem, "var", Option),
-            type_: get_attr!(elem, "type", Default),
-            label: get_attr!(elem, "label", Option),
-            required: false,
-            desc: None,
-            options: vec![],
-            values: vec![],
-            media: vec![],
-            validate: None,
-        };
-
-        if field.type_ != FieldType::Fixed && field.var.is_none() {
-            return Err(Error::Other("Required attribute 'var' missing.").into());
-        }
-
-        for element in elem.children() {
-            if element.is("value", ns::DATA_FORMS) {
-                check_no_children!(element, "value");
-                check_no_attributes!(element, "value");
-                field.values.push(element.text());
-            } else if element.is("required", ns::DATA_FORMS) {
-                if field.required {
-                    return Err(Error::Other("More than one required element.").into());
-                }
-                check_no_children!(element, "required");
-                check_no_attributes!(element, "required");
-                field.required = true;
-            } else if element.is("option", ns::DATA_FORMS) {
-                if !field.is_list() {
-                    return Err(Error::Other("Option element found in non-list field.").into());
-                }
-                let option = Option_::try_from(element.clone())?;
-                field.options.push(option);
-            } else if element.is("media", ns::MEDIA_ELEMENT) {
-                let media_element = MediaElement::try_from(element.clone())?;
-                field.media.push(media_element);
-            } else if element.is("desc", ns::DATA_FORMS) {
-                check_no_children!(element, "desc");
-                check_no_attributes!(element, "desc");
-                field.desc = Some(element.text());
-            } else if element.is("validate", ns::XDATA_VALIDATE) {
-                if field.validate.is_some() {
-                    return Err(Error::Other("More than one validate element in field.").into());
-                }
-                field.validate = Some(Validate::try_from(element.clone())?);
-            } else {
-                return Err(
-                    Error::Other("Field child isn’t a value, option or media element.").into(),
-                );
-            }
-        }
-        Ok(field)
-    }
-}
-
-impl From<Field> for Element {
-    fn from(field: Field) -> Element {
-        Element::builder("field", ns::DATA_FORMS)
-            .attr("var", field.var)
-            .attr("type", field.type_)
-            .attr("label", field.label)
-            .append_all(if field.required {
-                Some(Element::builder("required", ns::DATA_FORMS))
-            } else {
-                None
-            })
-            .append_all(field.options.iter().cloned().map(Element::from))
-            .append_all(
-                field
-                    .values
-                    .into_iter()
-                    .map(|value| Element::builder("value", ns::DATA_FORMS).append(value)),
-            )
-            .append_all(field.media.iter().cloned().map(Element::from))
-            .append_all(field.validate)
-            .build()
-    }
-}
-
 generate_attribute!(
     /// Represents the type of a [data form](struct.DataForm.html).
     DataFormType, "type", {
@@ -278,132 +209,112 @@ generate_attribute!(
 );
 
 /// This is a form to be sent to another entity for filling.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(FromXml, AsXml, Debug, Clone, PartialEq)]
+#[xml(namespace = ns::DATA_FORMS, name = "x", deserialize_callback = patch_form)]
 pub struct DataForm {
     /// The type of this form, telling the other party which action to execute.
+    #[xml(attribute = "type")]
     pub type_: DataFormType,
 
-    /// An easy accessor for the FORM_TYPE of this form, see
-    /// [XEP-0068](https://xmpp.org/extensions/xep-0068.html) for more
-    /// information.
-    pub form_type: Option<String>,
-
     /// The title of this form.
+    #[xml(extract(fields(text(type_ = String)), default))]
     pub title: Option<String>,
 
     /// The instructions given with this form.
+    #[xml(extract(fields(text(type_ = String)), default))]
     pub instructions: Option<String>,
 
     /// A list of fields comprising this form.
+    #[xml(child(n = ..))]
     pub fields: Vec<Field>,
+}
+
+fn patch_form(form: &mut DataForm) -> Result<(), Error> {
+    // Sort the FORM_TYPE field, if any, to the first position.
+    let mut form_type_index = None;
+    for (i, field) in form.fields.iter().enumerate() {
+        if field.is_form_type(&form.type_) {
+            if form_type_index.is_some() {
+                return Err(Error::Other("More than one FORM_TYPE in a data form."));
+            }
+
+            if field.values.len() != 1 {
+                return Err(Error::Other("Wrong number of values in FORM_TYPE.").into());
+            }
+
+            form_type_index = Some(i);
+        }
+    }
+
+    if let Some(index) = form_type_index {
+        let field = form.fields.remove(index);
+        form.fields.insert(0, field);
+    }
+    Ok(())
 }
 
 impl DataForm {
     /// Create a new DataForm.
     pub fn new(type_: DataFormType, form_type: &str, fields: Vec<Field>) -> DataForm {
-        DataForm {
+        let mut form = DataForm {
             type_,
-            form_type: Some(String::from(form_type)),
             title: None,
             instructions: None,
             fields,
-        }
-    }
-}
-
-impl TryFrom<Element> for DataForm {
-    type Error = FromElementError;
-
-    fn try_from(elem: Element) -> Result<DataForm, FromElementError> {
-        check_self!(elem, "x", DATA_FORMS);
-        check_no_unknown_attributes!(elem, "x", ["type"]);
-        let type_ = get_attr!(elem, "type", Required);
-        let mut form = DataForm {
-            type_,
-            form_type: None,
-            title: None,
-            instructions: None,
-            fields: vec![],
         };
-        for child in elem.children() {
-            if child.is("title", ns::DATA_FORMS) {
-                if form.title.is_some() {
-                    return Err(Error::Other("More than one title in form element.").into());
-                }
-                check_no_children!(child, "title");
-                check_no_attributes!(child, "title");
-                form.title = Some(child.text());
-            } else if child.is("instructions", ns::DATA_FORMS) {
-                if form.instructions.is_some() {
-                    return Err(Error::Other("More than one instructions in form element.").into());
-                }
-                check_no_children!(child, "instructions");
-                check_no_attributes!(child, "instructions");
-                form.instructions = Some(child.text());
-            } else if child.is("field", ns::DATA_FORMS) {
-                let field = Field::try_from(child.clone())?;
-                if field.is_form_type(&form.type_) {
-                    let mut field = field;
-                    if form.form_type.is_some() {
-                        return Err(Error::Other("More than one FORM_TYPE in a data form.").into());
-                    }
-                    if field.values.len() != 1 {
-                        return Err(Error::Other("Wrong number of values in FORM_TYPE.").into());
-                    }
-                    form.form_type = field.values.pop();
-                } else {
-                    form.fields.push(field);
-                }
-            } else {
-                return Err(Error::Other("Unknown child in data form element.").into());
+        form.set_form_type(form_type.to_owned());
+        form
+    }
+
+    /// Return the value of the `FORM_TYPE` field, if any.
+    ///
+    /// An easy accessor for the FORM_TYPE of this form, see
+    /// [XEP-0068](https://xmpp.org/extensions/xep-0068.html) for more
+    /// information.
+    pub fn form_type(&self) -> Option<&str> {
+        for field in self.fields.iter() {
+            if field.is_form_type(&self.type_) {
+                return field.values.get(0).map(|x| x.as_str());
             }
         }
-        Ok(form)
+        None
     }
-}
 
-impl FromXml for DataForm {
-    type Builder = minidom_compat::FromEventsViaElement<DataForm>;
-
-    fn from_events(
-        qname: rxml::QName,
-        attrs: rxml::AttrMap,
-    ) -> Result<Self::Builder, FromEventsError> {
-        if qname.0 != crate::ns::DATA_FORMS || qname.1 != "x" {
-            return Err(FromEventsError::Mismatch { name: qname, attrs });
+    /// Create or modify the `FORM_TYPE` field.
+    ///
+    /// If the form has no `FORM_TYPE` field, this function creates a new
+    /// field and inserts it at the beginning of the field list. Otherwise, it
+    /// returns a mutable reference to the existing field.
+    ///
+    /// # Panics
+    ///
+    /// If the type of the form is [`DataFormType::Cancel`], this function
+    /// panics. Such forms should not have any fields and thus no form type.
+    pub fn set_form_type(&mut self, ty: String) -> &mut Field {
+        if self.type_ == DataFormType::Cancel {
+            panic!("cannot add FORM_TYPE field to type='cancel' form");
         }
-        Self::Builder::new(qname, attrs)
-    }
-}
 
-impl From<DataForm> for Element {
-    fn from(form: DataForm) -> Element {
-        Element::builder("x", ns::DATA_FORMS)
-            .attr("type", form.type_)
-            .append_all(
-                form.title
-                    .map(|title| Element::builder("title", ns::DATA_FORMS).append(title)),
-            )
-            .append_all(
-                form.instructions
-                    .map(|text| Element::builder("instructions", ns::DATA_FORMS).append(text)),
-            )
-            .append_all(form.form_type.map(|form_type| {
-                Element::builder("field", ns::DATA_FORMS)
-                    .attr("var", "FORM_TYPE")
-                    .attr("type", "hidden")
-                    .append(Element::builder("value", ns::DATA_FORMS).append(form_type))
-            }))
-            .append_all(form.fields.iter().cloned().map(Element::from))
-            .build()
-    }
-}
+        // Awkward index enum to work around borrowck limitations.
+        let mut index = None;
+        for (i, field) in self.fields.iter().enumerate() {
+            if field.is_form_type(&self.type_) {
+                index = Some(i);
+                break;
+            }
+        }
 
-impl AsXml for DataForm {
-    type ItemIter<'x> = minidom_compat::AsItemsViaElement<'x>;
-
-    fn as_xml_iter(&self) -> Result<Self::ItemIter<'_>, Error> {
-        minidom_compat::AsItemsViaElement::new(self.clone())
+        let field = if let Some(index) = index {
+            &mut self.fields[index]
+        } else {
+            let field = Field::new("FORM_TYPE", FieldType::Hidden);
+            assert!(field.is_form_type(&self.type_));
+            self.fields.insert(0, field);
+            &mut self.fields[0]
+        };
+        field.values.clear();
+        field.values.push(ty);
+        field
     }
 }
 
@@ -411,6 +322,8 @@ impl AsXml for DataForm {
 mod tests {
     use super::*;
     use crate::data_forms_validate::{Datatype, Validate};
+    use minidom::Element;
+    use xso::error::{Error, FromElementError};
 
     #[cfg(target_pointer_width = "32")]
     #[test]
@@ -419,7 +332,7 @@ mod tests {
         assert_size!(FieldType, 1);
         assert_size!(Field, 140);
         assert_size!(DataFormType, 1);
-        assert_size!(DataForm, 52);
+        assert_size!(DataForm, 40);
     }
 
     #[cfg(target_pointer_width = "64")]
@@ -429,7 +342,7 @@ mod tests {
         assert_size!(FieldType, 1);
         assert_size!(Field, 264);
         assert_size!(DataFormType, 1);
-        assert_size!(DataForm, 104);
+        assert_size!(DataForm, 80);
     }
 
     #[test]
@@ -437,7 +350,7 @@ mod tests {
         let elem: Element = "<x xmlns='jabber:x:data' type='result'/>".parse().unwrap();
         let form = DataForm::try_from(elem).unwrap();
         assert_eq!(form.type_, DataFormType::Result_);
-        assert!(form.form_type.is_none());
+        assert!(form.form_type().is_none());
         assert!(form.fields.is_empty());
     }
 
@@ -463,7 +376,7 @@ mod tests {
                 .unwrap();
         let form = DataForm::try_from(elem).unwrap();
         assert_eq!(form.type_, DataFormType::Form);
-        assert!(form.form_type.is_none());
+        assert!(form.form_type().is_none());
         assert_eq!(
             form.fields,
             vec![Field {
@@ -488,7 +401,7 @@ mod tests {
                 .unwrap();
         let form = DataForm::try_from(elem).unwrap();
         assert_eq!(form.type_, DataFormType::Form);
-        assert!(form.form_type.is_none());
+        assert!(form.form_type().is_none());
         assert_eq!(
             form.fields,
             vec![Field {
@@ -517,7 +430,7 @@ mod tests {
             .unwrap();
         let form = DataForm::try_from(elem).unwrap();
         assert_eq!(form.type_, DataFormType::Form);
-        assert!(form.form_type.is_none());
+        assert!(form.form_type().is_none());
         assert_eq!(
             form.fields,
             vec![Field {
@@ -539,6 +452,17 @@ mod tests {
     }
 
     #[test]
+    fn test_invalid_field() {
+        let elem: Element = "<field xmlns='jabber:x:data' type='text-single' var='foo'><option><value>foo</value></option></field>".parse().unwrap();
+        let error = Field::try_from(elem).unwrap_err();
+        let message = match error {
+            FromElementError::Invalid(Error::Other(string)) => string,
+            _ => panic!(),
+        };
+        assert_eq!(message, "Option element found in non-list field.");
+    }
+
+    #[test]
     fn test_invalid() {
         let elem: Element = "<x xmlns='jabber:x:data'/>".parse().unwrap();
         let error = DataForm::try_from(elem).unwrap_err();
@@ -546,7 +470,10 @@ mod tests {
             FromElementError::Invalid(Error::Other(string)) => string,
             _ => panic!(),
         };
-        assert_eq!(message, "Required attribute 'type' missing.");
+        assert_eq!(
+            message,
+            "Required attribute field 'type_' on DataForm element missing."
+        );
 
         let elem: Element = "<x xmlns='jabber:x:data' type='coucou'/>".parse().unwrap();
         let error = DataForm::try_from(elem).unwrap_err();
@@ -567,7 +494,7 @@ mod tests {
             FromElementError::Invalid(Error::Other(string)) => string,
             _ => panic!(),
         };
-        assert_eq!(message, "Unknown child in data form element.");
+        assert_eq!(message, "Unknown child in DataForm element.");
     }
 
     #[test]
@@ -609,7 +536,7 @@ mod tests {
         let elem: Element = "<x xmlns='jabber:x:data' type='form'><field var='FORM_TYPE' type='text-single'><value>foo</value></field></x>".parse().unwrap();
         match DataForm::try_from(elem) {
             Ok(form) => {
-                match form.form_type {
+                match form.form_type() {
                     None => (),
                     other => panic!("unexpected extracted form type: {:?}", other),
                 };
@@ -625,7 +552,7 @@ mod tests {
         let elem: Element = "<x xmlns='jabber:x:data' type='result'><field var='FORM_TYPE' type='text-single'><value>foo</value></field></x>".parse().unwrap();
         match DataForm::try_from(elem) {
             Ok(form) => {
-                match form.form_type {
+                match form.form_type() {
                     None => (),
                     other => panic!("unexpected extracted form type: {:?}", other),
                 };
@@ -639,7 +566,7 @@ mod tests {
         let elem: Element = "<x xmlns='jabber:x:data' type='submit'><field var='FORM_TYPE'><value>foo</value></field></x>".parse().unwrap();
         match DataForm::try_from(elem) {
             Ok(form) => {
-                match form.form_type {
+                match form.form_type() {
                     Some(ty) => assert_eq!(ty, "foo"),
                     other => panic!("unexpected extracted form type: {:?}", other),
                 };
@@ -653,7 +580,7 @@ mod tests {
         let elem: Element = "<x xmlns='jabber:x:data' type='submit'><field var='FORM_TYPE' type='hidden'><value>foo</value></field></x>".parse().unwrap();
         match DataForm::try_from(elem) {
             Ok(form) => {
-                match form.form_type {
+                match form.form_type() {
                     Some(ty) => assert_eq!(ty, "foo"),
                     other => panic!("unexpected extracted form type: {:?}", other),
                 };
@@ -667,7 +594,7 @@ mod tests {
         let elem: Element = "<x xmlns='jabber:x:data' type='result'><field var='FORM_TYPE' type='hidden'><value>foo</value></field></x>".parse().unwrap();
         match DataForm::try_from(elem) {
             Ok(form) => {
-                match form.form_type {
+                match form.form_type() {
                     Some(ty) => assert_eq!(ty, "foo"),
                     other => panic!("unexpected extracted form type: {:?}", other),
                 };
@@ -681,7 +608,7 @@ mod tests {
         let elem: Element = "<x xmlns='jabber:x:data' type='form'><field var='FORM_TYPE' type='hidden'><value>foo</value></field></x>".parse().unwrap();
         match DataForm::try_from(elem) {
             Ok(form) => {
-                match form.form_type {
+                match form.form_type() {
                     Some(ty) => assert_eq!(ty, "foo"),
                     other => panic!("unexpected extracted form type: {:?}", other),
                 };

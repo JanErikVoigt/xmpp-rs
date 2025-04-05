@@ -44,10 +44,14 @@ fn compute_item(field: &str) -> Vec<u8> {
     bytes
 }
 
-fn compute_items<T, F: Fn(&T) -> Vec<u8>>(things: &[T], separator: u8, encode: F) -> Vec<u8> {
+fn compute_items<'x, T: 'x, I: IntoIterator<Item = &'x T>, F: Fn(&'x T) -> Vec<u8>>(
+    things: I,
+    separator: u8,
+    encode: F,
+) -> Vec<u8> {
     let mut string: Vec<u8> = vec![];
     let mut accumulator: Vec<Vec<u8>> = vec![];
-    for thing in things {
+    for thing in things.into_iter() {
         let bytes = encode(thing);
         accumulator.push(bytes);
     }
@@ -81,30 +85,37 @@ fn compute_identities(identities: &[Identity]) -> Vec<u8> {
 
 fn compute_extensions(extensions: &[DataForm]) -> Result<Vec<u8>, Error> {
     for extension in extensions {
-        if extension.form_type.is_none() {
+        if extension.form_type().is_none() {
             return Err(Error::Other("Missing FORM_TYPE in extension."));
         }
     }
     Ok(compute_items(extensions, 0x1c, |extension| {
         let mut bytes = compute_item("FORM_TYPE");
         bytes.append(&mut compute_item(
-            if let Some(ref form_type) = extension.form_type {
+            if let Some(ref form_type) = extension.form_type() {
                 form_type
             } else {
                 unreachable!()
             },
         ));
         bytes.push(0x1e);
-        bytes.append(&mut compute_items(&extension.fields, 0x1d, |field| {
-            let mut bytes = vec![];
-            if let Some(var) = &field.var {
-                bytes.append(&mut compute_item(var));
-            }
-            bytes.append(&mut compute_items(&field.values, 0x1e, |value| {
-                compute_item(value)
-            }));
-            bytes
-        }));
+        bytes.append(&mut compute_items(
+            extension
+                .fields
+                .iter()
+                .filter(|field| field.var.as_deref().unwrap_or("") != "FORM_TYPE"),
+            0x1d,
+            |field| {
+                let mut bytes = vec![];
+                if let Some(var) = &field.var {
+                    bytes.append(&mut compute_item(var));
+                }
+                bytes.append(&mut compute_items(&field.values, 0x1e, |value| {
+                    compute_item(value)
+                }));
+                bytes
+            },
+        ));
         bytes
     }))
 }

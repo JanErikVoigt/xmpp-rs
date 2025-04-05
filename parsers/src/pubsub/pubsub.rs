@@ -691,7 +691,7 @@ mod tests {
         let elem: Element = "<publish-options xmlns='http://jabber.org/protocol/pubsub'><x xmlns='jabber:x:data' type='submit'><field var='FORM_TYPE' type='hidden'><value>http://jabber.org/protocol/pubsub#publish-options</value></field></x></publish-options>".parse().unwrap();
         let publish_options = PublishOptions::try_from(elem).unwrap();
         assert_eq!(
-            &publish_options.form.unwrap().form_type.unwrap(),
+            publish_options.form.unwrap().form_type().unwrap(),
             "http://jabber.org/protocol/pubsub#publish-options"
         );
     }

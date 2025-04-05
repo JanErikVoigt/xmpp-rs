@@ -119,13 +119,13 @@ mod tests {
     #[cfg(target_pointer_width = "32")]
     #[test]
     fn test_size() {
-        assert_size!(Query, 68);
+        assert_size!(Query, 56);
     }
 
     #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_size() {
-        assert_size!(Query, 136);
+        assert_size!(Query, 112);
     }
 
     #[test]

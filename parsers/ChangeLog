@@ -68,6 +68,12 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
         it to/from chrono::DateTime values. The numbered member `0` does not
         exist anymore (!551).
       - stanza_error::StanzaError has been ported to use xso (!552).
+      - data_forms has been ported to use xso. This introduces a couple subtle
+        breaking changes for data_forms::DataForm, in particular:
+
+          - the `from_type` member was replaced by a pair of functions.
+          - if the form contains a FORM_TYPE field, it will be part of the
+            `fields` member (unlike before, where that field was removed).
     * New parsers/serialisers:
       - Stream Features (RFC 6120) (!400)
       - Spam Reporting (XEP-0377) (!506)
