@@ -128,6 +128,9 @@ convert_via_fromstr_and_display! {
     jid::DomainPart,
     #[cfg(feature = "jid")]
     jid::ResourcePart,
+
+    #[cfg(feature = "serde_json")]
+    serde_json::Value,
 }
 
 /// Represent a way to encode/decode text data into a Rust type.

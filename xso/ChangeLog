@@ -38,6 +38,8 @@ Version NEXT:
         for debug logs.
       - Support to selectively discard attributes or text content during
         parsing (!552).
+      - Implement `AsXml` and `FromXml` for serde_json::Value` behind
+        `serde_json` feature.
     * Changes
       - Generated AsXml iterator and FromXml builder types are now
         doc(hidden), to not clutter hand-written documentation with auto
