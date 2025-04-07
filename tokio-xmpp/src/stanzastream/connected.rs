@@ -214,10 +214,7 @@ impl ConnectedState {
         // from the peer when everything has been transmitted, which may be
         // longer than the stream timeout.
         ready!(Self::poll_write_sm_req(
-            match sm_state {
-                None => None,
-                Some(ref mut v) => Some(v),
-            },
+            sm_state.as_mut().map(|x| x as &mut SmState),
             stream.as_mut(),
             cx
         ))?;
@@ -558,7 +555,7 @@ impl ConnectedState {
                                         "Failed to process <sm:a/> sent by the server: {e}",
                                     );
                                     self.to_stream_error_state(e.into());
-                                    return Poll::Ready(None);
+                                    Poll::Ready(None)
                                 }
                             }
                         } else {
@@ -823,13 +820,12 @@ impl ConnectedState {
 
     pub fn queue_sm_request(&mut self) -> bool {
         match self {
-            Self::Ready { sm_state, .. } => {
-                if let Some(sm_state) = sm_state {
-                    sm_state.pending_req = true;
-                    true
-                } else {
-                    false
-                }
+            Self::Ready {
+                sm_state: Some(sm_state),
+                ..
+            } => {
+                sm_state.pending_req = true;
+                true
             }
             _ => false,
         }

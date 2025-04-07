@@ -43,7 +43,7 @@ impl Stanza {
     pub fn ensure_id(&mut self) -> &str {
         match self {
             Self::Iq(iq) => {
-                if iq.id.len() == 0 {
+                if iq.id.is_empty() {
                     iq.id = make_id();
                 }
                 &iq.id
@@ -136,10 +136,7 @@ pub enum Event {
 impl Event {
     /// `Online` event?
     pub fn is_online(&self) -> bool {
-        match *self {
-            Event::Online { .. } => true,
-            _ => false,
-        }
+        matches!(&self, Event::Online { .. })
     }
 
     /// Get the server-assigned JID for the `Online` event

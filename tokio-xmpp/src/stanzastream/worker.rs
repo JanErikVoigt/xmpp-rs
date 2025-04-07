@@ -196,7 +196,7 @@ impl WorkerStream {
                     match ready!(substate.poll(
                         Pin::new(stream),
                         identity,
-                        &features,
+                        features,
                         transmit_queue,
                         cx
                     )) {
@@ -205,13 +205,9 @@ impl WorkerStream {
 
                         // produced an event to emit.
                         Some(ConnectedEvent::Worker(v)) => {
-                            match v {
-                                // Capture the JID from a stream reset to
-                                // update our state.
-                                WorkerEvent::Reset { ref bound_jid, .. } => {
-                                    *identity = bound_jid.clone();
-                                }
-                                _ => (),
+                            // Capture the JID from a stream reset to update our state.
+                            if let WorkerEvent::Reset { ref bound_jid, .. } = v {
+                                *identity = bound_jid.clone();
                             }
                             return Poll::Ready(Some(v));
                         }
@@ -364,7 +360,7 @@ struct DriveDuplex<'x> {
     queue: &'x mut TransmitQueue<QueueEntry>,
 }
 
-impl<'x> Future for DriveDuplex<'x> {
+impl Future for DriveDuplex<'_> {
     type Output = Option<WorkerEvent>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
@@ -378,7 +374,7 @@ struct DriveWrites<'x> {
     queue: &'x mut TransmitQueue<QueueEntry>,
 }
 
-impl<'x> Future for DriveWrites<'x> {
+impl Future for DriveWrites<'_> {
     type Output = Never;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
@@ -391,7 +387,7 @@ struct Close<'x> {
     stream: Pin<&'x mut WorkerStream>,
 }
 
-impl<'x> Future for Close<'x> {
+impl Future for Close<'_> {
     type Output = io::Result<()>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {

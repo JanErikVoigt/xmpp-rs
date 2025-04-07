@@ -127,7 +127,7 @@ impl<T: AsyncBufRead> AsyncBufRead for CaptureBufRead<T> {
         this.inner.consume(amt);
         if let Some((_, consumed_up_to)) = this.buf.as_mut() {
             // Increase the amount of data to preserve.
-            *consumed_up_to = *consumed_up_to + amt;
+            *consumed_up_to += amt;
         }
     }
 }
@@ -186,12 +186,11 @@ pub(super) fn log_recv(err: Option<&xmpp_parsers::Error>, capture: Option<Vec<u8
                 log::trace!("RECV (error: {}) [data capture disabled]", err);
             }
         },
-        None => match capture {
-            Some(capture) => {
+        None => {
+            if let Some(capture) = capture {
                 log::trace!("RECV (ok) {}", LogXsoBuf(&capture));
             }
-            None => (),
-        },
+        }
     }
 }
 

@@ -57,7 +57,7 @@ pub async fn auth<S: AsyncBufRead + AsyncWrite + Unpin>(
                         Nonza::Challenge(challenge) => {
                             let response = mechanism
                                 .response(&challenge.data)
-                                .map_err(|e| AuthError::Sasl(e))?;
+                                .map_err(AuthError::Sasl)?;
 
                             // Send response and loop
                             stream
@@ -110,7 +110,6 @@ pub async fn client_auth<C: ServerConnector>(
     timeouts: Timeouts,
 ) -> Result<(StreamFeatures, XmppStream<C::Stream>), Error> {
     let username = jid.node().unwrap().as_str();
-    let password = password;
 
     let (xmpp_stream, channel_binding) = server.connect(&jid, ns::JABBER_CLIENT, timeouts).await?;
     let (features, xmpp_stream) = xmpp_stream.recv_features().await?;

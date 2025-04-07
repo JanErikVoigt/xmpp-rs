@@ -101,18 +101,15 @@ pub(super) enum NegotiationResult {
 
 impl NegotiationState {
     pub fn new(features: &StreamFeatures, sm_state: Option<SmState>) -> io::Result<Self> {
-        match sm_state {
-            Some(sm_state) => {
-                if features.stream_management.is_some() {
-                    return Ok(Self::SendSmRequest {
-                        sm_state: Some(sm_state),
-                        bound_jid: None,
-                    });
-                } else {
-                    log::warn!("Peer is not offering stream management anymore. Dropping state.");
-                }
+        if let Some(sm_state) = sm_state {
+            if features.stream_management.is_some() {
+                return Ok(Self::SendSmRequest {
+                    sm_state: Some(sm_state),
+                    bound_jid: None,
+                });
+            } else {
+                log::warn!("Peer is not offering stream management anymore. Dropping state.");
             }
-            None => (),
         }
 
         if !features.can_bind() {
@@ -247,7 +244,7 @@ impl NegotiationState {
 
                     Ok(XmppStreamElement::StreamError(error)) => {
                         log::debug!("Received stream:error, failing stream and discarding any stream management state.");
-                        let error = io::Error::new(io::ErrorKind::Other, error);
+                        let error = io::Error::other(error);
                         transmit_queue.fail(&(&error).into());
                         Poll::Ready(Break(NegotiationResult::Disconnect {
                             error,
@@ -472,7 +469,7 @@ impl NegotiationState {
 
                     Ok(XmppStreamElement::StreamError(error)) => {
                         log::debug!("Received stream error, failing stream and discarding any stream management state.");
-                        let error = io::Error::new(io::ErrorKind::Other, error);
+                        let error = io::Error::other(error);
                         transmit_queue.fail(&(&error).into());
                         Poll::Ready(Break(NegotiationResult::Disconnect {
                             error,

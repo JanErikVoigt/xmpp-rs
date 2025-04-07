@@ -118,7 +118,7 @@ impl ServerConnector for StartTlsServerConnector {
                 channel_binding,
             ))
         } else {
-            Err(crate::Error::Protocol(ProtocolError::NoTls).into())
+            Err(crate::Error::Protocol(ProtocolError::NoTls))
         }
     }
 }
@@ -168,7 +168,7 @@ async fn get_tls_stream<S: AsyncRead + AsyncWrite + Unpin + AsRawFd>(
     let tls_stream = TlsConnector::from(Arc::new(config))
         .connect(domain, stream)
         .await
-        .map_err(|e| Error::from(crate::Error::Io(e)))?;
+        .map_err(crate::Error::Io)?;
 
     // Extract the channel-binding information before we hand the stream over to ktls.
     let (_, connection) = tls_stream.get_ref();
@@ -178,7 +178,7 @@ async fn get_tls_stream<S: AsyncRead + AsyncWrite + Unpin + AsRawFd>(
             let data = vec![0u8; 32];
             let data = connection
                 .export_keying_material(data, b"EXPORTER-Channel-Binding", None)
-                .map_err(|e| StartTlsError::Tls(e))?;
+                .map_err(StartTlsError::Tls)?;
             ChannelBinding::TlsExporter(data)
         }
         _ => ChannelBinding::None,

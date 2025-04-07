@@ -111,10 +111,10 @@ fn highlight_xml(xml: &str) -> String {
 
 struct LogXsoBuf<'x>(&'x [u8]);
 
-impl<'x> fmt::Display for LogXsoBuf<'x> {
+impl fmt::Display for LogXsoBuf<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // We always generate UTF-8, so this should be good... I think.
-        let text = core::str::from_utf8(&self.0).unwrap();
+        let text = core::str::from_utf8(self.0).unwrap();
         #[cfg(feature = "syntax-highlighting")]
         let text = highlight_xml(text);
         f.write_str(&text)
@@ -493,7 +493,7 @@ pub struct Shutdown<'a, Io: AsyncWrite, T: FromXml + AsXml> {
     stream: Pin<&'a mut XmlStream<Io, T>>,
 }
 
-impl<'a, Io: AsyncWrite, T: FromXml + AsXml> Future for Shutdown<'a, Io, T> {
+impl<Io: AsyncWrite, T: FromXml + AsXml> Future for Shutdown<'_, Io, T> {
     type Output = io::Result<()>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {

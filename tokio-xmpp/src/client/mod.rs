@@ -137,7 +137,7 @@ impl Client {
     /// and yield events.
     pub fn new<J: Into<Jid>, P: Into<String>>(jid: J, password: P) -> Self {
         let jid = jid.into();
-        let dns_config = DnsConfig::srv(&jid.domain().to_string(), "_xmpp-client._tcp", 5222);
+        let dns_config = DnsConfig::srv(jid.domain().as_ref(), "_xmpp-client._tcp", 5222);
         Self::new_starttls(jid, password, dns_config, Timeouts::default())
     }
 

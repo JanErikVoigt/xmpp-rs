@@ -152,7 +152,7 @@ impl TimeoutState {
         self.level = TimeoutLevel::Soft;
         self.deadline
             .as_mut()
-            .reset((Instant::now() + self.timeouts.data_to_soft()).into());
+            .reset(Instant::now() + self.timeouts.data_to_soft());
     }
 }
 
@@ -380,10 +380,10 @@ impl<Io: AsyncBufRead> Stream for RawXmlStream<Io> {
     }
 }
 
-impl<'x, Io: AsyncWrite> RawXmlStreamProj<'x, Io> {
+impl<Io: AsyncWrite> RawXmlStreamProj<'_, Io> {
     fn flush_tx_log(&mut self) {
         let range = &self.tx_buffer[*self.tx_buffer_logged..];
-        if range.len() == 0 {
+        if range.is_empty() {
             return;
         }
         log_send(range);
@@ -413,12 +413,12 @@ impl<'x, Io: AsyncWrite> RawXmlStreamProj<'x, Io> {
 
     fn progress_write(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         self.flush_tx_log();
-        while self.tx_buffer.len() > 0 {
+        while !self.tx_buffer.is_empty() {
             let written = match ready!(self
                 .parser
                 .as_mut()
                 .inner_pinned()
-                .poll_write(cx, &self.tx_buffer))
+                .poll_write(cx, self.tx_buffer))
             {
                 Ok(v) => v,
                 Err(e) => return Poll::Ready(Err(e)),
@@ -461,7 +461,7 @@ impl<'x, Io: AsyncWrite> Sink<xso::Item<'x>> for RawXmlStream<Io> {
             // Some progress and it went fine, move on.
             Poll::Ready(Ok(())) => (),
             // Something went wrong -> return the error.
-            Poll::Ready(Err(e)) => return Poll::Ready(Err(e.into())),
+            Poll::Ready(Err(e)) => return Poll::Ready(Err(e)),
         }
         if this.tx_buffer.len() < *this.tx_buffer_high_water_mark {
             Poll::Ready(Ok(()))
@@ -608,10 +608,7 @@ impl<T: FromXml> ReadXsoState<T> {
             // whitespace keepalives.
             // (And also, we'll know faster when the remote side sends
             // non-whitespace garbage.)
-            let text_buffering = match self {
-                ReadXsoState::PreData => false,
-                _ => true,
-            };
+            let text_buffering = !matches!(self, ReadXsoState::PreData);
             source
                 .as_mut()
                 .parser_pinned()
@@ -745,7 +742,7 @@ impl<'x, Io: AsyncBufRead, T: FromXml> ReadXso<'x, Io, T> {
     }
 }
 
-impl<'x, Io: AsyncBufRead, T: FromXml> Future for ReadXso<'x, Io, T>
+impl<Io: AsyncBufRead, T: FromXml> Future for ReadXso<'_, Io, T>
 where
     T::Builder: Unpin,
 {
@@ -770,7 +767,7 @@ pub struct StreamHeader<'x> {
     pub id: Option<Cow<'x, str>>,
 }
 
-impl<'x> StreamHeader<'x> {
+impl StreamHeader<'_> {
     /// Take the contents and return them as new object.
     ///
     /// `self` will be left with all its parts set to `None`.

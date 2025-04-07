@@ -177,7 +177,7 @@ impl SmState {
         let to_drop = h.wrapping_sub(self.outbound_base) as usize;
         if to_drop > 0 {
             log::trace!("remote_acked: need to drop {to_drop} stanzas");
-            if to_drop as usize > self.unacked_stanzas.len() {
+            if to_drop > self.unacked_stanzas.len() {
                 if to_drop as u32 > u32::MAX / 2 {
                     // If we look at the stanza counter values as RFC 1982
                     // values, a wrapping difference greater than half the

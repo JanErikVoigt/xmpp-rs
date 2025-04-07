@@ -113,7 +113,7 @@ impl DnsConfig {
 
     #[cfg(feature = "dns")]
     async fn resolve_srv(host: &str, srv: &str, fallback_port: u16) -> Result<TcpStream, Error> {
-        let ascii_domain = idna::domain_to_ascii(&host)?;
+        let ascii_domain = idna::domain_to_ascii(host)?;
 
         if let Ok(ip) = ascii_domain.parse() {
             debug!("Attempting connection to {ip}:{fallback_port}");
@@ -148,7 +148,7 @@ impl DnsConfig {
 
     #[cfg(feature = "dns")]
     async fn resolve_no_srv(host: &str, port: u16) -> Result<TcpStream, Error> {
-        let ascii_domain = idna::domain_to_ascii(&host)?;
+        let ascii_domain = idna::domain_to_ascii(host)?;
 
         if let Ok(ip) = ascii_domain.parse() {
             return Ok(TcpStream::connect(&SocketAddr::new(ip, port)).await?);

@@ -224,7 +224,7 @@ pub(super) struct TransmitQueueRef<'x, T> {
     q: &'x mut VecDeque<T>,
 }
 
-impl<'x, T> TransmitQueueRef<'x, T> {
+impl<T> TransmitQueueRef<'_, T> {
     /// Take the item out of the queue.
     pub fn take(self) -> T {
         // Unwrap: when this type is created, a check is made that the queue
@@ -265,7 +265,7 @@ impl<T: Unpin> TransmitQueue<T> {
 
     /// Poll the queue for the next item to transmit.
     pub fn poll_next(&mut self, cx: &mut Context) -> Poll<Option<TransmitQueueRef<'_, T>>> {
-        if self.peek.len() > 0 {
+        if !self.peek.is_empty() {
             // Cannot use `if let Some(.) = .` here because of a borrowchecker
             // restriction. If the reference is created before the branch is
             // entered, it will think it needs to be borrowed until the end

@@ -168,7 +168,7 @@ impl StanzaStream {
                                 // TODO: auth errors should probably be fatal??
                                 log::error!("Failed to connect: {}. Retrying in {:?}.", e, delay);
                                 tokio::time::sleep(delay).await;
-                                delay = delay * 2;
+                                delay *= 2;
                                 if delay > MAX_DELAY {
                                     delay = MAX_DELAY;
                                 }
