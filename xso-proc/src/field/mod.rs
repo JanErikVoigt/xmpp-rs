@@ -420,8 +420,13 @@ fn new_field(
         })),
 
         #[cfg(not(feature = "minidom"))]
-        XmlFieldMeta::Element { span, amount } => {
+        XmlFieldMeta::Element {
+            span,
+            amount,
+            default_,
+        } => {
             let _ = amount;
+            let _ = default_;
             Err(Error::new(
                 span,
                 "#[xml(element)] requires xso to be built with the \"minidom\" feature.",

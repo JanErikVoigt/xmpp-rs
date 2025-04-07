@@ -358,7 +358,7 @@ pub(crate) fn text_codec_encode_fn(for_ty: Type) -> Expr {
     Expr::Path(ExprPath {
         attrs: Vec::new(),
         qself: None,
-        path: path,
+        path,
     })
 }
 
@@ -373,7 +373,7 @@ pub(crate) fn text_codec_decode_fn(for_ty: Type) -> Expr {
     Expr::Path(ExprPath {
         attrs: Vec::new(),
         qself: None,
-        path: path,
+        path,
     })
 }
 

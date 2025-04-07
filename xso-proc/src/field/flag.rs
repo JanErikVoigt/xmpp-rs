@@ -40,17 +40,17 @@ impl Field for FlagField {
 
         let unknown_attr_err = format!(
             "Unknown attribute in flag child {} in {}.",
-            FieldName(&member),
+            FieldName(member),
             container_name
         );
         let unknown_child_err = format!(
             "Unknown child in flag child {} in {}.",
-            FieldName(&member),
+            FieldName(member),
             container_name
         );
         let unknown_text_err = format!(
             "Unexpected text in flag child {} in {}.",
-            FieldName(&member),
+            FieldName(member),
             container_name
         );
 

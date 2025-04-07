@@ -136,7 +136,7 @@ impl NameVariant {
                 }),
                 state_ty_ident,
                 &self.ident.to_string(),
-                &item_iter_ty_lifetime,
+                item_iter_ty_lifetime,
             )?
             .with_augmented_init(|init| {
                 quote! {

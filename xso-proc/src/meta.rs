@@ -695,16 +695,11 @@ fn parse_codec_expr(p: parse::ParseStream<'_>) -> Result<(Expr, Option<Error>)> 
         // We got a type path -- so we now inject the `::` before any `<` as
         // needed.
         for segment in type_path.path.segments.iter_mut() {
-            match segment.arguments {
-                PathArguments::AngleBracketed(ref mut arguments) => {
-                    let span = arguments.span();
-                    arguments
-                        .colon2_token
-                        .get_or_insert_with(|| token::PathSep {
-                            spans: [span, span],
-                        });
-                }
-                _ => (),
+            if let PathArguments::AngleBracketed(ref mut arguments) = segment.arguments {
+                let span = arguments.span();
+                arguments.colon2_token.get_or_insert(token::PathSep {
+                    spans: [span, span],
+                });
             }
         }
         Ok((

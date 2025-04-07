@@ -312,7 +312,7 @@ impl Compound {
 
                     states.push(State::new_with_builder(
                         state_name.clone(),
-                        &builder_data_ident,
+                        builder_data_ident,
                         &builder_data_ty,
                     ).with_field(
                         substate_data,
@@ -457,7 +457,7 @@ impl Compound {
 
         states.push(State::new_with_builder(
             discard_state_ident.clone(),
-            &builder_data_ident,
+            builder_data_ident,
             &builder_data_ty,
         ).with_field(
             substate_data,
@@ -726,7 +726,7 @@ impl Compound {
         if self.fields.len() > 1 {
             return None;
         }
-        self.fields.get(0).map(|x| x.ty())
+        self.fields.first().map(|x| x.ty())
     }
 
     /// Construct a tuple type with this compound's field's types in the same
