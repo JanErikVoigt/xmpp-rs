@@ -320,15 +320,11 @@ pub struct StreamError {
 impl fmt::Display for StreamError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         <DefinedCondition as fmt::Display>::fmt(&self.condition, f)?;
-        match self.text {
-            Some((_, ref text)) => write!(f, " ({:?})", text)?,
-            None => (),
-        };
-        match self.application_specific.get(0) {
-            Some(cond) => {
-                f.write_str(&String::from(cond))?;
-            }
-            None => (),
+        if let Some((_, ref text)) = self.text {
+            write!(f, " ({:?})", text)?
+        }
+        if let Some(cond) = self.application_specific.first() {
+            f.write_str(&String::from(cond))?;
         }
         Ok(())
     }

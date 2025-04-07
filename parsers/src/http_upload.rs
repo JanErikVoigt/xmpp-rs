@@ -63,8 +63,7 @@ impl FromXmlText for HeaderName {
             _ => {
                 return Err(Error::Other(
                     "Header name must be either 'Authorization', 'Cookie', or 'Expires'.",
-                )
-                .into())
+                ))
             }
         })
     }

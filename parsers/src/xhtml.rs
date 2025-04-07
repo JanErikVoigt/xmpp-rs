@@ -25,6 +25,8 @@ impl XhtmlIm {
     pub fn into_html(self) -> String {
         let mut html = Vec::new();
         // TODO: use the best language instead.
+        // XXX: Remove this flag later when fixing the code below
+        #[allow(clippy::never_loop)]
         for (lang, body) in self.bodies {
             if lang.is_empty() {
                 assert!(body.xml_lang.is_none());

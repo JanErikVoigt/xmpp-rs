@@ -90,6 +90,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - Add Message::get_best_body_cloned and Message::get_best_subject_cloned
         to clone automatically when performance is not an issue (!497)
       - Fix compatibility to uuid 1.12
+      - Implement Default for Tune
 
 Version 0.21.0:
 2024-07-25 Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>

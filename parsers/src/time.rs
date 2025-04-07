@@ -19,7 +19,7 @@ struct ColonSeparatedOffset;
 
 impl TextCodec<FixedOffset> for ColonSeparatedOffset {
     fn decode(&self, s: String) -> Result<FixedOffset, Error> {
-        Ok(FixedOffset::from_str(&s).map_err(Error::text_parse_error)?)
+        FixedOffset::from_str(&s).map_err(Error::text_parse_error)
     }
 
     fn encode<'x>(&self, value: &'x FixedOffset) -> Result<Option<Cow<'x, str>>, Error> {
@@ -69,7 +69,7 @@ impl From<TimeResult> for DateTime<FixedOffset> {
 
 impl From<TimeResult> for DateTime<Utc> {
     fn from(time: TimeResult) -> Self {
-        time.utc.into()
+        time.utc
     }
 }
 
@@ -77,10 +77,7 @@ impl From<DateTime<FixedOffset>> for TimeResult {
     fn from(dt: DateTime<FixedOffset>) -> Self {
         let tz_offset = *dt.offset();
         let utc = dt.with_timezone(&Utc);
-        TimeResult {
-            tz_offset,
-            utc: utc.into(),
-        }
+        TimeResult { tz_offset, utc }
     }
 }
 
@@ -88,7 +85,7 @@ impl From<DateTime<Utc>> for TimeResult {
     fn from(dt: DateTime<Utc>) -> Self {
         TimeResult {
             tz_offset: FixedOffset::east_opt(0).unwrap(),
-            utc: dt.into(),
+            utc: dt,
         }
     }
 }

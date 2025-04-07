@@ -19,7 +19,7 @@ pub struct Xep0082;
 
 impl TextCodec<ChronoDateTime<FixedOffset>> for Xep0082 {
     fn decode(&self, s: String) -> Result<ChronoDateTime<FixedOffset>, Error> {
-        Ok(ChronoDateTime::parse_from_rfc3339(&s).map_err(Error::text_parse_error)?)
+        ChronoDateTime::parse_from_rfc3339(&s).map_err(Error::text_parse_error)
     }
 
     fn encode<'x>(

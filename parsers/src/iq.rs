@@ -37,7 +37,7 @@ pub enum IqType {
     Error(StanzaError),
 }
 
-impl<'a> IntoAttributeValue for &'a IqType {
+impl IntoAttributeValue for &IqType {
     fn into_attribute_value(self) -> Option<String> {
         Some(
             match *self {
