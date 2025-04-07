@@ -101,10 +101,11 @@ fn domain_check(mut domain: &str) -> Result<Cow<'_, str>, Error> {
     }
 
     // Then if this is an IPv6 address.
-    if domain.starts_with('[') && domain.ends_with(']') {
-        if Ipv6Addr::from_str(&domain[1..domain.len() - 1]).is_ok() {
-            return Ok(Cow::Borrowed(domain));
-        }
+    if domain.starts_with('[')
+        && domain.ends_with(']')
+        && Ipv6Addr::from_str(&domain[1..domain.len() - 1]).is_ok()
+    {
+        return Ok(Cow::Borrowed(domain));
     }
 
     // idna can handle the root dot for us, but we still want to remove it for normalization

@@ -59,6 +59,7 @@ macro_rules! def_part_types {
 
         impl $name {
             #[doc = def_part_parse_doc!($name, str, "Depending on whether the contents are changed by normalisation operations, this function either returns a copy or a reference to the original data.")]
+            #[allow(clippy::new_ret_no_self)]
             pub fn new(s: &str) -> Result<Cow<'_, $borrowed>, Error> {
                 let part = $check_fn(s)?;
                 match part {
