@@ -233,6 +233,9 @@ pub mod jingle_dtls_srtp;
 /// XEP-0328: JID Prep
 pub mod jid_prep;
 
+/// XEP-0335: JSON Containers
+pub mod json_containers;
+
 /// XEP-0338: Jingle Grouping Framework
 pub mod jingle_grouping;
 

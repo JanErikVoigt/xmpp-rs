@@ -225,6 +225,9 @@ pub const JINGLE_DTLS: &str = "urn:xmpp:jingle:apps:dtls:0";
 /// XEP-0328: JID Prep
 pub const JID_PREP: &str = "urn:xmpp:jidprep:0";
 
+/// XEP-0335: JSON Containers
+pub const JSON_CONTAINERS: &str = "urn:xmpp:json:0";
+
 /// XEP-0338: Jingle Grouping Framework
 pub const JINGLE_GROUPING: &str = "urn:xmpp:jingle:apps:grouping:0";
 
