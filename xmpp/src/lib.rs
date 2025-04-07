@@ -131,7 +131,7 @@ mod tests {
         // Client instance
         let client_builder = ClientBuilder::new(jid, "meh")
             .set_client(ClientType::Bot, "xmpp-rs")
-            .set_website("https://gitlab.com/xmpp-rs/xmpp-rs")
+            .set_website("https://xmpp.rs")
             .set_default_nick(nick)
             .enable_feature(ClientFeature::ContactList);
 

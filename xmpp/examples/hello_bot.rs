@@ -47,7 +47,7 @@ async fn main() -> Result<(), Option<()>> {
     // Client instance
     let mut client = ClientBuilder::new(jid, password)
         .set_client(ClientType::Bot, "xmpp-rs")
-        .set_website("https://gitlab.com/xmpp-rs/xmpp-rs")
+        .set_website("https://xmpp.rs")
         .set_default_nick(nick)
         .enable_feature(ClientFeature::ContactList)
         .enable_feature(ClientFeature::JoinRooms)
