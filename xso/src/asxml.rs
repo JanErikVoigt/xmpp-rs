@@ -104,7 +104,7 @@ where
 /// Provides a helper which implements Display printing raw XML
 pub struct PrintRawXml<'x, T>(pub &'x T);
 
-impl<'x, T: AsXml> fmt::Display for PrintRawXml<'x, T> {
+impl<T: AsXml> fmt::Display for PrintRawXml<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let iter = match self.0.as_xml_iter() {
             Ok(iter) => iter,

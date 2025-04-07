@@ -312,7 +312,7 @@ impl TextCodec<Vec<u8>> for Base64 {
     fn encode<'x>(&self, value: &'x Vec<u8>) -> Result<Option<Cow<'x, str>>, Error> {
         Ok(Some(Cow::Owned(base64::engine::Engine::encode(
             &StandardBase64Engine,
-            &value,
+            value,
         ))))
     }
 }
@@ -328,7 +328,7 @@ impl<'x> TextCodec<Cow<'x, [u8]>> for Base64 {
     fn encode<'a>(&self, value: &'a Cow<'x, [u8]>) -> Result<Option<Cow<'a, str>>, Error> {
         Ok(Some(Cow::Owned(base64::engine::Engine::encode(
             &StandardBase64Engine,
-            &value,
+            value,
         ))))
     }
 }
@@ -362,13 +362,13 @@ impl<T: base64::engine::Engine> TextCodec<Vec<u8>> for T {
 
     fn encode<'x>(&self, value: &'x Vec<u8>) -> Result<Option<Cow<'x, str>>, Error> {
         Ok(Some(Cow::Owned(base64::engine::Engine::encode(
-            self, &value,
+            self, value,
         ))))
     }
 }
 
 #[cfg(feature = "base64")]
-impl<'a, T: base64::engine::Engine, U> TextCodec<Option<U>> for T
+impl<T: base64::engine::Engine, U> TextCodec<Option<U>> for T
 where
     T: TextCodec<U>,
 {

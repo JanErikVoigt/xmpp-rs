@@ -311,7 +311,7 @@ pub struct Empty {
 #[cfg(feature = "macros")]
 impl Empty {
     pub fn start(self, attr: rxml::AttrMap) -> Result<EmptyBuilder, Error> {
-        if attr.len() > 0 {
+        if !attr.is_empty() {
             return Err(Error::Other(self.attributeerr));
         }
         Ok(EmptyBuilder {

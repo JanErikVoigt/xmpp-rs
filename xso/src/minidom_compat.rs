@@ -195,7 +195,7 @@ impl<'a> Iterator for ElementAsXml<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.0 {
             None => None,
-            Some(AsXmlState::Header { ref element }) => {
+            Some(AsXmlState::Header { element }) => {
                 let item = Item::ElementHeadStart(
                     Namespace::from(element.ns()),
                     Cow::Borrowed(match <&NcNameStr>::try_from(element.name()) {
@@ -214,7 +214,7 @@ impl<'a> Iterator for ElementAsXml<'a> {
             }
             Some(AsXmlState::Attributes {
                 ref mut attributes,
-                ref element,
+                element,
             }) => {
                 if let Some((name, value)) = attributes.next() {
                     let name = match <&NameStr>::try_from(name) {
@@ -282,7 +282,7 @@ impl<'a> Iterator for ElementAsXml<'a> {
                             Ok(v) => v,
                             Err(e) => {
                                 self.0 = None;
-                                return Some(Err(e.into()));
+                                return Some(Err(e));
                             }
                         };
                         let item = iter.next().unwrap();
@@ -445,7 +445,7 @@ pub struct AsItemsViaElement<'x> {
     lifetime_binding: PhantomData<Item<'x>>,
 }
 
-impl<'x> AsItemsViaElement<'x> {
+impl AsItemsViaElement<'_> {
     /// Create a new streaming parser for `T`.
     pub fn new<E, T>(value: T) -> Result<Self, crate::error::Error>
     where
