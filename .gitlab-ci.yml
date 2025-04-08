@@ -55,6 +55,8 @@ variables:
     - if: $CI_PIPELINE_SOURCE == 'push' && $CI_COMMIT_REF_NAME == 'main'
       variables:
         CI_DOC_TARGET: "main"
+  extends:
+    - .show-version
 
 rustfmt:
   stage: lint
