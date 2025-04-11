@@ -22,6 +22,8 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
         Event::RoomPrivateMessageCorrection signal XEP-0308 message corrections; they're
         not checked how old the corrected entry is, which has security concerns (!496)
       - Agent::new helper method.
+      - Handle SIGINT, SIGTERM and SIGKILL in hello_bot example to avoid leaving
+        hibernating resources around.
     * Fixes:
       - Use tokio::sync::RwLock not std::sync::RwLock (!432)
       - Agent::wait_for_events now return Vec<Event> and sets inner tokio_xmpp Client

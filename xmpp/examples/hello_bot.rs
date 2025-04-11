@@ -7,8 +7,10 @@
 use xmpp::{
     jid::BareJid,
     muc::room::{JoinRoomSettings, RoomMessageSettings},
-    ClientBuilder, ClientFeature, ClientType, Event, RoomNick,
+    Agent, ClientBuilder, ClientFeature, ClientType, Event, RoomNick,
 };
+
+use tokio::signal::ctrl_c;
 
 use std::env::args;
 use std::str::FromStr;
@@ -56,49 +58,64 @@ async fn main() -> Result<(), Option<()>> {
     log::info!("Connecting...");
 
     loop {
-        for event in client.wait_for_events().await {
-            match event {
-                Event::Online => {
-                    log::info!("Online.");
-                    for room in &rooms {
-                        log::info!("Joining room {} from CLI argument…", room);
-                        client
-                            .join_room(JoinRoomSettings {
-                                room: room.clone(),
-                                nick: None,
-                                password: None,
-                                status: Some(("en", "Yet another bot!")),
-                            })
-                            .await;
-                    }
+        tokio::select! {
+            events = client.wait_for_events() => {
+                for event in events {
+                    let _ = handle_events(&mut client, event, &rooms);
                 }
-                Event::Disconnected(e) => {
-                    log::info!("Disconnected: {}.", e);
-                }
-                Event::ChatMessage(_id, jid, body, time_info) => {
-                    log::info!(
-                        "{} {}: {}",
-                        time_info.received.time().format("%H:%M"),
-                        jid,
-                        body.0
-                    );
-                }
-                Event::RoomJoined(jid) => {
-                    log::info!("Joined room {}.", jid);
-                    client
-                        .send_room_message(RoomMessageSettings::new(jid, "Hello world!"))
-                        .await;
-                }
-                Event::RoomMessage(_id, jid, nick, body, time_info) => {
-                    println!(
-                        "Message in room {} from {} at {}: {}",
-                        jid, nick, time_info.received, body.0
-                    );
-                }
-                _ => {
-                    log::debug!("Unimplemented event:\n{:#?}", event);
-                }
+            },
+            _ = ctrl_c() => {
+                log::info!("Disconnecting...");
+                let _ = client.disconnect().await;
+                break;
+            },
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_events(client: &mut Agent, event: Event, rooms: &Vec<BareJid>) {
+    match event {
+        Event::Online => {
+            log::info!("Online.");
+            for room in rooms {
+                log::info!("Joining room {} from CLI argument…", room);
+                client
+                    .join_room(JoinRoomSettings {
+                        room: room.clone(),
+                        nick: None,
+                        password: None,
+                        status: Some(("en", "Yet another bot!")),
+                    })
+                    .await;
             }
+        }
+        Event::Disconnected(e) => {
+            log::info!("Disconnected: {}.", e);
+        }
+        Event::ChatMessage(_id, jid, body, time_info) => {
+            log::info!(
+                "{} {}: {}",
+                time_info.received.time().format("%H:%M"),
+                jid,
+                body.0
+            );
+        }
+        Event::RoomJoined(jid) => {
+            log::info!("Joined room {}.", jid);
+            client
+                .send_room_message(RoomMessageSettings::new(jid, "Hello world!"))
+                .await;
+        }
+        Event::RoomMessage(_id, jid, nick, body, time_info) => {
+            println!(
+                "Message in room {} from {} at {}: {}",
+                jid, nick, time_info.received, body.0
+            );
+        }
+        _ => {
+            log::debug!("Unimplemented event:\n{:#?}", event);
         }
     }
 }
