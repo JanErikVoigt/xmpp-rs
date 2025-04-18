@@ -21,6 +21,7 @@ mod child;
 #[cfg(feature = "minidom")]
 mod element;
 mod flag;
+mod lang;
 mod text;
 
 use self::attribute::AttributeField;
@@ -28,6 +29,7 @@ use self::child::{ChildField, ExtractDef};
 #[cfg(feature = "minidom")]
 use self::element::ElementField;
 use self::flag::FlagField;
+use self::lang::LangField;
 use self::text::TextField;
 
 /// Code slices necessary for declaring and initializing a temporary variable
@@ -444,6 +446,8 @@ fn new_field(
                 xml_name,
             }))
         }
+
+        XmlFieldMeta::Language { span: _ } => Ok(Box::new(LangField)),
     }
 }
 

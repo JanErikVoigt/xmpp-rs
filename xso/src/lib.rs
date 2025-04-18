@@ -128,6 +128,33 @@ pub trait AsXml {
     fn as_xml_iter(&self) -> Result<Self::ItemIter<'_>, self::error::Error>;
 }
 
+/// Additional parsing context supplied to [`FromEventsBuilder`]
+/// implementations.
+pub struct Context<'x> {
+    language: Option<&'x str>,
+}
+
+impl<'x> Context<'x> {
+    /// A context suitable for the beginning of the document.
+    pub fn empty() -> Self {
+        Self { language: None }
+    }
+
+    /// Create a new context.
+    ///
+    /// - `language` must be the effective value of the `xml:lang` value at
+    ///   the end of the current event.
+    pub fn new(language: Option<&'x str>) -> Self {
+        Self { language }
+    }
+
+    /// Return the `xml:lang` value in effect at the end of the event which
+    /// is currently being processed.
+    pub fn language(&self) -> Option<&str> {
+        self.language.as_deref()
+    }
+}
+
 /// Trait for a temporary object allowing to construct a struct from
 /// [`rxml::Event`] items.
 ///
@@ -151,7 +178,11 @@ pub trait FromEventsBuilder {
     /// Feeding more events after an error may result in panics, errors or
     /// inconsistent result data, though it may never result in unsound or
     /// unsafe behaviour.
-    fn feed(&mut self, ev: rxml::Event) -> Result<Option<Self::Output>, self::error::Error>;
+    fn feed(
+        &mut self,
+        ev: rxml::Event,
+        ctx: &Context<'_>,
+    ) -> Result<Option<Self::Output>, self::error::Error>;
 }
 
 /// Trait allowing to construct a struct from a stream of
@@ -188,6 +219,7 @@ pub trait FromXml {
     fn from_events(
         name: rxml::QName,
         attrs: rxml::AttrMap,
+        ctx: &Context<'_>,
     ) -> Result<Self::Builder, self::error::FromEventsError>;
 }
 
@@ -423,13 +455,15 @@ impl UnknownChildPolicy {
 /// Attempt to transform a type implementing [`AsXml`] into another
 /// type which implements [`FromXml`].
 pub fn transform<T: FromXml, F: AsXml>(from: &F) -> Result<T, self::error::Error> {
+    let mut languages = rxml::xml_lang::XmlLangStack::new();
     let mut iter = self::rxml_util::ItemToEvent::new(from.as_xml_iter()?);
     let (qname, attrs) = match iter.next() {
         Some(Ok(rxml::Event::StartElement(_, qname, attrs))) => (qname, attrs),
         Some(Err(e)) => return Err(e),
         _ => panic!("into_event_iter did not start with StartElement event!"),
     };
-    let mut sink = match T::from_events(qname, attrs) {
+    languages.push_from_attrs(&attrs);
+    let mut sink = match T::from_events(qname, attrs, &Context::new(languages.current())) {
         Ok(v) => v,
         Err(self::error::FromEventsError::Mismatch { .. }) => {
             return Err(self::error::Error::TypeMismatch)
@@ -438,7 +472,8 @@ pub fn transform<T: FromXml, F: AsXml>(from: &F) -> Result<T, self::error::Error
     };
     for event in iter {
         let event = event?;
-        if let Some(v) = sink.feed(event)? {
+        languages.handle_event(&event);
+        if let Some(v) = sink.feed(event, &Context::new(languages.current()))? {
             return Ok(v);
         }
     }
@@ -455,8 +490,11 @@ pub fn transform<T: FromXml, F: AsXml>(from: &F) -> Result<T, self::error::Error
 pub fn try_from_element<T: FromXml>(
     from: minidom::Element,
 ) -> Result<T, self::error::FromElementError> {
+    let mut languages = rxml::xml_lang::XmlLangStack::new();
     let (qname, attrs) = minidom_compat::make_start_ev_parts(&from)?;
-    let mut sink = match T::from_events(qname, attrs) {
+
+    languages.push_from_attrs(&attrs);
+    let mut sink = match T::from_events(qname, attrs, &Context::new(languages.current())) {
         Ok(v) => v,
         Err(self::error::FromEventsError::Mismatch { .. }) => {
             return Err(self::error::FromElementError::Mismatch(from))
@@ -486,7 +524,8 @@ pub fn try_from_element<T: FromXml>(
     let iter = self::rxml_util::ItemToEvent::new(iter);
     for event in iter {
         let event = event?;
-        if let Some(v) = sink.feed(event)? {
+        languages.handle_event(&event);
+        if let Some(v) = sink.feed(event, &Context::new(languages.current()))? {
             return Ok(v);
         }
     }
@@ -508,8 +547,8 @@ fn map_nonio_error<T>(r: Result<T, io::Error>) -> Result<T, self::error::Error> 
 }
 
 #[cfg(feature = "std")]
-fn read_start_event<I: io::BufRead>(
-    r: &mut rxml::Reader<I>,
+fn read_start_event(
+    r: &mut impl Iterator<Item = io::Result<rxml::Event>>,
 ) -> Result<(rxml::QName, rxml::AttrMap), self::error::Error> {
     for ev in r {
         match map_nonio_error(ev)? {
@@ -531,17 +570,17 @@ fn read_start_event<I: io::BufRead>(
 /// containing XML data.
 #[cfg(feature = "std")]
 pub fn from_bytes<T: FromXml>(mut buf: &[u8]) -> Result<T, self::error::Error> {
-    let mut reader = rxml::Reader::new(&mut buf);
+    let mut reader = rxml::XmlLangTracker::wrap(rxml::Reader::new(&mut buf));
     let (name, attrs) = read_start_event(&mut reader)?;
-    let mut builder = match T::from_events(name, attrs) {
+    let mut builder = match T::from_events(name, attrs, &Context::new(reader.language())) {
         Ok(v) => v,
         Err(self::error::FromEventsError::Mismatch { .. }) => {
             return Err(self::error::Error::TypeMismatch)
         }
         Err(self::error::FromEventsError::Invalid(e)) => return Err(e),
     };
-    for ev in reader {
-        if let Some(v) = builder.feed(map_nonio_error(ev)?)? {
+    while let Some(ev) = reader.next() {
+        if let Some(v) = builder.feed(map_nonio_error(ev)?, &Context::new(reader.language()))? {
             return Ok(v);
         }
     }
@@ -549,8 +588,8 @@ pub fn from_bytes<T: FromXml>(mut buf: &[u8]) -> Result<T, self::error::Error> {
 }
 
 #[cfg(feature = "std")]
-fn read_start_event_io<I: io::BufRead>(
-    r: &mut rxml::Reader<I>,
+fn read_start_event_io(
+    r: &mut impl Iterator<Item = io::Result<rxml::Event>>,
 ) -> io::Result<(rxml::QName, rxml::AttrMap)> {
     for ev in r {
         match ev? {
@@ -575,9 +614,9 @@ fn read_start_event_io<I: io::BufRead>(
 /// Attempt to parse a type implementing [`FromXml`] from a reader.
 #[cfg(feature = "std")]
 pub fn from_reader<T: FromXml, R: io::BufRead>(r: R) -> io::Result<T> {
-    let mut reader = rxml::Reader::new(r);
+    let mut reader = rxml::XmlLangTracker::wrap(rxml::Reader::new(r));
     let (name, attrs) = read_start_event_io(&mut reader)?;
-    let mut builder = match T::from_events(name, attrs) {
+    let mut builder = match T::from_events(name, attrs, &Context::new(reader.language())) {
         Ok(v) => v,
         Err(self::error::FromEventsError::Mismatch { .. }) => {
             return Err(self::error::Error::TypeMismatch)
@@ -587,9 +626,9 @@ pub fn from_reader<T: FromXml, R: io::BufRead>(r: R) -> io::Result<T> {
             return Err(e).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
         }
     };
-    for ev in reader {
+    while let Some(ev) = reader.next() {
         if let Some(v) = builder
-            .feed(ev?)
+            .feed(ev?, &Context::new(reader.language()))
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
         {
             return Ok(v);

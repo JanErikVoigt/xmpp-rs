@@ -24,7 +24,7 @@ use rxml::{
 use crate::{
     error::{Error, FromEventsError},
     rxml_util::{EventToItem, Item},
-    AsXml, FromEventsBuilder, FromXml,
+    AsXml, Context, FromEventsBuilder, FromXml,
 };
 
 /// State machine for converting a minidom Element into rxml events.
@@ -351,13 +351,13 @@ impl ElementFromEvents {
 impl FromEventsBuilder for ElementFromEvents {
     type Output = minidom::Element;
 
-    fn feed(&mut self, ev: Event) -> Result<Option<Self::Output>, Error> {
+    fn feed(&mut self, ev: Event, ctx: &Context<'_>) -> Result<Option<Self::Output>, Error> {
         let inner = self
             .inner
             .as_mut()
             .expect("feed() called after it finished");
         if let Some(nested) = self.nested.as_mut() {
-            match nested.feed(ev)? {
+            match nested.feed(ev, ctx)? {
                 Some(v) => {
                     inner.append_child(v);
                     self.nested = None;
@@ -369,7 +369,7 @@ impl FromEventsBuilder for ElementFromEvents {
         match ev {
             Event::XmlDeclaration(_, _) => Ok(None),
             Event::StartElement(_, qname, attrs) => {
-                let nested = match Element::from_events(qname, attrs) {
+                let nested = match Element::from_events(qname, attrs, ctx) {
                     Ok(v) => v,
                     Err(FromEventsError::Invalid(e)) => return Err(e),
                     Err(FromEventsError::Mismatch { .. }) => {
@@ -394,6 +394,7 @@ impl FromXml for Element {
     fn from_events(
         qname: rxml::QName,
         attrs: rxml::AttrMap,
+        _ctx: &Context<'_>,
     ) -> Result<Self::Builder, FromEventsError> {
         Ok(Self::Builder::new(qname, attrs))
     }
@@ -418,7 +419,13 @@ where
     pub fn new(qname: rxml::QName, attrs: rxml::AttrMap) -> Result<Self, FromEventsError> {
         Ok(Self {
             _phantom: PhantomData,
-            inner: Element::from_events(qname, attrs)?,
+            inner: Element::from_events(
+                qname,
+                attrs,
+                // FromEventsViaElement does not support passing through
+                // `xml:lang` inheritance, so we don't pass any context.
+                &Context::empty(),
+            )?,
         })
     }
 }
@@ -429,8 +436,8 @@ where
 {
     type Output = T;
 
-    fn feed(&mut self, ev: Event) -> Result<Option<Self::Output>, Error> {
-        match self.inner.feed(ev) {
+    fn feed(&mut self, ev: Event, ctx: &Context<'_>) -> Result<Option<Self::Output>, Error> {
+        match self.inner.feed(ev, ctx) {
             Ok(Some(v)) => Ok(Some(v.try_into()?)),
             Ok(None) => Ok(None),
             Err(e) => Err(e),

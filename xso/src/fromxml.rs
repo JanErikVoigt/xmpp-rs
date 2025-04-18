@@ -15,7 +15,7 @@
 use alloc::boxed::Box;
 
 use crate::error::{Error, FromEventsError};
-use crate::{FromEventsBuilder, FromXml};
+use crate::{Context, FromEventsBuilder, FromXml};
 
 /// Helper struct to construct an `Option<T>` from XML events.
 pub struct OptionBuilder<T: FromEventsBuilder>(T);
@@ -23,8 +23,8 @@ pub struct OptionBuilder<T: FromEventsBuilder>(T);
 impl<T: FromEventsBuilder> FromEventsBuilder for OptionBuilder<T> {
     type Output = Option<T::Output>;
 
-    fn feed(&mut self, ev: rxml::Event) -> Result<Option<Self::Output>, Error> {
-        self.0.feed(ev).map(|ok| ok.map(Some))
+    fn feed(&mut self, ev: rxml::Event, ctx: &Context<'_>) -> Result<Option<Self::Output>, Error> {
+        self.0.feed(ev, ctx).map(|ok| ok.map(Some))
     }
 }
 
@@ -40,8 +40,9 @@ impl<T: FromXml> FromXml for Option<T> {
     fn from_events(
         name: rxml::QName,
         attrs: rxml::AttrMap,
+        ctx: &Context<'_>,
     ) -> Result<Self::Builder, FromEventsError> {
-        Ok(OptionBuilder(T::from_events(name, attrs)?))
+        Ok(OptionBuilder(T::from_events(name, attrs, ctx)?))
     }
 }
 
@@ -51,8 +52,8 @@ pub struct BoxBuilder<T: FromEventsBuilder>(Box<T>);
 impl<T: FromEventsBuilder> FromEventsBuilder for BoxBuilder<T> {
     type Output = Box<T::Output>;
 
-    fn feed(&mut self, ev: rxml::Event) -> Result<Option<Self::Output>, Error> {
-        self.0.feed(ev).map(|ok| ok.map(Box::new))
+    fn feed(&mut self, ev: rxml::Event, ctx: &Context<'_>) -> Result<Option<Self::Output>, Error> {
+        self.0.feed(ev, ctx).map(|ok| ok.map(Box::new))
     }
 }
 
@@ -63,8 +64,9 @@ impl<T: FromXml> FromXml for Box<T> {
     fn from_events(
         name: rxml::QName,
         attrs: rxml::AttrMap,
+        ctx: &Context<'_>,
     ) -> Result<Self::Builder, FromEventsError> {
-        Ok(BoxBuilder(Box::new(T::from_events(name, attrs)?)))
+        Ok(BoxBuilder(Box::new(T::from_events(name, attrs, ctx)?)))
     }
 }
 
@@ -92,7 +94,7 @@ pub struct FallibleBuilder<T: FromEventsBuilder, E>(FallibleBuilderInner<T, E>);
 impl<T: FromEventsBuilder, E: From<Error>> FromEventsBuilder for FallibleBuilder<T, E> {
     type Output = Result<T::Output, E>;
 
-    fn feed(&mut self, ev: rxml::Event) -> Result<Option<Self::Output>, Error> {
+    fn feed(&mut self, ev: rxml::Event, ctx: &Context<'_>) -> Result<Option<Self::Output>, Error> {
         match self.0 {
             FallibleBuilderInner::Processing {
                 ref mut depth,
@@ -130,7 +132,7 @@ impl<T: FromEventsBuilder, E: From<Error>> FromEventsBuilder for FallibleBuilder
                     rxml::Event::XmlDeclaration(..) | rxml::Event::Text(..) => Some(*depth),
                 };
 
-                match builder.feed(ev) {
+                match builder.feed(ev, ctx) {
                     Ok(Some(v)) => {
                         self.0 = FallibleBuilderInner::Done;
                         return Ok(Some(Ok(v)));
@@ -214,8 +216,9 @@ impl<T: FromXml, E: From<Error>> FromXml for Result<T, E> {
     fn from_events(
         name: rxml::QName,
         attrs: rxml::AttrMap,
+        ctx: &Context<'_>,
     ) -> Result<Self::Builder, FromEventsError> {
-        match T::from_events(name, attrs) {
+        match T::from_events(name, attrs, ctx) {
             Ok(builder) => Ok(FallibleBuilder(FallibleBuilderInner::Processing {
                 depth: 0,
                 builder,
@@ -248,7 +251,7 @@ impl Discard {
 impl FromEventsBuilder for Discard {
     type Output = ();
 
-    fn feed(&mut self, ev: rxml::Event) -> Result<Option<Self::Output>, Error> {
+    fn feed(&mut self, ev: rxml::Event, _ctx: &Context<'_>) -> Result<Option<Self::Output>, Error> {
         match ev {
             rxml::Event::StartElement(..) => {
                 self.depth = match self.depth.checked_add(1) {
@@ -284,7 +287,7 @@ pub struct EmptyBuilder {
 impl FromEventsBuilder for EmptyBuilder {
     type Output = ();
 
-    fn feed(&mut self, ev: rxml::Event) -> Result<Option<Self::Output>, Error> {
+    fn feed(&mut self, ev: rxml::Event, _ctx: &Context<'_>) -> Result<Option<Self::Output>, Error> {
         match ev {
             rxml::Event::EndElement(..) => Ok(Some(())),
             rxml::Event::StartElement(..) => Err(Error::Other(self.childerr)),
@@ -336,7 +339,11 @@ mod tests {
             impl FromEventsBuilder for $name {
                 type Output = $output;
 
-                fn feed(&mut self, _: Event) -> Result<Option<Self::Output>, Error> {
+                fn feed(
+                    &mut self,
+                    _: Event,
+                    _: &Context<'_>,
+                ) -> Result<Option<Self::Output>, Error> {
                     unreachable!();
                 }
             }
@@ -355,6 +362,7 @@ mod tests {
         fn from_events(
             name: rxml::QName,
             attrs: rxml::AttrMap,
+            _ctx: &Context<'_>,
         ) -> Result<Self::Builder, FromEventsError> {
             Err(FromEventsError::Mismatch { name, attrs })
         }
@@ -366,7 +374,11 @@ mod tests {
     impl FromXml for InitialError {
         type Builder = InitialErrorBuilder;
 
-        fn from_events(_: rxml::QName, _: rxml::AttrMap) -> Result<Self::Builder, FromEventsError> {
+        fn from_events(
+            _: rxml::QName,
+            _: rxml::AttrMap,
+            _: &Context<'_>,
+        ) -> Result<Self::Builder, FromEventsError> {
             Err(FromEventsError::Invalid(Error::Other("some error")))
         }
     }
@@ -377,7 +389,7 @@ mod tests {
     impl FromEventsBuilder for FailOnContentBuilder {
         type Output = FailOnContent;
 
-        fn feed(&mut self, _: Event) -> Result<Option<Self::Output>, Error> {
+        fn feed(&mut self, _: Event, _: &Context<'_>) -> Result<Option<Self::Output>, Error> {
             Err(Error::Other("content error"))
         }
     }
@@ -388,7 +400,11 @@ mod tests {
     impl FromXml for FailOnContent {
         type Builder = FailOnContentBuilder;
 
-        fn from_events(_: rxml::QName, _: rxml::AttrMap) -> Result<Self::Builder, FromEventsError> {
+        fn from_events(
+            _: rxml::QName,
+            _: rxml::AttrMap,
+            _: &Context<'_>,
+        ) -> Result<Self::Builder, FromEventsError> {
             Ok(FailOnContentBuilder)
         }
     }
@@ -403,7 +419,7 @@ mod tests {
 
     #[test]
     fn fallible_builder_mismatch_passthrough() {
-        match Result::<AlwaysMismatch, Error>::from_events(qname(), attrs()) {
+        match Result::<AlwaysMismatch, Error>::from_events(qname(), attrs(), &Context::empty()) {
             Err(FromEventsError::Mismatch { .. }) => (),
             other => panic!("unexpected result: {:?}", other),
         }
@@ -411,15 +427,19 @@ mod tests {
 
     #[test]
     fn fallible_builder_initial_error_capture() {
-        let mut builder = match Result::<InitialError, Error>::from_events(qname(), attrs()) {
+        let ctx = Context::empty();
+        let mut builder = match Result::<InitialError, Error>::from_events(qname(), attrs(), &ctx) {
             Ok(v) => v,
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::Text(EventMetrics::zero(), "hello world!".to_owned())) {
+        match builder.feed(
+            Event::Text(EventMetrics::zero(), "hello world!".to_owned()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(Some(Err(Error::Other("some error")))) => (),
             other => panic!("unexpected result: {:?}", other),
         };
@@ -427,47 +447,66 @@ mod tests {
 
     #[test]
     fn fallible_builder_initial_error_capture_allows_nested_stuff() {
-        let mut builder = match Result::<InitialError, Error>::from_events(qname(), attrs()) {
+        let ctx = Context::empty();
+        let mut builder = match Result::<InitialError, Error>::from_events(qname(), attrs(), &ctx) {
             Ok(v) => v,
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::StartElement(EventMetrics::zero(), qname(), attrs())) {
+        match builder.feed(
+            Event::StartElement(EventMetrics::zero(), qname(), attrs()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::Text(EventMetrics::zero(), "hello world!".to_owned())) {
+        match builder.feed(
+            Event::Text(EventMetrics::zero(), "hello world!".to_owned()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::Text(EventMetrics::zero(), "hello world!".to_owned())) {
+        match builder.feed(
+            Event::Text(EventMetrics::zero(), "hello world!".to_owned()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::StartElement(EventMetrics::zero(), qname(), attrs())) {
+        match builder.feed(
+            Event::StartElement(EventMetrics::zero(), qname(), attrs()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::StartElement(EventMetrics::zero(), qname(), attrs())) {
+        match builder.feed(
+            Event::StartElement(EventMetrics::zero(), qname(), attrs()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::Text(EventMetrics::zero(), "hello world!".to_owned())) {
+        match builder.feed(
+            Event::Text(EventMetrics::zero(), "hello world!".to_owned()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(Some(Err(Error::Other("some error")))) => (),
             other => panic!("unexpected result: {:?}", other),
         };
@@ -475,11 +514,13 @@ mod tests {
 
     #[test]
     fn fallible_builder_content_error_capture() {
-        let mut builder = match Result::<FailOnContent, Error>::from_events(qname(), attrs()) {
+        let ctx = Context::empty();
+        let mut builder = match Result::<FailOnContent, Error>::from_events(qname(), attrs(), &ctx)
+        {
             Ok(v) => v,
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(Some(Err(Error::Other("content error")))) => (),
             other => panic!("unexpected result: {:?}", other),
         };
@@ -487,15 +528,20 @@ mod tests {
 
     #[test]
     fn fallible_builder_content_error_capture_with_more_content() {
-        let mut builder = match Result::<FailOnContent, Error>::from_events(qname(), attrs()) {
+        let ctx = Context::empty();
+        let mut builder = match Result::<FailOnContent, Error>::from_events(qname(), attrs(), &ctx)
+        {
             Ok(v) => v,
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::Text(EventMetrics::zero(), "hello world!".to_owned())) {
+        match builder.feed(
+            Event::Text(EventMetrics::zero(), "hello world!".to_owned()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(Some(Err(Error::Other("content error")))) => (),
             other => panic!("unexpected result: {:?}", other),
         };
@@ -503,47 +549,67 @@ mod tests {
 
     #[test]
     fn fallible_builder_content_error_capture_with_nested_content() {
-        let mut builder = match Result::<FailOnContent, Error>::from_events(qname(), attrs()) {
+        let ctx = Context::empty();
+        let mut builder = match Result::<FailOnContent, Error>::from_events(qname(), attrs(), &ctx)
+        {
             Ok(v) => v,
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::StartElement(EventMetrics::zero(), qname(), attrs())) {
+        match builder.feed(
+            Event::StartElement(EventMetrics::zero(), qname(), attrs()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::Text(EventMetrics::zero(), "hello world!".to_owned())) {
+        match builder.feed(
+            Event::Text(EventMetrics::zero(), "hello world!".to_owned()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::Text(EventMetrics::zero(), "hello world!".to_owned())) {
+        match builder.feed(
+            Event::Text(EventMetrics::zero(), "hello world!".to_owned()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::StartElement(EventMetrics::zero(), qname(), attrs())) {
+        match builder.feed(
+            Event::StartElement(EventMetrics::zero(), qname(), attrs()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::StartElement(EventMetrics::zero(), qname(), attrs())) {
+        match builder.feed(
+            Event::StartElement(EventMetrics::zero(), qname(), attrs()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::Text(EventMetrics::zero(), "hello world!".to_owned())) {
+        match builder.feed(
+            Event::Text(EventMetrics::zero(), "hello world!".to_owned()),
+            &ctx,
+        ) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(None) => (),
             other => panic!("unexpected result: {:?}", other),
         };
-        match builder.feed(Event::EndElement(EventMetrics::zero())) {
+        match builder.feed(Event::EndElement(EventMetrics::zero()), &ctx) {
             Ok(Some(Err(Error::Other("content error")))) => (),
             other => panic!("unexpected result: {:?}", other),
         };

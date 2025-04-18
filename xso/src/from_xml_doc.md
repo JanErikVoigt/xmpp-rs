@@ -28,6 +28,7 @@ assert_eq!(foo, Foo);
     3. [`element` meta](#element-meta)
     4. [`extract` meta](#extract-meta)
     5. [`flag` meta](#flag-meta)
+    6. [`lang` meta](#lang-meta)
     6. [`text` meta](#text-meta)
 
 ## Attributes
@@ -627,6 +628,7 @@ error is emitted.
 When parsing, any contents within the child element generate a parse error.
 
 #### Example
+
 ```rust
 # use xso::FromXml;
 #[derive(FromXml, Debug, PartialEq)]
@@ -644,6 +646,64 @@ assert_eq!(foo, Foo {
 let foo: Foo = xso::from_bytes(b"<foo xmlns='urn:example'/>").unwrap();
 assert_eq!(foo, Foo {
     flag: false,
+});
+```
+
+### `lang` meta
+
+The `lang` meta allows to access the (potentially inherited) logical
+`xml:lang` value as defined in
+[XML 1.0 § 2.12](https://www.w3.org/TR/REC-xml/#sec-lang-tag).
+
+This meta supports no arguments and can only be used on fields of type
+`Option<String>`.
+
+This meta should not be used alongsite `#[xml(attribute)]` meta which match
+the `xml:lang` attribute. Doing so causes unspecified behavior during
+serialisation: only one of the values will be in the output, but it is
+unspecified which of the two. This is the same as when having two
+`#[xml(attribute)]` field which match the same attribute. (Due to indirections
+when refering to `static` items for attribute namespaces and names, it is not
+possible to check this at compile-time.)
+
+Unlike `#[xml(attribute = "xml:lang")]`, the `#[xml(lang)]` meta takes
+inheritance into account.
+
+**Note:** Using this meta is not roundtrip-safe. `rxml` will always emit its
+value on serialisation, even if it was inherited during deserialisation.
+
+#### Example
+
+```rust
+# use xso::FromXml;
+#[derive(FromXml, Debug, PartialEq)]
+#[xml(namespace = "urn:example", name = "bar")]
+struct Bar {
+    #[xml(lang)]
+    lang: Option<String>,
+};
+
+#[derive(FromXml, Debug, PartialEq)]
+#[xml(namespace = "urn:example", name = "foo")]
+struct Foo {
+    #[xml(child)]
+    child: Bar,
+};
+
+// `xml:lang` gets inherited from <foo/> to <bar/>
+let foo: Foo = xso::from_bytes(b"<foo xmlns='urn:example' xml:lang='en'><bar/></foo>").unwrap();
+assert_eq!(foo, Foo {
+    child: Bar {
+        lang: Some("en".to_owned()),
+    },
+});
+
+// `xml:lang` gets set/overwritten in <bar/>
+let foo: Foo = xso::from_bytes(b"<foo xmlns='urn:example' xml:lang='en'><bar xml:lang='de'/></foo>").unwrap();
+assert_eq!(foo, Foo {
+    child: Bar {
+        lang: Some("de".to_owned()),
+    },
 });
 ```
 

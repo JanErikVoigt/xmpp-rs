@@ -200,7 +200,7 @@ impl StructInner {
                             &from_xml_builder_ty,
                         )
                             .with_impl(quote! {
-                                match #feed_fn(&mut #builder_data_ident, ev)? {
+                                match #feed_fn(&mut #builder_data_ident, ev, ctx)? {
                                     ::core::option::Option::Some(result) => {
                                         ::core::result::Result::Ok(::core::ops::ControlFlow::Continue(#output_cons))
                                     }
@@ -213,7 +213,7 @@ impl StructInner {
                             })
                     ],
                     init: quote! {
-                        #from_events_fn(name, attrs).map(|#builder_data_ident| Self::#state_name { #builder_data_ident })
+                        #from_events_fn(name, attrs, ctx).map(|#builder_data_ident| Self::#state_name { #builder_data_ident })
                     },
                 })
             }
@@ -392,7 +392,7 @@ impl ItemDef for StructDef {
         Ok(FromXmlParts {
             defs,
             from_events_body: quote! {
-                #builder_ty_ident::new(#name_ident, #attrs_ident)
+                #builder_ty_ident::new(#name_ident, #attrs_ident, ctx)
             },
             builder_ty_ident: builder_ty_ident.clone(),
         })

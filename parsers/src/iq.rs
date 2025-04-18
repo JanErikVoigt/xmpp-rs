@@ -229,6 +229,7 @@ impl ::xso::FromXml for Iq {
     fn from_events(
         qname: ::xso::exports::rxml::QName,
         attrs: ::xso::exports::rxml::AttrMap,
+        _ctx: &::xso::Context<'_>,
     ) -> Result<Self::Builder, ::xso::error::FromEventsError> {
         if qname.0 != crate::ns::DEFAULT_NS || qname.1 != "iq" {
             return Err(::xso::error::FromEventsError::Mismatch { name: qname, attrs });

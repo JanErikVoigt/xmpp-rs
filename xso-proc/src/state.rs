@@ -509,7 +509,7 @@ impl FromEventsStateMachine {
             }
 
             impl #state_ty_ident {
-                fn advance(mut self, ev: ::xso::exports::rxml::Event) -> ::core::result::Result<::core::ops::ControlFlow<Self, #output_ty>, ::xso::error::Error> {
+                fn advance(mut self, ev: ::xso::exports::rxml::Event, ctx: &::xso::Context<'_>) -> ::core::result::Result<::core::ops::ControlFlow<Self, #output_ty>, ::xso::error::Error> {
                     match self {
                         #advance_match_arms
                     }.and_then(|__ok| {
@@ -527,8 +527,9 @@ impl FromEventsStateMachine {
                 fn new(
                     name: ::xso::exports::rxml::QName,
                     attrs: ::xso::exports::rxml::AttrMap,
+                    ctx: &::xso::Context<'_>,
                 ) -> ::core::result::Result<Self, ::xso::error::FromEventsError> {
-                    #state_ty_ident::new(name, attrs).map(|ok| Self(::core::option::Option::Some(ok)))
+                    #state_ty_ident::new(name, attrs, ctx).map(|ok| Self(::core::option::Option::Some(ok)))
                 }
             }
 
@@ -539,9 +540,9 @@ impl FromEventsStateMachine {
             impl ::xso::FromEventsBuilder for #builder_ty_ident {
                 type Output = #output_ty;
 
-                fn feed(&mut self, ev: ::xso::exports::rxml::Event) -> ::core::result::Result<::core::option::Option<Self::Output>, ::xso::error::Error> {
+                fn feed(&mut self, ev: ::xso::exports::rxml::Event, ctx: &::xso::Context<'_>) -> ::core::result::Result<::core::option::Option<Self::Output>, ::xso::error::Error> {
                     let inner = self.0.take().expect("feed called after completion");
-                    match inner.advance(ev)? {
+                    match inner.advance(ev, ctx)? {
                         ::core::ops::ControlFlow::Continue(mut value) => {
                             #validate_call
                             ::core::result::Result::Ok(::core::option::Option::Some(value))
@@ -558,6 +559,7 @@ impl FromEventsStateMachine {
                 fn new(
                     name: ::xso::exports::rxml::QName,
                     mut attrs: ::xso::exports::rxml::AttrMap,
+                    ctx: &::xso::Context<'_>,
                 ) -> ::core::result::Result<Self, ::xso::error::FromEventsError> {
                     #init_body
                     { let _ = &mut attrs; }

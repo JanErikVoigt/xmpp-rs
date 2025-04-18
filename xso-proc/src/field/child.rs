@@ -68,7 +68,7 @@ impl Field for ChildField {
 
                 let from_events = from_events_fn(element_ty.clone());
 
-                let matcher = quote! { #from_events(name, attrs) };
+                let matcher = quote! { #from_events(name, attrs, ctx) };
                 let builder = from_xml_builder_ty(element_ty.clone());
 
                 (
@@ -307,7 +307,7 @@ impl ExtractDef {
         )?;
         let from_xml_builder_ty = ty_from_ident(from_xml_builder_ty_ident.clone()).into();
 
-        let matcher = quote! { #state_ty_ident::new(name, attrs).map(|x| #from_xml_builder_ty_ident(::core::option::Option::Some(x))) };
+        let matcher = quote! { #state_ty_ident::new(name, attrs, ctx).map(|x| #from_xml_builder_ty_ident(::core::option::Option::Some(x))) };
 
         let inner_ty = self.parts.to_single_or_tuple_ty();
 

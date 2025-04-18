@@ -80,7 +80,7 @@ impl Field for ElementField {
                         if #field_access.is_some() {
                             ::core::result::Result::Err(::xso::error::FromEventsError::Mismatch { name, attrs })
                         } else {
-                            #from_events(name, attrs)
+                            #from_events(name, attrs, ctx)
                         }
                     }),
                     builder,

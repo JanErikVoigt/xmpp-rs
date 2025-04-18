@@ -203,6 +203,7 @@ impl ::xso::FromXml for Description {
     fn from_events(
         qname: ::xso::exports::rxml::QName,
         attrs: ::xso::exports::rxml::AttrMap,
+        _ctx: &::xso::Context<'_>,
     ) -> Result<Self::Builder, ::xso::error::FromEventsError> {
         if qname.1 != "description" {
             return Err(::xso::error::FromEventsError::Mismatch { name: qname, attrs });
@@ -263,6 +264,7 @@ impl ::xso::FromXml for Transport {
     fn from_events(
         qname: ::xso::exports::rxml::QName,
         attrs: ::xso::exports::rxml::AttrMap,
+        _ctx: &::xso::Context<'_>,
     ) -> Result<Self::Builder, ::xso::error::FromEventsError> {
         if qname.1 != "transport" {
             return Err(::xso::error::FromEventsError::Mismatch { name: qname, attrs });

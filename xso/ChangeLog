@@ -17,6 +17,8 @@ Version NEXT:
         equivalent. This is because `xml:lang` is special as per
         XML 1.0 § 2.12 and it is generally preferable to allow it to occur
         anywhere in the document.
+      - The `FromXml::from_events` and `FromEventsBuilder::feed` functions
+        gained an additional argument to support `xml:lang` inheritance.
     * Added
       - Support for child elements in derive macros. Child elements may also
         be wrapped in Option or Box or in containers like Vec or HashSet.
@@ -46,6 +48,8 @@ Version NEXT:
       - Implement `AsXml` and `FromXml` for serde_json::Value` behind
         `serde_json` feature.
       - Support for a post-deserialization callback function call. (!553)
+      - Support for correctly inheriting `xml:lang` values throughout the
+        XML document.
     * Changes
       - Generated AsXml iterator and FromXml builder types are now
         doc(hidden), to not clutter hand-written documentation with auto

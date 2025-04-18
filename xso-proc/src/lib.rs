@@ -83,6 +83,7 @@ fn from_xml_impl(input: Item) -> Result<TokenStream> {
             fn from_events(
                 name: ::xso::exports::rxml::QName,
                 attrs: ::xso::exports::rxml::AttrMap,
+                ctx: &::xso::Context<'_>,
             ) -> ::core::result::Result<Self::Builder, ::xso::error::FromEventsError> {
                 #from_events_body
             }

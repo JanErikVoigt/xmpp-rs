@@ -547,7 +547,7 @@ impl ItemDef for EnumDef {
         Ok(FromXmlParts {
             defs,
             from_events_body: quote! {
-                #builder_ty_ident::new(#name_ident, #attrs_ident)
+                #builder_ty_ident::new(#name_ident, #attrs_ident, ctx)
             },
             builder_ty_ident: builder_ty_ident.clone(),
         })

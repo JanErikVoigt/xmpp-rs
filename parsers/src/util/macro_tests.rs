@@ -2489,3 +2489,65 @@ fn text_vs_attribute_ordering_compile_bug_roundtrip_with_parent() {
         "<thread xmlns='urn:example:ns1' parent='bar'>foo</thread>",
     );
 }
+
+#[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
+#[xml(namespace = NS1, name = "elem")]
+struct Language {
+    #[xml(child(default))]
+    child: core::option::Option<Box<Language>>,
+
+    #[xml(lang)]
+    lang: core::option::Option<String>,
+}
+
+#[test]
+fn language_roundtrip_absent() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<Language>("<elem xmlns='urn:example:ns1'/>");
+}
+
+#[test]
+fn language_roundtrip_present() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<Language>("<elem xmlns='urn:example:ns1' xml:lang='foo'/>");
+}
+
+#[test]
+fn language_roundtrip_nested_parse() {
+    // cannot write a round-trip test for this, because on emission,
+    // `#[xml(language)]` fields with a non-None value will always emit
+    // the `xml:lang` attribute to ensure semantic correctness.
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<Language>(
+        "<elem xmlns='urn:example:ns1' xml:lang='foo'><elem><elem xml:lang='bar'/></elem></elem>",
+    ) {
+        Ok(Language { child, lang }) => {
+            assert_eq!(lang.as_deref(), Some("foo"));
+
+            let Some(Language { child, lang }) = child.map(|x| *x) else {
+                panic!("missing child");
+            };
+            assert_eq!(lang.as_deref(), Some("foo"));
+
+            let Some(Language { child, lang }) = child.map(|x| *x) else {
+                panic!("missing grand child");
+            };
+            assert_eq!(lang.as_deref(), Some("bar"));
+
+            assert!(child.is_none());
+        }
+        other => panic!("unexpected parse result: {:?}", other),
+    }
+}

@@ -874,6 +874,14 @@ pub(crate) enum XmlFieldMeta {
         /// The namespace/name keys.
         qname: QNameRef,
     },
+
+    /// `#[xml(lang)]`
+    Language {
+        /// The span of the `#[xml(lang)]` meta from which this was parsed.
+        ///
+        /// This is useful for error messages.
+        span: Span,
+    },
 }
 
 impl XmlFieldMeta {
@@ -1182,6 +1190,13 @@ impl XmlFieldMeta {
         })
     }
 
+    /// Parse a `#[xml(lang)]` meta.
+    fn lang_from_meta(meta: ParseNestedMeta<'_>) -> Result<Self> {
+        Ok(Self::Language {
+            span: meta.path.span(),
+        })
+    }
+
     /// Parse [`Self`] from a nestd meta, switching on the identifier
     /// of that nested meta.
     fn parse_from_meta(meta: ParseNestedMeta<'_>) -> Result<Self> {
@@ -1197,6 +1212,8 @@ impl XmlFieldMeta {
             Self::element_from_meta(meta)
         } else if meta.path.is_ident("flag") {
             Self::flag_from_meta(meta)
+        } else if meta.path.is_ident("lang") {
+            Self::lang_from_meta(meta)
         } else {
             Err(Error::new_spanned(meta.path, "unsupported field meta"))
         }
@@ -1280,6 +1297,7 @@ impl XmlFieldMeta {
             Self::Extract { ref span, .. } => *span,
             Self::Element { ref span, .. } => *span,
             Self::Flag { ref span, .. } => *span,
+            Self::Language { ref span, .. } => *span,
         }
     }
 

@@ -318,7 +318,7 @@ impl Compound {
                         substate_data,
                         &builder,
                     ).with_mut(substate_data).with_impl(quote! {
-                        match #feed(&mut #substate_data, ev)? {
+                        match #feed(&mut #substate_data, ev, ctx)? {
                             ::core::option::Option::Some(#substate_result) => {
                                 #collect
                                 ::core::result::Result::Ok(::core::ops::ControlFlow::Break(Self::#default_state_ident {
@@ -467,7 +467,7 @@ impl Compound {
             substate_data,
             &discard_builder_ty,
         ).with_mut(substate_data).with_impl(quote! {
-            match #discard_feed(&mut #substate_data, ev)? {
+            match #discard_feed(&mut #substate_data, ev, ctx)? {
                 ::core::option::Option::Some(#substate_result) => {
                     ::core::result::Result::Ok(::core::ops::ControlFlow::Break(Self::#default_state_ident {
                         #builder_data_ident,

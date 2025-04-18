@@ -23,7 +23,9 @@ use tokio::{
 };
 
 use xso::{
-    exports::rxml::{self, writer::TrackNamespace, xml_ncname, Event, Namespace},
+    exports::rxml::{
+        self, writer::TrackNamespace, xml_lang::XmlLangStack, xml_ncname, Event, Namespace,
+    },
     AsXml, FromEventsBuilder, FromXml, Item,
 };
 
@@ -165,6 +167,9 @@ pin_project_lite::pin_project! {
         #[pin]
         parser: rxml::AsyncReader<CaptureBufRead<Io>>,
 
+        // Tracker for `xml:lang` data.
+        lang_stack: XmlLangStack,
+
         // The writer used for serialising data.
         writer: rxml::writer::Encoder<rxml::writer::SimpleNamespaces>,
 
@@ -254,6 +259,7 @@ impl<Io: AsyncBufRead + AsyncWrite> RawXmlStream<Io> {
         Self {
             parser: rxml::AsyncReader::wrap(io, parser),
             writer: Self::new_writer(stream_ns),
+            lang_stack: XmlLangStack::new(),
             timeouts: TimeoutState::new(timeouts),
             tx_buffer_logged: 0,
             stream_ns,
@@ -270,6 +276,7 @@ impl<Io: AsyncBufRead + AsyncWrite> RawXmlStream<Io> {
     pub(super) fn reset_state(self: Pin<&mut Self>) {
         let this = self.project();
         *this.parser.parser_pinned() = rxml::Parser::default();
+        *this.lang_stack = XmlLangStack::new();
         *this.writer = Self::new_writer(this.stream_ns);
     }
 
@@ -293,6 +300,7 @@ impl<Io: AsyncBufRead + AsyncWrite> RawXmlStream<Io> {
         let parser = rxml::AsyncReader::wrap(io, p);
         RawXmlStream {
             parser,
+            lang_stack: XmlLangStack::new(),
             timeouts: self.timeouts,
             writer: self.writer,
             tx_buffer: self.tx_buffer,
@@ -360,6 +368,10 @@ impl<Io: AsyncBufRead> Stream for RawXmlStream<Io> {
                     match v.transpose() {
                         // Skip the XML declaration, nobody wants to hear about that.
                         Some(Ok(rxml::Event::XmlDeclaration(_, _))) => continue,
+                        Some(Ok(event)) => {
+                            this.lang_stack.handle_event(&event);
+                            return Poll::Ready(Some(Ok(event)));
+                        }
                         other => return Poll::Ready(other.map(|x| x.map_err(RawError::Io))),
                     }
                 }
@@ -635,9 +647,13 @@ impl<T: FromXml> ReadXsoState<T> {
                             }
                         }
                         Ok(Some(rxml::Event::StartElement(_, name, attrs))) => {
+                            let source_tmp = source.as_mut();
+                            let ctx = xso::Context::new(source_tmp.lang_stack.current());
                             *self = ReadXsoState::Parsing(
-                                <Result<T, xso::error::Error> as FromXml>::from_events(name, attrs)
-                                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
+                                <Result<T, xso::error::Error> as FromXml>::from_events(
+                                    name, attrs, &ctx,
+                                )
+                                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
                             );
                         }
                         // Amounts to EOF, as we expect to start on the stream level.
@@ -691,7 +707,9 @@ impl<T: FromXml> ReadXsoState<T> {
                         }
                     };
 
-                    match builder.feed(ev) {
+                    let source_tmp = source.as_mut();
+                    let ctx = xso::Context::new(source_tmp.lang_stack.current());
+                    match builder.feed(ev, &ctx) {
                         Err(err) => {
                             *self = ReadXsoState::Done;
                             source.as_mut().stream_pinned().discard_capture();
