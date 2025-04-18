@@ -99,7 +99,7 @@ async fn handle_events(client: &mut Agent, event: Event, rooms: &Vec<BareJid>) {
                 "{} {}: {}",
                 time_info.received.time().format("%H:%M"),
                 jid,
-                body.0
+                body
             );
         }
         Event::RoomJoined(jid) => {
@@ -111,7 +111,7 @@ async fn handle_events(client: &mut Agent, event: Event, rooms: &Vec<BareJid>) {
         Event::RoomMessage(_id, jid, nick, body, time_info) => {
             println!(
                 "Message in room {} from {} at {}: {}",
-                jid, nick, time_info.received, body.0
+                jid, nick, time_info.received, body
             );
         }
         _ => {

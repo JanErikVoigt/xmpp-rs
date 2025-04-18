@@ -67,8 +67,8 @@ mod tests {
         assert_size!(Enable, 0);
         assert_size!(Disable, 0);
         assert_size!(Private, 0);
-        assert_size!(Received, 140);
-        assert_size!(Sent, 140);
+        assert_size!(Received, 152);
+        assert_size!(Sent, 152);
     }
 
     #[cfg(target_pointer_width = "64")]
@@ -77,8 +77,8 @@ mod tests {
         assert_size!(Enable, 0);
         assert_size!(Disable, 0);
         assert_size!(Private, 0);
-        assert_size!(Received, 264);
-        assert_size!(Sent, 264);
+        assert_size!(Received, 288);
+        assert_size!(Sent, 288);
     }
 
     #[test]

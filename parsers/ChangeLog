@@ -74,6 +74,16 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
           - the `from_type` member was replaced by a pair of functions.
           - if the form contains a FORM_TYPE field, it will be part of the
             `fields` member (unlike before, where that field was removed).
+      - message::Message has been ported to use xso (!560). This causes several
+        breaking changes:
+
+        1. the message::Body and message::Subject newtypes have been removed
+           and replaced by bare Strings
+        2. a message::Lang newtype has been introduced for the language of
+           message parts.
+        3. the message::Thread type was converted from a single-element
+           tuple-like struct to a struct with named fields to support the
+           optional `parent` attribute.
     * New parsers/serialisers:
       - Stream Features (RFC 6120) (!400)
       - Spam Reporting (XEP-0377) (!506)

@@ -4,11 +4,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use core::fmt;
+use core::ops::{Deref, DerefMut};
+use std::borrow::{Borrow, Cow};
+
 use crate::ns;
 use alloc::collections::BTreeMap;
 use jid::Jid;
 use minidom::Element;
-use xso::error::{Error, FromElementError};
+use xso::{
+    error::{Error, FromElementError},
+    AsOptionalXmlText, AsXml, FromXml, FromXmlText,
+};
 
 /// Should be implemented on every known payload of a `<message/>`.
 pub trait MessagePayload: TryFrom<Element> + Into<Element> {}
@@ -34,8 +41,6 @@ generate_attribute!(
     }, Default = Normal
 );
 
-type Lang = String;
-
 generate_id!(
     /// Id field in a [`Message`], if any.
     ///
@@ -44,59 +49,145 @@ generate_id!(
     Id
 );
 
-generate_elem_id!(
-    /// Represents one `<body/>` element, that is the free form text content of
-    /// a message.
-    Body,
-    "body",
-    DEFAULT_NS
-);
+/// Wrapper type to represent an optional `xml:lang` attribute.
+///
+/// This is necessary because we do not want to emit empty `xml:lang`
+/// attributes.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct Lang(pub String);
 
-generate_elem_id!(
-    /// Defines the subject of a room, or of an email-like normal message.
-    Subject,
-    "subject",
-    DEFAULT_NS
-);
+impl Deref for Lang {
+    type Target = String;
 
-generate_elem_id!(
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Lang {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl fmt::Display for Lang {
+    fn fmt<'f>(&self, f: &'f mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl FromXmlText for Lang {
+    fn from_xml_text(s: String) -> Result<Self, Error> {
+        Ok(Self(s))
+    }
+}
+
+impl AsOptionalXmlText for Lang {
+    fn as_optional_xml_text(&self) -> Result<Option<Cow<'_, str>>, Error> {
+        if self.0.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(Cow::Borrowed(&self.0)))
+        }
+    }
+}
+
+impl Borrow<str> for Lang {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for Lang {
+    fn from(other: String) -> Self {
+        Self(other)
+    }
+}
+
+impl From<&str> for Lang {
+    fn from(other: &str) -> Self {
+        Self(other.to_owned())
+    }
+}
+
+impl PartialEq<str> for Lang {
+    fn eq(&self, rhs: &str) -> bool {
+        self.0 == rhs
+    }
+}
+
+impl PartialEq<&str> for Lang {
+    fn eq(&self, rhs: &&str) -> bool {
+        self.0 == *rhs
+    }
+}
+
+impl Lang {
+    /// Create a new, empty `Lang`.
+    pub fn new() -> Self {
+        Self(String::new())
+    }
+}
+
+/// Threading meta-information.
+#[derive(FromXml, AsXml, Debug, Clone, PartialEq)]
+#[xml(namespace = ns::DEFAULT_NS, name = "thread")]
+pub struct Thread {
+    /// The parent of the thread, when creating a subthread.
+    #[xml(attribute(default))]
+    pub parent: Option<String>,
+
     /// A thread identifier, so that other people can specify to which message
     /// they are replying.
-    Thread,
-    "thread",
-    DEFAULT_NS
-);
+    #[xml(text)]
+    pub id: String,
+}
 
 /// The main structure representing the `<message/>` stanza.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(FromXml, AsXml, Debug, Clone, PartialEq)]
+#[xml(namespace = ns::DEFAULT_NS, name = "message")]
 pub struct Message {
     /// The JID emitting this stanza.
+    #[xml(attribute(default))]
     pub from: Option<Jid>,
 
     /// The recipient of this stanza.
+    #[xml(attribute(default))]
     pub to: Option<Jid>,
 
     /// The @id attribute of this stanza, which is required in order to match a
     /// request with its response.
+    #[xml(attribute(default))]
     pub id: Option<Id>,
 
     /// The type of this message.
+    #[xml(attribute(name = "type", default))]
     pub type_: MessageType,
 
     /// A list of bodies, sorted per language.  Use
     /// [get_best_body()](#method.get_best_body) to access them on reception.
-    pub bodies: BTreeMap<Lang, Body>,
+    #[xml(extract(n = .., name = "body", fields(
+        attribute(name = "xml:lang", type_ = Lang, default),
+        text(type_ = String),
+    )))]
+    pub bodies: BTreeMap<Lang, String>,
 
     /// A list of subjects, sorted per language.  Use
     /// [get_best_subject()](#method.get_best_subject) to access them on
     /// reception.
-    pub subjects: BTreeMap<Lang, Subject>,
+    #[xml(extract(n = .., name = "subject", fields(
+        attribute(name = "xml:lang", type_ = Lang, default),
+        text(type_ = String),
+    )))]
+    pub subjects: BTreeMap<Lang, String>,
 
     /// An optional thread identifier, so that other people can reply directly
     /// to this message.
+    #[xml(child(default))]
     pub thread: Option<Thread>,
 
     /// A list of the extension payloads contained in this stanza.
+    #[xml(element(n = ..))]
     pub payloads: Vec<Element>,
 }
 
@@ -157,7 +248,7 @@ impl Message {
 
     /// Appends a body in given lang to the Message
     pub fn with_body(mut self, lang: Lang, body: String) -> Message {
-        self.bodies.insert(lang, Body(body));
+        self.bodies.insert(lang, body);
         self
     }
 
@@ -209,13 +300,13 @@ impl Message {
     /// `Some(("fr", the_second_body))` will be returned.
     ///
     /// If no body matches, an undefined body will be returned.
-    pub fn get_best_body(&self, preferred_langs: Vec<&str>) -> Option<(Lang, &Body)> {
-        Message::get_best::<Body>(&self.bodies, preferred_langs)
+    pub fn get_best_body(&self, preferred_langs: Vec<&str>) -> Option<(Lang, &String)> {
+        Message::get_best::<String>(&self.bodies, preferred_langs)
     }
 
     /// Cloned variant of [`Message::get_best_body`]
-    pub fn get_best_body_cloned(&self, preferred_langs: Vec<&str>) -> Option<(Lang, Body)> {
-        Message::get_best_cloned::<Body>(&self.bodies, preferred_langs)
+    pub fn get_best_body_cloned(&self, preferred_langs: Vec<&str>) -> Option<(Lang, String)> {
+        Message::get_best_cloned::<String>(&self.bodies, preferred_langs)
     }
 
     /// Returns the best matching subject from a list of languages.
@@ -225,13 +316,13 @@ impl Message {
     /// languages, `Some(("fr", the_second_subject))` will be returned.
     ///
     /// If no subject matches, an undefined subject will be returned.
-    pub fn get_best_subject(&self, preferred_langs: Vec<&str>) -> Option<(Lang, &Subject)> {
-        Message::get_best::<Subject>(&self.subjects, preferred_langs)
+    pub fn get_best_subject(&self, preferred_langs: Vec<&str>) -> Option<(Lang, &String)> {
+        Message::get_best::<String>(&self.subjects, preferred_langs)
     }
 
     /// Cloned variant of [`Message::get_best_subject`]
-    pub fn get_best_subject_cloned(&self, preferred_langs: Vec<&str>) -> Option<(Lang, Subject)> {
-        Message::get_best_cloned::<Subject>(&self.subjects, preferred_langs)
+    pub fn get_best_subject_cloned(&self, preferred_langs: Vec<&str>) -> Option<(Lang, String)> {
+        Message::get_best_cloned::<String>(&self.subjects, preferred_langs)
     }
 
     /// Try to extract the given payload type from the message's payloads.
@@ -287,141 +378,24 @@ impl Message {
     }
 }
 
-impl TryFrom<Element> for Message {
-    type Error = FromElementError;
-
-    fn try_from(root: Element) -> Result<Message, FromElementError> {
-        check_self!(root, "message", DEFAULT_NS);
-        let from = get_attr!(root, "from", Option);
-        let to = get_attr!(root, "to", Option);
-        let id = get_attr!(root, "id", Option);
-        let type_ = get_attr!(root, "type", Default);
-        let mut bodies = BTreeMap::new();
-        let mut subjects = BTreeMap::new();
-        let mut thread = None;
-        let mut payloads = vec![];
-        for elem in root.children() {
-            if elem.is("body", ns::DEFAULT_NS) {
-                check_no_children!(elem, "body");
-                let lang = get_attr!(elem, "xml:lang", Default);
-                let body = Body(elem.text());
-                if bodies.insert(lang, body).is_some() {
-                    return Err(
-                        Error::Other("Body element present twice for the same xml:lang.").into(),
-                    );
-                }
-            } else if elem.is("subject", ns::DEFAULT_NS) {
-                check_no_children!(elem, "subject");
-                let lang = get_attr!(elem, "xml:lang", Default);
-                let subject = Subject(elem.text());
-                if subjects.insert(lang, subject).is_some() {
-                    return Err(Error::Other(
-                        "Subject element present twice for the same xml:lang.",
-                    )
-                    .into());
-                }
-            } else if elem.is("thread", ns::DEFAULT_NS) {
-                if thread.is_some() {
-                    return Err(Error::Other("Thread element present twice.").into());
-                }
-                check_no_children!(elem, "thread");
-                thread = Some(Thread(elem.text()));
-            } else {
-                payloads.push(elem.clone())
-            }
-        }
-        Ok(Message {
-            from,
-            to,
-            id,
-            type_,
-            bodies,
-            subjects,
-            thread,
-            payloads,
-        })
-    }
-}
-
-impl From<Message> for Element {
-    fn from(message: Message) -> Element {
-        Element::builder("message", ns::DEFAULT_NS)
-            .attr("from", message.from)
-            .attr("to", message.to)
-            .attr("id", message.id)
-            .attr("type", message.type_)
-            .append_all(message.subjects.into_iter().map(|(lang, subject)| {
-                let mut subject = Element::from(subject);
-                subject.set_attr(
-                    "xml:lang",
-                    match lang.as_ref() {
-                        "" => None,
-                        lang => Some(lang),
-                    },
-                );
-                subject
-            }))
-            .append_all(message.bodies.into_iter().map(|(lang, body)| {
-                let mut body = Element::from(body);
-                body.set_attr(
-                    "xml:lang",
-                    match lang.as_ref() {
-                        "" => None,
-                        lang => Some(lang),
-                    },
-                );
-                body
-            }))
-            .append_all(message.payloads)
-            .build()
-    }
-}
-
-impl ::xso::FromXml for Message {
-    type Builder = ::xso::minidom_compat::FromEventsViaElement<Message>;
-
-    fn from_events(
-        qname: ::xso::exports::rxml::QName,
-        attrs: ::xso::exports::rxml::AttrMap,
-    ) -> Result<Self::Builder, ::xso::error::FromEventsError> {
-        if qname.0 != crate::ns::DEFAULT_NS || qname.1 != "message" {
-            return Err(::xso::error::FromEventsError::Mismatch { name: qname, attrs });
-        }
-        Self::Builder::new(qname, attrs)
-    }
-}
-
-impl ::xso::AsXml for Message {
-    type ItemIter<'x> = ::xso::minidom_compat::AsItemsViaElement<'x>;
-
-    fn as_xml_iter(&self) -> Result<Self::ItemIter<'_>, ::xso::error::Error> {
-        ::xso::minidom_compat::AsItemsViaElement::new(self.clone())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::str::FromStr;
 
     #[cfg(target_pointer_width = "32")]
     #[test]
     fn test_size() {
         assert_size!(MessageType, 1);
-        assert_size!(Body, 12);
-        assert_size!(Subject, 12);
-        assert_size!(Thread, 12);
-        assert_size!(Message, 96);
+        assert_size!(Thread, 24);
+        assert_size!(Message, 108);
     }
 
     #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_size() {
         assert_size!(MessageType, 1);
-        assert_size!(Body, 24);
-        assert_size!(Subject, 24);
-        assert_size!(Thread, 24);
-        assert_size!(Message, 192);
+        assert_size!(Thread, 48);
+        assert_size!(Message, 216);
     }
 
     #[test]
@@ -462,12 +436,12 @@ mod tests {
         let elem: Element = "<message xmlns='jabber:component:accept' to='coucou@example.org' type='chat'><body>Hello world!</body></message>".parse().unwrap();
         let elem1 = elem.clone();
         let message = Message::try_from(elem).unwrap();
-        assert_eq!(message.bodies[""], Body::from_str("Hello world!").unwrap());
+        assert_eq!(message.bodies[""], "Hello world!");
 
         {
             let (lang, body) = message.get_best_body(vec!["en"]).unwrap();
             assert_eq!(lang, "");
-            assert_eq!(body, &Body::from_str("Hello world!").unwrap());
+            assert_eq!(body, &"Hello world!");
         }
 
         let elem2 = message.into();
@@ -483,7 +457,7 @@ mod tests {
         let mut message = Message::new(Jid::new("coucou@example.org").unwrap());
         message
             .bodies
-            .insert(String::from(""), Body::from_str("Hello world!").unwrap());
+            .insert(Lang::from(""), "Hello world!".to_owned());
         let elem2 = message.into();
         assert_eq!(elem, elem2);
     }
@@ -496,22 +470,19 @@ mod tests {
         let elem: Element = "<message xmlns='jabber:component:accept' to='coucou@example.org' type='chat'><subject>Hello world!</subject></message>".parse().unwrap();
         let elem1 = elem.clone();
         let message = Message::try_from(elem).unwrap();
-        assert_eq!(
-            message.subjects[""],
-            Subject::from_str("Hello world!").unwrap()
-        );
+        assert_eq!(message.subjects[""], "Hello world!",);
 
         {
             let (lang, subject) = message.get_best_subject(vec!["en"]).unwrap();
             assert_eq!(lang, "");
-            assert_eq!(subject, &Subject::from_str("Hello world!").unwrap());
+            assert_eq!(subject, "Hello world!");
         }
 
         // Test cloned variant.
         {
             let (lang, subject) = message.get_best_subject_cloned(vec!["en"]).unwrap();
             assert_eq!(lang, "");
-            assert_eq!(subject, Subject::from_str("Hello world!").unwrap());
+            assert_eq!(subject, "Hello world!");
         }
 
         let elem2 = message.into();
@@ -530,35 +501,35 @@ mod tests {
         {
             let (lang, body) = message.get_best_body(vec!["fr"]).unwrap();
             assert_eq!(lang, "fr");
-            assert_eq!(body, &Body::from_str("Salut le monde !").unwrap());
+            assert_eq!(body, "Salut le monde !");
         }
 
         // Tests order.
         {
             let (lang, body) = message.get_best_body(vec!["en", "de"]).unwrap();
             assert_eq!(lang, "de");
-            assert_eq!(body, &Body::from_str("Hallo Welt!").unwrap());
+            assert_eq!(body, "Hallo Welt!");
         }
 
         // Tests fallback.
         {
             let (lang, body) = message.get_best_body(vec![]).unwrap();
             assert_eq!(lang, "");
-            assert_eq!(body, &Body::from_str("Hello world!").unwrap());
+            assert_eq!(body, "Hello world!");
         }
 
         // Tests fallback.
         {
             let (lang, body) = message.get_best_body(vec!["ja"]).unwrap();
             assert_eq!(lang, "");
-            assert_eq!(body, &Body::from_str("Hello world!").unwrap());
+            assert_eq!(body, "Hello world!");
         }
 
         // Test cloned variant.
         {
             let (lang, body) = message.get_best_body_cloned(vec!["ja"]).unwrap();
             assert_eq!(lang, "");
-            assert_eq!(body, Body::from_str("Hello world!").unwrap());
+            assert_eq!(body, "Hello world!");
         }
 
         let message = Message::new(None);

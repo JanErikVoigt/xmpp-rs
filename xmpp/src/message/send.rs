@@ -7,7 +7,7 @@
 use crate::{
     jid::{BareJid, Jid},
     minidom::Element,
-    parsers::message::{Body, Message, MessagePayload, MessageType},
+    parsers::message::{Message, MessagePayload, MessageType},
 };
 
 use crate::Agent;
@@ -66,7 +66,7 @@ pub async fn send_raw_message<'a>(agent: &mut Agent, settings: RawMessageSetting
     stanza.type_ = message_type;
     stanza
         .bodies
-        .insert(lang.unwrap_or("").to_string(), Body(String::from(message)));
+        .insert(lang.unwrap_or("").into(), String::from(message));
     agent.client.send_stanza(stanza.into()).await.unwrap();
 }
 

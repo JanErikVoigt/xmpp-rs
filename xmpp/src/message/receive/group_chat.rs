@@ -25,7 +25,7 @@ pub async fn handle_message_group_chat(
         events.push(Event::RoomSubject(
             from.to_bare(),
             from.resource().map(RoomNick::from_resource_ref),
-            subject.0.clone(),
+            subject.clone(),
             time_info.clone(),
         ));
         found_subject = true;

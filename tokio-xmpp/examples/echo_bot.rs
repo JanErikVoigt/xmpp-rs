@@ -4,7 +4,7 @@ use std::process::exit;
 use std::str::FromStr;
 use tokio_xmpp::Client;
 use xmpp_parsers::jid::{BareJid, Jid};
-use xmpp_parsers::message::{Body, Message, MessageType};
+use xmpp_parsers::message::{Lang, Message, MessageType};
 use xmpp_parsers::presence::{Presence, Show as PresenceShow, Type as PresenceType};
 
 #[tokio::main]
@@ -39,14 +39,14 @@ async fn main() {
             .and_then(|stanza| Message::try_from(stanza).ok())
         {
             match (message.from, message.bodies.get("")) {
-                (Some(ref from), Some(ref body)) if body.0 == "die" => {
+                (Some(ref from), Some(body)) if body == "die" => {
                     println!("Secret die command triggered by {}", from);
                     break;
                 }
-                (Some(ref from), Some(ref body)) => {
+                (Some(ref from), Some(body)) => {
                     if message.type_ != MessageType::Error {
                         // This is a message we'll echo
-                        let reply = make_reply(from.clone(), &body.0);
+                        let reply = make_reply(from.clone(), body.to_owned());
                         client.send_stanza(reply.into()).await.unwrap();
                     }
                 }
@@ -69,8 +69,8 @@ fn make_presence() -> Presence {
 }
 
 // Construct a chat <message/>
-fn make_reply(to: Jid, body: &str) -> Message {
+fn make_reply(to: Jid, body: String) -> Message {
     let mut message = Message::new(Some(to));
-    message.bodies.insert(String::new(), Body(body.to_owned()));
+    message.bodies.insert(Lang::default(), body);
     message
 }

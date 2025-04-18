@@ -150,7 +150,7 @@ mod tests {
     fn test_size() {
         assert_size!(QueryId, 12);
         assert_size!(Query, 108);
-        assert_size!(Result_, 164);
+        assert_size!(Result_, 176);
         assert_size!(Fin, 44);
         assert_size!(Start, 28);
         assert_size!(End, 28);
@@ -163,7 +163,7 @@ mod tests {
     fn test_size() {
         assert_size!(QueryId, 24);
         assert_size!(Query, 216);
-        assert_size!(Result_, 312);
+        assert_size!(Result_, 336);
         assert_size!(Fin, 88);
         assert_size!(Start, 40);
         assert_size!(End, 40);

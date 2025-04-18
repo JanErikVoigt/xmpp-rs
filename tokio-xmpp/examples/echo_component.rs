@@ -3,7 +3,7 @@ use std::env::args;
 use std::process::exit;
 use std::str::FromStr;
 use xmpp_parsers::jid::Jid;
-use xmpp_parsers::message::{Body, Message, MessageType};
+use xmpp_parsers::message::{Lang, Message, MessageType};
 use xmpp_parsers::presence::{Presence, Show as PresenceShow, Type as PresenceType};
 
 use tokio_xmpp::{connect::DnsConfig, Component};
@@ -52,7 +52,7 @@ async fn main() {
                 match (message.from, message.bodies.get("")) {
                     (Some(from), Some(body)) => {
                         if message.type_ != MessageType::Error {
-                            let reply = make_reply(from, &body.0);
+                            let reply = make_reply(from, &body);
                             component.send_stanza(reply.into()).await.unwrap();
                         }
                     }
@@ -80,6 +80,6 @@ fn make_presence(from: Jid, to: Jid) -> Presence {
 // Construct a chat <message/>
 fn make_reply(to: Jid, body: &str) -> Message {
     let mut message = Message::new(Some(to));
-    message.bodies.insert(String::new(), Body(body.to_owned()));
+    message.bodies.insert(Lang::default(), body.to_owned());
     message
 }
