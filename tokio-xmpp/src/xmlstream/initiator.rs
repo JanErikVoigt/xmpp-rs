@@ -55,9 +55,9 @@ impl<Io> PendingFeaturesRecv<Io> {
     /// The stream header contents as sent by the peer.
     pub fn header(&self) -> StreamHeader<'_> {
         StreamHeader {
-            from: self.header.from.as_ref().map(|x| Cow::Borrowed(&**x)),
-            to: self.header.to.as_ref().map(|x| Cow::Borrowed(&**x)),
-            id: self.header.id.as_ref().map(|x| Cow::Borrowed(&**x)),
+            from: self.header.from.as_deref().map(Cow::Borrowed),
+            to: self.header.to.as_deref().map(Cow::Borrowed),
+            id: self.header.id.as_deref().map(Cow::Borrowed),
         }
     }
 

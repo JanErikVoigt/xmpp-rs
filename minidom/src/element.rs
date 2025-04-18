@@ -399,7 +399,7 @@ impl Element {
     pub fn write_to_inner<W: io::Write>(&self, writer: &mut ItemWriter<W>) -> Result<()> {
         for (prefix, namespace) in self.prefixes.declared_prefixes() {
             assert!(writer.encoder.ns_tracker_mut().declare_fixed(
-                prefix.as_ref().map(|x| (&**x).try_into()).transpose()?,
+                prefix.as_deref().map(TryInto::try_into).transpose()?,
                 namespace.clone().into(),
             ));
         }
