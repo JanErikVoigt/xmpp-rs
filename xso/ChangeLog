@@ -49,6 +49,7 @@ Version NEXT:
       - Fixed bug where putting an attribute field below any non-attribute
         field in a struct definition would cause a compile-time error when
         deriving `AsXml`.
+      - Update rxml dependency to 0.13.
 
 Version 0.1.2:
 2024-07-26 Jonas Schäfer <jonas@zombofant.net>

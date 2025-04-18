@@ -398,7 +398,7 @@ mod tests {
                 },
             ),
             (
-                r#"<validate xmlns='http://jabber.org/protocol/xdata-validate' datatype="xs:string"><basic/><list-range max="3" min="1"/></validate>"#,
+                r#"<validate xmlns='http://jabber.org/protocol/xdata-validate' datatype='xs:string'><basic/><list-range max='3' min='1'/></validate>"#,
                 Validate {
                     datatype: Some(Datatype::String),
                     method: Some(Method::Basic),
@@ -409,7 +409,7 @@ mod tests {
                 },
             ),
             (
-                r#"<validate xmlns='http://jabber.org/protocol/xdata-validate' datatype="xs:string"><regex>([0-9]{3})-([0-9]{2})-([0-9]{4})</regex></validate>"#,
+                r#"<validate xmlns='http://jabber.org/protocol/xdata-validate' datatype='xs:string'><regex>([0-9]{3})-([0-9]{2})-([0-9]{4})</regex></validate>"#,
                 Validate {
                     datatype: Some(Datatype::String),
                     method: Some(Method::Regex(
@@ -419,7 +419,7 @@ mod tests {
                 },
             ),
             (
-                r#"<validate xmlns='http://jabber.org/protocol/xdata-validate' datatype="xs:dateTime"><range max="2003-10-24T23:59:59-07:00" min="2003-10-05T00:00:00-07:00"/></validate>"#,
+                r#"<validate xmlns='http://jabber.org/protocol/xdata-validate' datatype='xs:dateTime'><range max='2003-10-24T23:59:59-07:00' min='2003-10-05T00:00:00-07:00'/></validate>"#,
                 Validate {
                     datatype: Some(Datatype::DateTime),
                     method: Some(Method::Range {

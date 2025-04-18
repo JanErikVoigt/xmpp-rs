@@ -16,7 +16,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-const TEST_STRING: &'static [u8] = br#"<root xmlns='root_ns' a="b" xml:lang="en">meow<child c="d"/><child xmlns='child_ns' d="e" xml:lang="fr"/>nya</root>"#;
+const TEST_STRING: &'static [u8] = br#"<root xmlns='root_ns' a='b' xml:lang='en'>meow<child c='d'/><child xmlns='child_ns' d='e' xml:lang='fr'/>nya</root>"#;
 
 fn build_test_tree() -> Element {
     let mut root = Element::builder("root", "root_ns")
@@ -251,7 +251,7 @@ fn writer_escapes_attributes() {
     }
     assert_eq!(
         String::from_utf8(writer).unwrap(),
-        r#"<root xmlns='ns1' a="&#34;Air&#34; quotes"/>"#
+        r#"<root xmlns='ns1' a='&#34;Air&#34; quotes'/>"#
     );
 }
 
