@@ -396,7 +396,11 @@ impl Compound {
             }
         }
 
-        let mut discard_attr = TokenStream::default();
+        // We always implicitly discard the `xml:lang` attribute. Its
+        // processing is handled using the `#[xml(language)]` meta.
+        let mut discard_attr = quote! {
+            let _ = #attrs.remove(::xso::exports::rxml::Namespace::xml(), "lang");
+        };
         for (xml_namespace, xml_name) in self.discard_attr.iter() {
             let xml_namespace = match xml_namespace {
                 Some(v) => v.to_token_stream(),

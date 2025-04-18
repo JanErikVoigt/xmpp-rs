@@ -144,6 +144,23 @@ fn empty_unexpected_attribute() {
     feature = "disable-validation",
     should_panic = "unexpected result: Ok("
 )]
+fn empty_ignores_xml_lang() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<Empty>("<foo xmlns='urn:example:ns1' xml:lang='bar'/>") {
+        Ok(Empty) => (),
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+#[cfg_attr(
+    feature = "disable-validation",
+    should_panic = "unexpected result: Ok("
+)]
 fn empty_unexpected_child() {
     #[allow(unused_imports)]
     use core::{

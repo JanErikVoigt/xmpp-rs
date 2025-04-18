@@ -12,6 +12,11 @@ Version NEXT:
 
         This change overall allows for more flexibility in the implementation
         of text codecs.
+      - `xml:lang` attributes are now silently discarded during
+        deserialisation unless captured by `#[xml(attribute = "xml:lang")]` or
+        equivalent. This is because `xml:lang` is special as per
+        XML 1.0 § 2.12 and it is generally preferable to allow it to occur
+        anywhere in the document.
     * Added
       - Support for child elements in derive macros. Child elements may also
         be wrapped in Option or Box or in containers like Vec or HashSet.
