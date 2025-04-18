@@ -64,7 +64,7 @@ fn make_presence() -> Presence {
     presence.show = Some(PresenceShow::Chat);
     presence
         .statuses
-        .insert(String::from("en"), String::from("Echoing messages."));
+        .insert(Lang::from("en"), String::from("Echoing messages."));
     presence
 }
 

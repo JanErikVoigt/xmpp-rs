@@ -7,6 +7,7 @@
 
 use xso::{error::Error, AsOptionalXmlText, AsXml, AsXmlText, FromXml, FromXmlText};
 
+use crate::message::Lang;
 use crate::ns;
 use alloc::{borrow::Cow, collections::BTreeMap};
 use jid::Jid;
@@ -56,7 +57,6 @@ impl AsXmlText for Show {
     }
 }
 
-type Lang = String;
 type Status = String;
 
 /// Priority of this presence.  This value can go from -128 to 127, defaults to
@@ -139,7 +139,7 @@ impl AsOptionalXmlText for Type {
 
 /// The main structure representing the `<presence/>` stanza.
 #[derive(FromXml, AsXml, Debug, Clone, PartialEq)]
-#[xml(namespace = ns::DEFAULT_NS, name = "presence")]
+#[xml(namespace = ns::DEFAULT_NS, name = "presence", discard(attribute = "xml:lang"))]
 pub struct Presence {
     /// The sender of this presence.
     #[xml(attribute(default))]
@@ -157,18 +157,13 @@ pub struct Presence {
     #[xml(attribute(default, name = "type"))]
     pub type_: Type,
 
-    /// The xml:lang of this presence stanza.
-    // TODO: Remove that, it has no place here but helps parsing valid presences.
-    #[xml(attribute(default, name = "xml:lang"))]
-    pub lang: Option<Lang>,
-
     /// The availability of the sender of this presence.
     #[xml(extract(name = "show", default, fields(text(type_ = Show))))]
     pub show: Option<Show>,
 
     /// A localised list of statuses defined in this presence.
     #[xml(extract(n = .., name = "status", fields(
-        attribute(type_ = String, name = "xml:lang", default),
+        attribute(type_ = Lang, name = "xml:lang", default),
         text(type_ = String),
     )))]
     pub statuses: BTreeMap<Lang, Status>,
@@ -191,7 +186,6 @@ impl Presence {
             to: None,
             id: None,
             type_,
-            lang: None,
             show: None,
             statuses: BTreeMap::new(),
             priority: Priority(0i8),
@@ -305,7 +299,7 @@ mod tests {
     fn test_size() {
         assert_size!(Show, 1);
         assert_size!(Type, 1);
-        assert_size!(Presence, 84);
+        assert_size!(Presence, 72);
     }
 
     #[cfg(target_pointer_width = "64")]
@@ -313,7 +307,7 @@ mod tests {
     fn test_size() {
         assert_size!(Show, 1);
         assert_size!(Type, 1);
-        assert_size!(Presence, 168);
+        assert_size!(Presence, 144);
     }
 
     #[test]
@@ -588,7 +582,7 @@ mod tests {
     fn test_serialise_status() {
         let status = Status::from("Hello world!");
         let mut presence = Presence::new(Type::Unavailable);
-        presence.statuses.insert(String::from(""), status);
+        presence.statuses.insert(Lang::from(""), status);
         let elem: Element = presence.into();
         assert!(elem.is("presence", ns::DEFAULT_NS));
         assert!(elem.children().next().unwrap().is("status", ns::DEFAULT_NS));
