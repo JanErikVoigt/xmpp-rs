@@ -2436,3 +2436,39 @@ fn enum_deserialize_callback_can_fail() {
         other => panic!("unexpected result: {:?}", other),
     }
 }
+
+/// This struct failed to compile at some point, failing to find the
+/// (internally generated) identifier `fid`.
+#[derive(AsXml, FromXml, PartialEq, Debug, Clone)]
+#[xml(namespace = NS1, name = "thread")]
+struct TextVsAttributeOrderingCompileBug {
+    #[xml(text)]
+    id: String,
+
+    #[xml(attribute(default))]
+    parent: ::core::option::Option<String>,
+}
+
+#[test]
+fn text_vs_attribute_ordering_compile_bug_roundtrip() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<TextVsAttributeOrderingCompileBug>(
+        "<thread xmlns='urn:example:ns1'>foo</thread>",
+    );
+}
+
+#[test]
+fn text_vs_attribute_ordering_compile_bug_roundtrip_with_parent() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<TextVsAttributeOrderingCompileBug>(
+        "<thread xmlns='urn:example:ns1' parent='bar'>foo</thread>",
+    );
+}

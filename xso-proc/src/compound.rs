@@ -556,14 +556,15 @@ impl Compound {
         let name_ident = quote::format_ident!("name");
         let ns_ident = quote::format_ident!("ns");
         let dummy_ident = quote::format_ident!("dummy");
-        let mut states = Vec::new();
+        let mut header_states = Vec::new();
+        let mut body_states = Vec::new();
 
         let is_tuple = !input_name.is_path();
         let mut destructure = TokenStream::default();
         let mut start_init = TokenStream::default();
         let mut extra_defs = TokenStream::default();
 
-        states.push(
+        header_states.push(
             State::new(element_head_start_state_ident.clone())
                 .with_field(&dummy_ident, &phantom_lifetime_ty(lifetime.clone()))
                 .with_field(&ns_ident, &namespace_ty(Span::call_site()))
@@ -573,12 +574,12 @@ impl Compound {
                 ),
         );
 
-        let mut element_head_end_idx = states.len();
-        states.push(
+        body_states.push((
+            None,
             State::new(element_head_end_state_ident.clone()).with_impl(quote! {
                 ::core::option::Option::Some(::xso::Item::ElementHeadEnd)
             }),
-        );
+        ));
 
         for (i, field) in self.fields.iter().enumerate() {
             let member = field.member();
@@ -589,20 +590,23 @@ impl Compound {
 
             match part {
                 FieldIteratorPart::Header { generator } => {
-                    // we have to make sure that we carry our data around in
+                    // We have to make sure that we carry our data around in
                     // all the previous states.
-                    for state in &mut states[..element_head_end_idx] {
+                    // For header states, it is sufficient to do it here.
+                    // For body states, we have to do it in a separate loop
+                    // below to correctly handle the case when a field with a
+                    // body state is placed before a field with a header
+                    // state.
+                    for state in header_states.iter_mut() {
                         state.add_field(&bound_name, &ty);
                     }
-                    states.insert(
-                        element_head_end_idx,
+                    header_states.push(
                         State::new(state_name)
                             .with_field(&bound_name, &ty)
                             .with_impl(quote! {
                                 #generator
                             }),
                     );
-                    element_head_end_idx += 1;
 
                     if is_tuple {
                         destructure.extend(quote! {
@@ -619,20 +623,22 @@ impl Compound {
                 }
 
                 FieldIteratorPart::Text { generator } => {
-                    // we have to make sure that we carry our data around in
-                    // all the previous states.
-                    for state in states.iter_mut() {
+                    // We have to make sure that we carry our data around in
+                    // all the previous body states.
+                    // We also have to make sure that our data is carried
+                    // by all *header* states, but we can only do that once
+                    // we have visited them all, so that happens at the bottom
+                    // of the loop.
+                    for (_, state) in body_states.iter_mut() {
                         state.add_field(&bound_name, &ty);
                     }
-                    states.push(
-                        State::new(state_name)
-                            .with_field(&bound_name, &ty)
-                            .with_impl(quote! {
-                                #generator.map(|value| ::xso::Item::Text(
-                                    value,
-                                ))
-                            }),
-                    );
+                    let state = State::new(state_name)
+                        .with_field(&bound_name, &ty)
+                        .with_impl(quote! {
+                            #generator.map(|value| ::xso::Item::Text(
+                                value,
+                            ))
+                        });
                     if is_tuple {
                         destructure.extend(quote! {
                             #bound_name,
@@ -645,6 +651,7 @@ impl Compound {
                     start_init.extend(quote! {
                         #bound_name,
                     });
+                    body_states.push((Some((bound_name, ty)), state));
                 }
 
                 FieldIteratorPart::Content {
@@ -652,20 +659,22 @@ impl Compound {
                     value: FieldTempInit { ty, init },
                     generator,
                 } => {
-                    // we have to make sure that we carry our data around in
-                    // all the previous states.
-                    for state in states.iter_mut() {
+                    // We have to make sure that we carry our data around in
+                    // all the previous body states.
+                    // We also have to make sure that our data is carried
+                    // by all *header* states, but we can only do that once
+                    // we have visited them all, so that happens at the bottom
+                    // of the loop.
+                    for (_, state) in body_states.iter_mut() {
                         state.add_field(&bound_name, &ty);
                     }
 
-                    states.push(
-                        State::new(state_name.clone())
-                            .with_field(&bound_name, &ty)
-                            .with_mut(&bound_name)
-                            .with_impl(quote! {
-                                #generator?
-                            }),
-                    );
+                    let state = State::new(state_name.clone())
+                        .with_field(&bound_name, &ty)
+                        .with_mut(&bound_name)
+                        .with_impl(quote! {
+                            #generator?
+                        });
                     if is_tuple {
                         destructure.extend(quote! {
                             #bound_name,
@@ -680,11 +689,12 @@ impl Compound {
                     });
 
                     extra_defs.extend(field_extra_defs);
+                    body_states.push((Some((bound_name, ty)), state));
                 }
             }
         }
 
-        states[0].set_impl(quote! {
+        header_states[0].set_impl(quote! {
             {
                 ::core::option::Option::Some(::xso::Item::ElementHeadStart(
                     #ns_ident,
@@ -692,6 +702,17 @@ impl Compound {
                 ))
             }
         });
+
+        for (data, _) in body_states.iter() {
+            if let Some((bound_name, ty)) = data.as_ref() {
+                for state in header_states.iter_mut() {
+                    state.add_field(bound_name, ty);
+                }
+            }
+        }
+
+        header_states.extend(body_states.into_iter().map(|(_, state)| state));
+        let mut states = header_states;
 
         states.push(
             State::new(element_foot_state_ident.clone()).with_impl(quote! {
