@@ -7,6 +7,8 @@
 use alloc::sync::Arc;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+#[cfg(feature = "escape-hatch")]
+use tokio::io;
 use tokio::sync::RwLock;
 
 use crate::{
@@ -17,6 +19,8 @@ use crate::{
     upload, Error, Event, RoomNick,
 };
 use tokio_xmpp::Client as TokioXmppClient;
+#[cfg(feature = "escape-hatch")]
+use tokio_xmpp::{stanzastream::StanzaToken, Stanza};
 
 pub struct Agent {
     pub(crate) client: TokioXmppClient,
@@ -56,6 +60,11 @@ impl Agent {
 
     pub async fn disconnect(self) -> Result<(), Error> {
         self.client.send_end().await
+    }
+
+    #[cfg(feature = "escape-hatch")]
+    pub async fn send_stanza<S: Into<Stanza>>(&mut self, st: S) -> Result<StanzaToken, io::Error> {
+        self.client.send_stanza(st.into()).await
     }
 
     pub async fn join_room<'a>(&mut self, settings: muc::room::JoinRoomSettings<'a>) {

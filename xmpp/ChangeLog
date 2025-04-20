@@ -24,6 +24,9 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
       - Agent::new helper method.
       - Handle SIGINT, SIGTERM and SIGKILL in hello_bot example to avoid leaving
         hibernating resources around.
+      - New 'escape-hatch' feature: Allow sending tokio_xmpp::Stanza directly
+        instead of having to go through xmpp-rs' API when it's lacking. This
+        is meant to stay behind a feature.
     * Fixes:
       - Use tokio::sync::RwLock not std::sync::RwLock (!432)
       - Agent::wait_for_events now return Vec<Event> and sets inner tokio_xmpp Client

@@ -35,6 +35,7 @@ default = ["avatars", "starttls-rust"]
 starttls-native = ["tokio-xmpp/starttls", "tokio-xmpp/tls-native", "reqwest/native-tls"]
 starttls-rust = ["tokio-xmpp/starttls", "tokio-xmpp/tls-rust", "reqwest/rustls-tls"]
 avatars = []
+escape-hatch = []
 syntax-highlighting = [ "tokio-xmpp/syntax-highlighting" ]
 # Enable serde support in jid crate
 serde = [ "tokio-xmpp/serde" ]
