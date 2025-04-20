@@ -64,7 +64,7 @@ pub async fn join_room<'a>(agent: &mut Agent, settings: JoinRoomSettings<'a>) {
         return;
     }
 
-    if !agent.rooms_joined.contains_key(&room) {
+    if agent.rooms_joined.contains_key(&room) {
         // We are already joined, cannot join
         warn!("Requesting to join room {room} which is already joined...");
         return;
