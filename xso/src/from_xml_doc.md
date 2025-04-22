@@ -323,6 +323,14 @@ field type on which the `extract` is declared.
 If `codec` is given, the given `codec` value must implement
 [`TextCodec<T>`][`TextCodec`] where `T` is the type of the field.
 
+If two (or more) `#[xml(attribute)]` metas match the same XML attribute,
+unspecified behavior occurs during serialisation: only one of the values will
+be in the output, but it is unspecified which of the two. (Due to indirections
+when refering to `static` items for attribute namespaces and names, it is not
+possible to check this at compile-time.) This behaviour also affects
+attribute fields which match the special `xml:lang` attribute when used in
+conjuction with a `#[xml(lang)]` field.
+
 #### Example
 
 ```rust
