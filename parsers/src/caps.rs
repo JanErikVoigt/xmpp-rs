@@ -85,8 +85,8 @@ fn compute_features(features: &[Feature]) -> Vec<u8> {
 
 fn compute_identities(identities: &[Identity]) -> Vec<u8> {
     compute_items(identities, |identity| {
-        let lang = identity.lang.clone().unwrap_or_default();
-        let name = identity.name.clone().unwrap_or_default();
+        let lang = identity.lang.as_deref().unwrap_or_default();
+        let name = identity.name.as_deref().unwrap_or_default();
         let string = format!("{}/{}/{}/{}", identity.category, identity.type_, lang, name);
         let mut vec = string.as_bytes().to_vec();
         vec.push(b'<');
@@ -103,7 +103,7 @@ fn compute_extensions(extensions: &[DataForm]) -> Vec<u8> {
             vec![]
         };
         bytes.push(b'<');
-        for field in extension.fields.clone() {
+        for field in &extension.fields {
             if field.var.as_deref() == Some("FORM_TYPE") {
                 continue;
             }
