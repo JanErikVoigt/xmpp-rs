@@ -57,7 +57,7 @@ pub struct Identity {
     pub type_: String,
 
     /// Lang of the name of this identity.
-    #[xml(attribute(default, name = "xml:lang"))]
+    #[xml(lang(default))]
     pub lang: Option<String>,
 
     /// Name of this identity.

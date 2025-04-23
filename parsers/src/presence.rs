@@ -139,7 +139,7 @@ impl AsOptionalXmlText for Type {
 
 /// The main structure representing the `<presence/>` stanza.
 #[derive(FromXml, AsXml, Debug, Clone, PartialEq)]
-#[xml(namespace = ns::DEFAULT_NS, name = "presence", discard(attribute = "xml:lang"))]
+#[xml(namespace = ns::DEFAULT_NS, name = "presence")]
 pub struct Presence {
     /// The sender of this presence.
     #[xml(attribute(default))]

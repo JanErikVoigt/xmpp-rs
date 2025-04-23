@@ -32,7 +32,7 @@ pub struct Stream {
 
     /// The default human language for all subsequent stanzas, which will
     /// be transmitted to other entities for better localisation.
-    #[xml(attribute(default, name = "xml:lang"))]
+    #[xml(lang(default))]
     xml_lang: Option<String>,
 }
 
