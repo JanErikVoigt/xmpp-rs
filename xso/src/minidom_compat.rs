@@ -28,6 +28,8 @@ use crate::{
 };
 
 /// State machine for converting a minidom Element into rxml events.
+///
+/// See [`IntoEvents`] for when this is still used.
 enum IntoEventsInner {
     /// Element header: the element is still intact and we need to generate
     /// the [`rxml::Event::StartElement`] event from the namespace, name, and
@@ -144,9 +146,10 @@ impl IntoEventsInner {
 
 /// Convert a [`minidom::Element`] into [`rxml::Event`]s.
 ///
-/// This can be constructed from the
-/// [`IntoXml::into_event_iter`][`crate::IntoXml::into_event_iter`]
-/// implementation on [`minidom::Element`].
+/// This is a helper struct for [`FromEventsViaElement`]. We cannot use
+/// [`ElementAsXml`] there for lifetime reasons: The [`FromXml`] trait does
+/// not allow a lifetime parameter on the `Builder` type or passing arbitrary
+/// data into the builder.
 struct IntoEvents(IntoEventsInner);
 
 impl IntoEvents {
@@ -183,7 +186,7 @@ enum AsXmlState<'a> {
         /// Remaining child nodes (text and/or children) to emit.
         nodes: minidom::element::Nodes<'a>,
 
-        /// When emitting a child element, this is a nested [`IntoEvents`]
+        /// When emitting a child element, this is a nested [`ElementAsXml`]
         /// instance for that child element.
         nested: Option<Box<ElementAsXml<'a>>>,
     },
