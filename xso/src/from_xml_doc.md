@@ -279,7 +279,7 @@ first field which matches will be taken. The only exception is
 
 When XML is generated from a struct, the child elements are also generated
 in the order of the fields. That means that passing an XML element through
-FromXml and IntoXml may re-order some child elements.
+`FromXml` and `AsXml` may re-order some child elements.
 
 Sorting order between elements which match the same field is generally
 preserved, if the container preserves sort order on insertion.
@@ -316,7 +316,7 @@ is generated using [`core::default::Default`], requiring the field type to
 implement the `Default` trait for a `FromXml` derivation. `default` has no
 influence on `AsXml`.
 
-If `type_` is specified and the `text` meta is used within an
+If `type_` is specified and the `attribute` meta is used within an
 `#[xml(extract(fields(..)))]` meta, the specified type is used instead of the
 field type on which the `extract` is declared.
 
