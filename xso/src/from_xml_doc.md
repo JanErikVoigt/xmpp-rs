@@ -323,14 +323,6 @@ field type on which the `extract` is declared.
 If `codec` is given, the given `codec` value must implement
 [`TextCodec<T>`][`TextCodec`] where `T` is the type of the field.
 
-If two (or more) `#[xml(attribute)]` metas match the same XML attribute,
-unspecified behavior occurs during serialisation: only one of the values will
-be in the output, but it is unspecified which of the two. (Due to indirections
-when refering to `static` items for attribute namespaces and names, it is not
-possible to check this at compile-time.) This behaviour also affects
-attribute fields which match the special `xml:lang` attribute when used in
-conjuction with a `#[xml(lang)]` field.
-
 #### Example
 
 ```rust
@@ -363,6 +355,37 @@ assert_eq!(foo, Foo {
     d: "4".to_string(),
     e: "5".to_string(),
 });
+```
+
+Note that it is not possible to have two `#[xml(attribute)]` fields which
+match the same XML attribute:
+
+```compile_fail
+# use xso::FromXml;
+#[derive(FromXml)]
+#[xml(namespace = "urn:example", name = "dup")]
+struct Dup {
+    #[xml(attribute)]
+    a: String,
+
+    #[xml(attribute = "a")]
+    b: String,
+}
+```
+
+```compile_fail
+# use xso::FromXml;
+static A: &str = "a";
+
+#[derive(FromXml)]
+#[xml(namespace = "urn:example", name = "dup")]
+struct Dup {
+    #[xml(attribute)]
+    a: String,
+
+    #[xml(attribute = A)]
+    b: String,
+}
 ```
 
 ### `child` meta
@@ -666,14 +689,6 @@ The `lang` meta allows to access the (potentially inherited) logical
 This meta supports no arguments and can only be used on fields of type
 `Option<String>`.
 
-This meta should not be used alongsite `#[xml(attribute)]` meta which match
-the `xml:lang` attribute. Doing so causes unspecified behavior during
-serialisation: only one of the values will be in the output, but it is
-unspecified which of the two. This is the same as when having two
-`#[xml(attribute)]` field which match the same attribute. (Due to indirections
-when refering to `static` items for attribute namespaces and names, it is not
-possible to check this at compile-time.)
-
 Unlike `#[xml(attribute = "xml:lang")]`, the `#[xml(lang)]` meta takes
 inheritance into account.
 
@@ -713,6 +728,23 @@ assert_eq!(foo, Foo {
         lang: Some("de".to_owned()),
     },
 });
+```
+
+Note that it is not possible to use `#[xml(lang)]` and an `#[xml(attribute)]`
+which also matches `xml:lang` in the same struct:
+
+```compile_fail
+# use xso::FromXml;
+# use xso::exports::rxml::XMLNS_XML;
+#[derive(FromXml)]
+#[xml(namespace = "urn:example", name = "dup")]
+struct Dup {
+    #[xml(attribute(namespace = XMLNS_XML, name = "lang"))]
+    a: String,
+
+    #[xml(lang)]
+    b: Option<String>,
+}
 ```
 
 ### `text` meta

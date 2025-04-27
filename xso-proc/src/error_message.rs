@@ -96,6 +96,24 @@ impl ParentRef {
     }
 }
 
+/// Wrapper around `Path` with a more human-readable, collapsed version of
+/// `Path`.
+pub(crate) struct PrettyPath<'x>(pub &'x Path);
+
+impl fmt::Display for PrettyPath<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut first = self.0.leading_colon.is_none();
+        for segment in self.0.segments.iter() {
+            if !first {
+                f.write_str("::")?;
+            }
+            write!(f, "{}", segment.ident)?;
+            first = false;
+        }
+        Ok(())
+    }
+}
+
 /// Ephemeral struct to create a nice human-readable representation of
 /// [`syn::Member`].
 ///

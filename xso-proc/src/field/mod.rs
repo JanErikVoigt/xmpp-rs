@@ -229,6 +229,11 @@ trait Field {
     fn captures_text(&self) -> bool {
         false
     }
+
+    /// Return a QNameRef if the field captures an attribute.
+    fn captures_attribute(&self) -> Option<QNameRef> {
+        None
+    }
 }
 
 fn default_name(span: Span, name: Option<NameRef>, field_ident: Option<&Ident>) -> Result<NameRef> {
@@ -571,7 +576,12 @@ impl FieldDef {
         self.inner.captures_text()
     }
 
-    /// Return a span which points at the field's definition.'
+    /// Return a QNameRef if the field captures an attribute.
+    pub(crate) fn captures_attribute(&self) -> Option<QNameRef> {
+        self.inner.captures_attribute()
+    }
+
+    /// Return a span which points at the field's definition.
     pub(crate) fn span(&self) -> Span {
         self.span
     }

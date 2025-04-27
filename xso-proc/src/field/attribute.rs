@@ -12,7 +12,7 @@ use quote::{quote, ToTokens};
 use syn::*;
 
 use crate::error_message::{self, ParentRef};
-use crate::meta::{Flag, NameRef, NamespaceRef};
+use crate::meta::{Flag, NameRef, NamespaceRef, QNameRef};
 use crate::scope::{AsItemsScope, FromEventsScope};
 use crate::types::{
     as_optional_xml_text_fn, default_fn, from_xml_text_fn, text_codec_decode_fn,
@@ -132,6 +132,13 @@ impl Field for AttributeField {
                     #bound_name,
                 ));
             },
+        })
+    }
+
+    fn captures_attribute(&self) -> Option<QNameRef> {
+        Some(QNameRef {
+            namespace: self.xml_namespace.clone(),
+            name: Some(self.xml_name.clone()),
         })
     }
 }

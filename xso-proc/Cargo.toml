@@ -10,6 +10,8 @@ repository = "https://gitlab.com/xmpp-rs/xmpp-rs"
 keywords = ["xso", "derive", "serialization"]
 license = "MPL-2.0"
 edition = "2021"
+# we need const_refs_to_static, stabilized with 1.83
+rust-version = "1.83"
 
 [lib]
 proc-macro = true

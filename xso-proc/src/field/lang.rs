@@ -13,6 +13,7 @@ use quote::quote;
 use syn::*;
 
 use crate::error_message::ParentRef;
+use crate::meta::{NameRef, NamespaceRef, QNameRef, XMLNS_XML};
 use crate::scope::{AsItemsScope, FromEventsScope};
 use crate::types::{as_optional_xml_text_fn, option_ty, string_ty};
 
@@ -67,6 +68,16 @@ impl Field for LangField {
                     )
                 )
             },
+        })
+    }
+
+    fn captures_attribute(&self) -> Option<QNameRef> {
+        Some(QNameRef {
+            namespace: Some(NamespaceRef::fudge(XMLNS_XML, Span::call_site())),
+            name: Some(NameRef::fudge(
+                rxml_validation::NcName::try_from("lang").unwrap(),
+                Span::call_site(),
+            )),
         })
     }
 }

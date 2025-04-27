@@ -7,10 +7,12 @@
 //! Handling of the insides of compound structures (structs and enum variants)
 
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{spanned::Spanned, *};
 
-use crate::error_message::ParentRef;
+use std::collections::{hash_map::Entry, HashMap};
+
+use crate::error_message::{FieldName, ParentRef};
 use crate::field::{FieldBuilderPart, FieldDef, FieldIteratorPart, FieldTempInit, NestedMatcher};
 use crate::meta::{DiscardSpec, Flag, NameRef, NamespaceRef, QNameRef};
 use crate::scope::{mangle_member, AsItemsScope, FromEventsScope};
@@ -61,6 +63,12 @@ pub(crate) struct Compound {
 
     /// Text to discard.
     discard_text: Flag,
+
+    /// Attribute qualified names which are selected by fields.
+    ///
+    /// This is used to generate code which asserts, at compile time, that no
+    /// two fields select the same XML attribute.
+    selected_attributes: Vec<(QNameRef, Member)>,
 }
 
 impl Compound {
@@ -83,6 +91,7 @@ impl Compound {
         let size_hint = compound_fields.size_hint();
         let mut fields = Vec::with_capacity(size_hint.1.unwrap_or(size_hint.0));
         let mut text_field = None;
+        let mut selected_attributes: HashMap<QNameRef, Member> = HashMap::new();
         for field in compound_fields {
             let field = field?;
 
@@ -99,6 +108,26 @@ impl Compound {
                     return Err(err);
                 }
                 text_field = Some(field.member().span())
+            }
+
+            if let Some(qname) = field.captures_attribute() {
+                let span = field.span();
+                match selected_attributes.entry(qname) {
+                    Entry::Occupied(o) => {
+                        let mut err = Error::new(
+                            span,
+                            "this field XML field matches the same attribute as another field",
+                        );
+                        err.combine(Error::new(
+                            o.get().span(),
+                            "the other field matching the same attribute is here",
+                        ));
+                        return Err(err);
+                    }
+                    Entry::Vacant(v) => {
+                        v.insert(field.member().clone());
+                    }
+                }
             }
 
             fields.push(field);
@@ -157,6 +186,7 @@ impl Compound {
             unknown_child_policy,
             discard_attr,
             discard_text,
+            selected_attributes: selected_attributes.into_iter().collect(),
         })
     }
 
@@ -187,6 +217,82 @@ impl Compound {
             unknown_child_policy,
             discard,
         )
+    }
+
+    /// Generate code which, at compile time, asserts that all attributes
+    /// which are selected by this compound are disjunct.
+    ///
+    /// NOTE: this needs rustc 1.83 or newer for `const_refs_to_static`.
+    fn assert_disjunct_attributes(&self) -> TokenStream {
+        let mut checks = TokenStream::default();
+
+        // Comparison is commutative, so we *could* reduce this to n^2/2
+        // comparisons instead of n*(n-1). However, by comparing every field
+        // with every other field and emitting check code for that, we can
+        // point at both fields in the error messages.
+        for (i, (qname_a, member_a)) in self.selected_attributes.iter().enumerate() {
+            for (j, (qname_b, member_b)) in self.selected_attributes.iter().enumerate() {
+                if i == j {
+                    continue;
+                }
+                // Flip a and b around if a is later than b.
+                // This way, the error message is the same for both
+                // conflicting fields. Note that we always take the span of
+                // `a` though, so that the two errors point at different
+                // fields.
+                let span = member_a.span();
+                let (member_a, member_b) = if i > j {
+                    (member_b, member_a)
+                } else {
+                    (member_a, member_b)
+                };
+                if qname_a.namespace.is_some() != qname_b.namespace.is_some() {
+                    // cannot ever match.
+                    continue;
+                }
+                let Some((name_a, name_b)) = qname_a.name.as_ref().zip(qname_b.name.as_ref())
+                else {
+                    panic!("selected attribute has no XML local name");
+                };
+
+                let mut check = quote! {
+                    ::xso::exports::const_str_eq(#name_a.as_str(), #name_b.as_str())
+                };
+
+                let namespaces = qname_a.namespace.as_ref().zip(qname_b.namespace.as_ref());
+                if let Some((ns_a, ns_b)) = namespaces {
+                    check.extend(quote! {
+                        && ::xso::exports::const_str_eq(#ns_a, #ns_b)
+                    });
+                };
+
+                let attr_a = if let Some(namespace_a) = qname_a.namespace.as_ref() {
+                    format!("{{{}}}{}", namespace_a, name_a)
+                } else {
+                    format!("{}", name_a)
+                };
+
+                let attr_b = if let Some(namespace_b) = qname_b.namespace.as_ref() {
+                    format!("{{{}}}{}", namespace_b, name_b)
+                } else {
+                    format!("{}", name_b)
+                };
+
+                let field_a = FieldName(&member_a).to_string();
+                let field_b = FieldName(&member_b).to_string();
+
+                // By assigning the checks to a `const`, we ensure that they
+                // are in fact evaluated at compile time, even if that constant
+                // is never used.
+                checks.extend(quote_spanned! {span=>
+                    const _: () = { if #check {
+                        panic!("member {} and member {} match the same XML attribute: {} == {}", #field_a, #field_b, #attr_a, #attr_b);
+                    } };
+                })
+            }
+        }
+
+        checks
     }
 
     /// Make and return a set of states which is used to construct the target
@@ -513,9 +619,12 @@ impl Compound {
 
         let unknown_attribute_policy = &self.unknown_attribute_policy;
 
+        let checks = self.assert_disjunct_attributes();
+
         Ok(FromEventsSubmachine {
             defs: quote! {
                 #extra_defs
+                #checks
 
                 struct #builder_data_ty {
                     #builder_data_def
@@ -732,6 +841,9 @@ impl Compound {
                 ( #destructure )
             },
         };
+
+        let checks = self.assert_disjunct_attributes();
+        extra_defs.extend(checks);
 
         Ok(AsItemsSubmachine {
             defs: extra_defs,

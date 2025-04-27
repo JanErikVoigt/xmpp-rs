@@ -72,6 +72,29 @@ pub mod exports {
     /// This is re-exported for use by macros in cases where we cannot rely on
     /// people not having done `type u8 = str` or some similar shenanigans.
     pub type CoreU8 = u8;
+
+    /// Compile-time comparison of two strings.
+    ///
+    /// Used by macro-generated code.
+    ///
+    /// This is necessary because `<str as PartialEq>::eq` is not `const`.
+    pub const fn const_str_eq(a: &'static str, b: &'static str) -> bool {
+        let a = a.as_bytes();
+        let b = b.as_bytes();
+        if a.len() != b.len() {
+            return false;
+        }
+
+        let mut i = 0;
+        while i < a.len() {
+            if a[i] != b[i] {
+                return false;
+            }
+            i += 1;
+        }
+
+        true
+    }
 }
 
 use alloc::{

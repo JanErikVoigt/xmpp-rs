@@ -9,6 +9,7 @@
 //! This module is concerned with parsing attributes from the Rust "meta"
 //! annotations on structs, enums, enum variants and fields.
 
+use core::fmt;
 use core::hash::{Hash, Hasher};
 
 use proc_macro2::{Span, TokenStream};
@@ -16,6 +17,8 @@ use quote::{quote, quote_spanned};
 use syn::{meta::ParseNestedMeta, spanned::Spanned, *};
 
 use rxml_validation::NcName;
+
+use crate::error_message::PrettyPath;
 
 /// XML core namespace URI (for the `xml:` prefix)
 pub const XMLNS_XML: &str = "http://www.w3.org/XML/1998/namespace";
@@ -84,7 +87,7 @@ macro_rules! reject_key {
 pub(crate) use reject_key;
 
 /// Value for the `#[xml(namespace = ..)]` attribute.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum NamespaceRef {
     /// The XML namespace is specified as a string literal.
     LitStr(LitStr),
@@ -94,8 +97,17 @@ pub(crate) enum NamespaceRef {
 }
 
 impl NamespaceRef {
-    fn fudge(value: &str, span: Span) -> Self {
+    pub(crate) fn fudge(value: &str, span: Span) -> Self {
         Self::LitStr(LitStr::new(value, span))
+    }
+}
+
+impl fmt::Display for NamespaceRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::LitStr(s) => write!(f, "{}", s.value()),
+            Self::Path(ref p) => write!(f, "<{}>", PrettyPath(p)),
+        }
     }
 }
 
@@ -132,6 +144,21 @@ pub(crate) enum NameRef {
 
     /// The XML name is specified as a path.
     Path(Path),
+}
+
+impl NameRef {
+    pub(crate) fn fudge(value: NcName, span: Span) -> Self {
+        Self::Literal { value, span }
+    }
+}
+
+impl fmt::Display for NameRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Literal { value, .. } => write!(f, "{}", value.as_str()),
+            Self::Path(ref p) => write!(f, "<{}>", PrettyPath(p)),
+        }
+    }
 }
 
 impl Hash for NameRef {
@@ -291,7 +318,7 @@ impl<T: Spanned> From<T> for Flag {
 }
 
 /// A pair of `namespace` and `name` keys.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq, Hash)]
 pub(crate) struct QNameRef {
     /// The XML namespace supplied.
     pub(crate) namespace: Option<NamespaceRef>,
