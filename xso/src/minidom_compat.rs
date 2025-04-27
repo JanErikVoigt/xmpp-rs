@@ -454,6 +454,11 @@ where
 
 /// Helper struct to stream a struct which implements conversion
 /// to [`minidom::Element`].
+// NOTE to developers: The 'x lifetime looks unnecessary, but in fact we need
+// it because of the `AsXml` signature. It requires the iterator type to have
+// a lifetime parameter which matches the Item's lifetimes. Even though it
+// would strictly be valid to return something with 'static lifetime when any
+// other lifetime 'a is required, rustc doesn't let us do that.
 pub struct AsItemsViaElement<'x> {
     iter: EventToItem<IntoEvents>,
     lifetime_binding: PhantomData<Item<'x>>,
