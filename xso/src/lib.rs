@@ -551,56 +551,55 @@ pub fn try_from_element<T: FromXml>(
     unreachable!("minidom::Element did not produce enough events to complete element")
 }
 
-#[cfg(feature = "std")]
-fn map_nonio_error<T>(r: Result<T, io::Error>) -> Result<T, self::error::Error> {
-    match r {
-        Ok(v) => Ok(v),
-        Err(e) => match e.downcast::<rxml::Error>() {
-            Ok(e) => Err(e.into()),
-            Err(_) => unreachable!("I/O error cannot be caused by &[]"),
-        },
-    }
-}
+/// Attempt to parse a type implementing [`FromXml`] from a byte buffer
+/// containing XML data.
+pub fn from_bytes<T: FromXml>(mut buf: &[u8]) -> Result<T, self::error::Error> {
+    use rxml::{error::EndOrError, Parse};
 
-#[cfg(feature = "std")]
-fn read_start_event(
-    r: &mut impl Iterator<Item = io::Result<rxml::Event>>,
-) -> Result<(rxml::QName, rxml::AttrMap), self::error::Error> {
-    for ev in r {
-        match map_nonio_error(ev)? {
-            rxml::Event::XmlDeclaration(_, rxml::XmlVersion::V1_0) => (),
-            rxml::Event::StartElement(_, name, attrs) => return Ok((name, attrs)),
-            _ => {
+    let mut languages = rxml::xml_lang::XmlLangStack::new();
+    let mut parser = rxml::Parser::new();
+    let (name, attrs) = loop {
+        match parser.parse(&mut buf, true) {
+            Ok(Some(rxml::Event::XmlDeclaration(_, rxml::XmlVersion::V1_0))) => (),
+            Ok(Some(rxml::Event::StartElement(_, name, attrs))) => break (name, attrs),
+            Err(EndOrError::Error(e)) => return Err(self::error::Error::XmlError(e)),
+            Ok(None) | Err(EndOrError::NeedMoreData) => {
+                return Err(self::error::Error::XmlError(rxml::Error::InvalidEof(Some(
+                    rxml::error::ErrorContext::DocumentBegin,
+                ))))
+            }
+            Ok(Some(_)) => {
                 return Err(self::error::Error::Other(
                     "Unexpected event at start of document",
                 ))
             }
         }
-    }
-    Err(self::error::Error::XmlError(rxml::Error::InvalidEof(Some(
-        rxml::error::ErrorContext::DocumentBegin,
-    ))))
-}
-
-/// Attempt to parse a type implementing [`FromXml`] from a byte buffer
-/// containing XML data.
-#[cfg(feature = "std")]
-pub fn from_bytes<T: FromXml>(mut buf: &[u8]) -> Result<T, self::error::Error> {
-    let mut reader = rxml::XmlLangTracker::wrap(rxml::Reader::new(&mut buf));
-    let (name, attrs) = read_start_event(&mut reader)?;
-    let mut builder = match T::from_events(name, attrs, &Context::new(reader.language())) {
+    };
+    languages.push_from_attrs(&attrs);
+    let mut builder = match T::from_events(name, attrs, &Context::new(languages.current())) {
         Ok(v) => v,
         Err(self::error::FromEventsError::Mismatch { .. }) => {
-            return Err(self::error::Error::TypeMismatch)
+            return Err(self::error::Error::TypeMismatch);
         }
-        Err(self::error::FromEventsError::Invalid(e)) => return Err(e),
+        Err(self::error::FromEventsError::Invalid(e)) => {
+            return Err(e);
+        }
     };
-    while let Some(ev) = reader.next() {
-        if let Some(v) = builder.feed(map_nonio_error(ev)?, &Context::new(reader.language()))? {
-            return Ok(v);
+
+    loop {
+        match parser.parse(&mut buf, true) {
+            Ok(Some(ev)) => {
+                languages.handle_event(&ev);
+                if let Some(v) = builder.feed(ev, &Context::new(languages.current()))? {
+                    return Ok(v);
+                }
+            }
+            Err(EndOrError::Error(e)) => return Err(self::error::Error::XmlError(e)),
+            Ok(None) | Err(EndOrError::NeedMoreData) => {
+                return Err(self::error::Error::XmlError(rxml::Error::InvalidEof(None)))
+            }
         }
     }
-    Err(self::error::Error::XmlError(rxml::Error::InvalidEof(None)))
 }
 
 #[cfg(feature = "std")]
