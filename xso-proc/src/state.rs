@@ -11,6 +11,7 @@ use quote::{quote, ToTokens};
 use syn::*;
 
 /// A single state in a parser or serializer state machine.
+#[derive(Clone)]
 pub(crate) struct State {
     /// Name of the state enum variant for this state.
     name: Ident,
@@ -121,10 +122,11 @@ pub(crate) struct FromEventsSubmachine {
     /// States and state transition implementations.
     pub(crate) states: Vec<State>,
 
-    /// Initializer expression.
+    /// Initializer snippet.
     ///
-    /// This expression must evaluate to a
-    /// `Result<#state_ty_ident, xso::FromEventsError>`.
+    /// The structure needed here depends on the
+    /// [`FromEventsStateMachine::mode`] field of the final state machine this
+    /// submachine is compiled to or merged into.
     pub(crate) init: TokenStream,
 }
 
@@ -310,6 +312,38 @@ impl AsItemsSubmachine {
                 destructure: self.destructure,
             }],
         }
+    }
+
+    /// Insert a state into the element header state chain.
+    ///
+    /// It is not possible to add, remove or access a field from within this
+    /// state; all data from the first state will be passed through this state
+    /// unaltered.
+    ///
+    /// `name` must be the unambiguous name of the state.
+    ///
+    /// `item` must be an expression which generates the `Item` to be emitted
+    /// from this state.
+    pub(crate) fn with_extra_header_state(mut self, name: Ident, item: TokenStream) -> Self {
+        // We always have at least three states: ElementHeadStart,
+        // ElementHeadEnd, ElementFoot.
+        assert!(self.states.len() >= 3);
+
+        // We then use the first state after the ElementHeadStart as template.
+        // It does not really matter which one we use, as long as we do not
+        // use ElementHeadStart (because that would be before the element
+        // header) or any state after the ElementHeadEnd.
+        let mut template = self.states[1].clone();
+        // Override all fields but decl and destructure. Those define the data
+        // which is carried by the State, and we must keep that intact to pass
+        // the data through the state machine unaltered.
+        template.name = name;
+        template.uses_mut = None;
+        template.advance_body = quote! { ::core::option::Option::Some(#item) };
+
+        self.states.insert(1, template);
+
+        self
     }
 
     /// Update the [`init`][`Self::init`] field in-place.
