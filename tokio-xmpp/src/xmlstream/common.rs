@@ -648,7 +648,8 @@ impl<T: FromXml> ReadXsoState<T> {
                         }
                         Ok(Some(rxml::Event::StartElement(_, name, attrs))) => {
                             let source_tmp = source.as_mut();
-                            let ctx = xso::Context::new(source_tmp.lang_stack.current());
+                            let ctx = xso::Context::empty()
+                                .with_language(source_tmp.lang_stack.current());
                             *self = ReadXsoState::Parsing(
                                 <Result<T, xso::error::Error> as FromXml>::from_events(
                                     name, attrs, &ctx,
@@ -708,7 +709,7 @@ impl<T: FromXml> ReadXsoState<T> {
                     };
 
                     let source_tmp = source.as_mut();
-                    let ctx = xso::Context::new(source_tmp.lang_stack.current());
+                    let ctx = xso::Context::empty().with_language(source_tmp.lang_stack.current());
                     match builder.feed(ev, &ctx) {
                         Err(err) => {
                             *self = ReadXsoState::Done;

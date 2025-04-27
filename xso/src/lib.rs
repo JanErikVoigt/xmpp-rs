@@ -150,24 +150,33 @@ pub trait AsXml {
     fn as_xml_iter(&self) -> Result<Self::ItemIter<'_>, self::error::Error>;
 }
 
-/// Additional parsing context supplied to [`FromEventsBuilder`]
-/// implementations.
+/// # Parsing context for [`FromEventsBuilder`]
+///
+/// For the most part, [`FromEventsBuilder`] implementations can work with
+/// only the information inside the [`rxml::Event`] which is delivered to
+/// them (and any information they may have stored from previous events).
+///
+/// However, there is (currently) one special case: the `xml:lang` attribute.
+/// That attribute is inherited across the entire document tree hierarchy. If
+/// the parsed element is not the top-level element, there may be an implicit
+/// value for `xml:lang`.
+#[derive(Debug)]
 pub struct Context<'x> {
     language: Option<&'x str>,
 }
 
 impl<'x> Context<'x> {
     /// A context suitable for the beginning of the document.
+    ///
+    /// `xml:lang` is assumed to be unset.
     pub fn empty() -> Self {
         Self { language: None }
     }
 
-    /// Create a new context.
-    ///
-    /// - `language` must be the effective value of the `xml:lang` value at
-    ///   the end of the current event.
-    pub fn new(language: Option<&'x str>) -> Self {
-        Self { language }
+    /// Set the effective `xml:lang` value on the context and return it.
+    pub fn with_language(mut self, language: Option<&'x str>) -> Self {
+        self.language = language;
+        self
     }
 
     /// Return the `xml:lang` value in effect at the end of the event which
@@ -474,7 +483,11 @@ pub fn transform<T: FromXml, F: AsXml>(from: &F) -> Result<T, self::error::Error
         _ => panic!("into_event_iter did not start with StartElement event!"),
     };
     languages.push_from_attrs(&attrs);
-    let mut sink = match T::from_events(qname, attrs, &Context::new(languages.current())) {
+    let mut sink = match T::from_events(
+        qname,
+        attrs,
+        &Context::empty().with_language(languages.current()),
+    ) {
         Ok(v) => v,
         Err(self::error::FromEventsError::Mismatch { .. }) => {
             return Err(self::error::Error::TypeMismatch)
@@ -484,7 +497,7 @@ pub fn transform<T: FromXml, F: AsXml>(from: &F) -> Result<T, self::error::Error
     for event in iter {
         let event = event?;
         languages.handle_event(&event);
-        if let Some(v) = sink.feed(event, &Context::new(languages.current()))? {
+        if let Some(v) = sink.feed(event, &Context::empty().with_language(languages.current()))? {
             return Ok(v);
         }
     }
@@ -510,7 +523,11 @@ pub fn try_from_element<T: FromXml>(
     let (qname, attrs) = minidom_compat::make_start_ev_parts(&from)?;
 
     languages.push_from_attrs(&attrs);
-    let mut sink = match T::from_events(qname, attrs, &Context::new(languages.current())) {
+    let mut sink = match T::from_events(
+        qname,
+        attrs,
+        &Context::empty().with_language(languages.current()),
+    ) {
         Ok(v) => v,
         Err(self::error::FromEventsError::Mismatch { .. }) => {
             return Err(self::error::FromElementError::Mismatch(from))
@@ -541,7 +558,7 @@ pub fn try_from_element<T: FromXml>(
     for event in iter {
         let event = event?;
         languages.handle_event(&event);
-        if let Some(v) = sink.feed(event, &Context::new(languages.current()))? {
+        if let Some(v) = sink.feed(event, &Context::empty().with_language(languages.current()))? {
             return Ok(v);
         }
     }
@@ -576,7 +593,11 @@ pub fn from_bytes<T: FromXml>(mut buf: &[u8]) -> Result<T, self::error::Error> {
         }
     };
     languages.push_from_attrs(&attrs);
-    let mut builder = match T::from_events(name, attrs, &Context::new(languages.current())) {
+    let mut builder = match T::from_events(
+        name,
+        attrs,
+        &Context::empty().with_language(languages.current()),
+    ) {
         Ok(v) => v,
         Err(self::error::FromEventsError::Mismatch { .. }) => {
             return Err(self::error::Error::TypeMismatch);
@@ -590,7 +611,9 @@ pub fn from_bytes<T: FromXml>(mut buf: &[u8]) -> Result<T, self::error::Error> {
         match parser.parse(&mut buf, true) {
             Ok(Some(ev)) => {
                 languages.handle_event(&ev);
-                if let Some(v) = builder.feed(ev, &Context::new(languages.current()))? {
+                if let Some(v) =
+                    builder.feed(ev, &Context::empty().with_language(languages.current()))?
+                {
                     return Ok(v);
                 }
             }
@@ -631,7 +654,11 @@ fn read_start_event_io(
 pub fn from_reader<T: FromXml, R: io::BufRead>(r: R) -> io::Result<T> {
     let mut reader = rxml::XmlLangTracker::wrap(rxml::Reader::new(r));
     let (name, attrs) = read_start_event_io(&mut reader)?;
-    let mut builder = match T::from_events(name, attrs, &Context::new(reader.language())) {
+    let mut builder = match T::from_events(
+        name,
+        attrs,
+        &Context::empty().with_language(reader.language()),
+    ) {
         Ok(v) => v,
         Err(self::error::FromEventsError::Mismatch { .. }) => {
             return Err(self::error::Error::TypeMismatch)
@@ -643,7 +670,7 @@ pub fn from_reader<T: FromXml, R: io::BufRead>(r: R) -> io::Result<T> {
     };
     while let Some(ev) = reader.next() {
         if let Some(v) = builder
-            .feed(ev?, &Context::new(reader.language()))
+            .feed(ev?, &Context::empty().with_language(reader.language()))
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
         {
             return Ok(v);
