@@ -21,7 +21,8 @@ assert_eq!(foo, Foo);
 2. [Struct meta](#struct-meta)
 3. [Enums](#enums)
     1. [Name-switched enum meta](#name-switched-enum-meta)
-    2. [Dynamic enum meta](#dynamic-enum-meta)
+    2. [Attribute-switched enum meta](#attribute-switched-enum-meta)
+    3. [Dynamic enum meta](#dynamic-enum-meta)
 4. [Field meta](#field-meta)
     1. [`attribute` meta](#attribute-meta)
     2. [`child` meta](#child-meta)
@@ -123,7 +124,11 @@ Two different `enum` flavors are supported:
    namespace they match on and each variant corresponds to a different XML
    element name within that namespace.
 
-2. [**Dynamic enums**](#dynamic-enum-meta) have entirely unrelated variants.
+2. [**Attribute-switched enums**](#attribute-switched-enum-meta) have a fixed
+   XML element they match which must have a specific attribute. The variants
+   correspond to a value of that XML attribute.
+
+3. [**Dynamic enums**](#dynamic-enum-meta) have entirely unrelated variants.
 
 At the source-code level, they are distinguished by the meta keys which are
 present on the `enum`: The different variants have different sets of mandatory
@@ -198,6 +203,67 @@ let foo: Foo = xso::from_bytes(b"<a xmlns='urn:example' foo='hello'/>").unwrap()
 assert_eq!(foo, Foo::Variant1 { foo: "hello".to_string() });
 
 let foo: Foo = xso::from_bytes(b"<b xmlns='urn:example' bar='hello'/>").unwrap();
+assert_eq!(foo, Foo::Variant2 { bar: "hello".to_string() });
+```
+
+### Attribute-switched enum meta
+
+Attribute-switched enums match a fixed XML element and then select the enum
+variant based on a specific attribute on that XML element. Attribute-switched
+enums are declared by setting the `namespace`, `name` and `attribute` keys on
+a `enum` item.
+
+The following keys are defined on name-switched enums:
+
+| Key | Value type | Description |
+| --- | --- | --- |
+| `namespace` | *string literal* or *path* | The XML element namespace to match for this enum. If it is a *path*, it must point at a `&'static str`. |
+| `name` | *string literal* or *path* | The XML element name to match. If it is a *path*, it must point at a `&'static NcNameStr`. |
+| `attribute` | *string literal*, *path* or *nested* | The attribute to match. If it is a *path*, it must point at a `&'static NcNameStr`. |
+| `builder` | optional *ident* | The name to use for the generated builder type. |
+| `iterator` | optional *ident* | The name to use for the generated iterator type. |
+| `exhaustive` | *flag* | Must be set to allow future extensions. |
+| `discard` | optional *nested* | Contains field specifications of content to ignore. See the struct meta docs for details. |
+| `deserialize_callback` | optional *path* | Path to a `fn(&mut T) -> Result<(), Error>` which is called on the deserialized enum after deserialization. |
+
+`attribute` follows the same syntax and semantic as the
+[`attribute` meta](#attribute-meta), but only allows the `namespace` and
+`name` keys.
+
+For details on `builder` and `iterator`, see the [Struct meta](#struct-meta)
+documentation above.
+
+#### Attribute-switched enum variant meta
+
+| Key | Value type | Description |
+| --- | --- | --- |
+| `value` | *string literal* | The text content to match for this variant. |
+| `on_unknown_attribute` | optional *ident* | Name of an [`UnknownAttributePolicy`] member, controlling how unknown attributes are handled. |
+| `on_unknown_child` | optional *ident* | Name of an [`UnknownChildPolicy`] member, controlling how unknown children are handled. |
+
+#### Example
+
+```rust
+# use xso::FromXml;
+#[derive(FromXml, Debug, PartialEq)]
+#[xml(namespace = "urn:example", name = "foo", attribute = "version", exhaustive)]
+enum Foo {
+    #[xml(value = "a")]
+    Variant1 {
+        #[xml(attribute)]
+        foo: String,
+    },
+    #[xml(value = "b")]
+    Variant2 {
+        #[xml(attribute)]
+        bar: String,
+    },
+}
+
+let foo: Foo = xso::from_bytes(b"<foo xmlns='urn:example' version='a' foo='hello'/>").unwrap();
+assert_eq!(foo, Foo::Variant1 { foo: "hello".to_string() });
+
+let foo: Foo = xso::from_bytes(b"<foo xmlns='urn:example' version='b' bar='hello'/>").unwrap();
 assert_eq!(foo, Foo::Variant2 { bar: "hello".to_string() });
 ```
 

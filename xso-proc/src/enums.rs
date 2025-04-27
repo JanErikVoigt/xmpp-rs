@@ -8,15 +8,15 @@
 
 use std::collections::HashMap;
 
-use proc_macro2::Span;
-use quote::quote;
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, ToTokens};
 use syn::*;
 
 use crate::common::{AsXmlParts, FromXmlParts, ItemDef};
 use crate::compound::Compound;
 use crate::error_message::ParentRef;
 use crate::meta::{reject_key, Flag, NameRef, NamespaceRef, QNameRef, XmlCompoundMeta};
-use crate::state::{AsItemsStateMachine, FromEventsStateMachine};
+use crate::state::{AsItemsStateMachine, FromEventsMatchMode, FromEventsStateMachine};
 use crate::structs::StructInner;
 use crate::types::{ref_ty, ty_from_ident};
 
@@ -51,6 +51,8 @@ impl NameVariant {
             transparent,
             discard,
             deserialize_callback,
+            attribute,
+            value,
         } = XmlCompoundMeta::parse_from_attributes(&decl.attrs)?;
 
         reject_key!(debug flag not on "enum variants" only on "enums and structs");
@@ -60,9 +62,14 @@ impl NameVariant {
         reject_key!(iterator not on "enum variants" only on "enums and structs");
         reject_key!(transparent flag not on "named enum variants" only on "structs");
         reject_key!(deserialize_callback not on "enum variants" only on "enums and structs");
+        reject_key!(attribute not on "enum variants" only on "attribute-switched enums");
+        reject_key!(value not on "name-switched enum variants" only on "attribute-switched enum variants");
 
         let Some(name) = name else {
-            return Err(Error::new(meta_span, "`name` is required on enum variants"));
+            return Err(Error::new(
+                meta_span,
+                "`name` is required on name-switched enum variants",
+            ));
         };
 
         Ok(Self {
@@ -252,6 +259,297 @@ impl NameSwitchedEnum {
     }
 }
 
+/// The definition of an enum variant, switched on the XML element's
+/// attribute's value, inside a [`AttributeSwitchedEnum`].
+struct ValueVariant {
+    /// The verbatim value to match.
+    value: String,
+
+    /// The identifier of the variant
+    ident: Ident,
+
+    /// The field(s) of the variant.
+    inner: Compound,
+}
+
+impl ValueVariant {
+    /// Construct a new value-selected variant from its declaration.
+    fn new(decl: &Variant, enum_namespace: &NamespaceRef) -> Result<Self> {
+        // We destructure here so that we get informed when new fields are
+        // added and can handle them, either by processing them or raising
+        // an error if they are present.
+        let XmlCompoundMeta {
+            span: meta_span,
+            qname: QNameRef { namespace, name },
+            exhaustive,
+            debug,
+            builder,
+            iterator,
+            on_unknown_attribute,
+            on_unknown_child,
+            transparent,
+            discard,
+            deserialize_callback,
+            attribute,
+            value,
+        } = XmlCompoundMeta::parse_from_attributes(&decl.attrs)?;
+
+        reject_key!(debug flag not on "enum variants" only on "enums and structs");
+        reject_key!(exhaustive flag not on "enum variants" only on "enums");
+        reject_key!(namespace not on "enum variants" only on "enums and structs");
+        reject_key!(name not on "attribute-switched enum variants" only on "enums, structs and name-switched enum variants");
+        reject_key!(builder not on "enum variants" only on "enums and structs");
+        reject_key!(iterator not on "enum variants" only on "enums and structs");
+        reject_key!(transparent flag not on "named enum variants" only on "structs");
+        reject_key!(deserialize_callback not on "enum variants" only on "enums and structs");
+        reject_key!(attribute not on "enum variants" only on "attribute-switched enums");
+
+        let Some(value) = value else {
+            return Err(Error::new(
+                meta_span,
+                "`value` is required on attribute-switched enum variants",
+            ));
+        };
+
+        Ok(Self {
+            value: value.value(),
+            ident: decl.ident.clone(),
+            inner: Compound::from_fields(
+                &decl.fields,
+                enum_namespace,
+                on_unknown_attribute,
+                on_unknown_child,
+                discard,
+            )?,
+        })
+    }
+
+    fn make_from_events_statemachine(
+        &self,
+        enum_ident: &Ident,
+        state_ty_ident: &Ident,
+    ) -> Result<FromEventsStateMachine> {
+        let value = &self.value;
+
+        Ok(self
+            .inner
+            .make_from_events_statemachine(
+                state_ty_ident,
+                &ParentRef::Named(Path {
+                    leading_colon: None,
+                    segments: [
+                        PathSegment::from(enum_ident.clone()),
+                        self.ident.clone().into(),
+                    ]
+                    .into_iter()
+                    .collect(),
+                }),
+                &self.ident.to_string(),
+            )?
+            .with_augmented_init(|init| {
+                quote! {
+                    #value => { #init },
+                }
+            })
+            .compile())
+    }
+
+    fn make_as_item_iter_statemachine(
+        &self,
+        elem_namespace: &NamespaceRef,
+        elem_name: &NameRef,
+        attr_namespace: &TokenStream,
+        attr_name: &NameRef,
+        enum_ident: &Ident,
+        state_ty_ident: &Ident,
+        item_iter_ty_lifetime: &Lifetime,
+    ) -> Result<AsItemsStateMachine> {
+        let attr_value = &self.value;
+
+        Ok(self
+            .inner
+            .make_as_item_iter_statemachine(
+                &ParentRef::Named(Path {
+                    leading_colon: None,
+                    segments: [
+                        PathSegment::from(enum_ident.clone()),
+                        self.ident.clone().into(),
+                    ]
+                    .into_iter()
+                    .collect(),
+                }),
+                state_ty_ident,
+                &self.ident.to_string(),
+                item_iter_ty_lifetime,
+            )?
+            .with_augmented_init(|init| {
+                quote! {
+                    let name = (
+                        ::xso::exports::rxml::Namespace::from(#elem_namespace),
+                        ::xso::exports::alloc::borrow::Cow::Borrowed(#elem_name),
+                    );
+                    #init
+                }
+            })
+            .with_extra_header_state(
+                // Note: we convert the identifier to a string here to prevent
+                // its Span from leaking into the new identifier.
+                quote::format_ident!("{}Discriminator", &self.ident.to_string()),
+                quote! {
+                    ::xso::Item::Attribute(
+                        #attr_namespace,
+                        ::xso::exports::alloc::borrow::Cow::Borrowed(#attr_name),
+                        ::xso::exports::alloc::borrow::Cow::Borrowed(#attr_value),
+                    )
+                },
+            )
+            .compile())
+    }
+}
+
+/// The definition of an enum where each variant represents a different value
+/// of a fixed attribute.
+struct AttributeSwitchedEnum {
+    /// The XML namespace of the element.
+    elem_namespace: NamespaceRef,
+
+    /// The XML name of the element.
+    elem_name: NameRef,
+
+    /// The XML namespace of the attribute, or None if the attribute isn't
+    /// namespaced.'
+    attr_namespace: Option<NamespaceRef>,
+
+    /// The XML name of the attribute.
+    attr_name: NameRef,
+
+    /// Enum variant definitions
+    variants: Vec<ValueVariant>,
+}
+
+impl AttributeSwitchedEnum {
+    fn new<'x, I: IntoIterator<Item = &'x Variant>>(
+        elem_namespace: NamespaceRef,
+        elem_name: NameRef,
+        attr_namespace: Option<NamespaceRef>,
+        attr_name: NameRef,
+        variant_iter: I,
+    ) -> Result<Self> {
+        let mut variants = Vec::new();
+        let mut seen_values = HashMap::new();
+        for variant in variant_iter {
+            let variant = ValueVariant::new(variant, &elem_namespace)?;
+            if let Some(other) = seen_values.get(&variant.value) {
+                return Err(Error::new_spanned(
+                    variant.value,
+                    format!(
+                        "duplicate `value` in enum: variants {} and {} have the same attribute value",
+                        other, variant.ident
+                    ),
+                ));
+            }
+            seen_values.insert(variant.value.clone(), variant.ident.clone());
+            variants.push(variant);
+        }
+
+        Ok(Self {
+            elem_namespace,
+            elem_name,
+            attr_namespace,
+            attr_name,
+            variants,
+        })
+    }
+
+    /// Build the deserialisation statemachine for the attribute-switched enum.
+    fn make_from_events_statemachine(
+        &self,
+        target_ty_ident: &Ident,
+        state_ty_ident: &Ident,
+    ) -> Result<FromEventsStateMachine> {
+        let elem_namespace = &self.elem_namespace;
+        let elem_name = &self.elem_name;
+        let attr_namespace = match self.attr_namespace.as_ref() {
+            Some(v) => v.to_token_stream(),
+            None => quote! {
+                ::xso::exports::rxml::Namespace::none()
+            },
+        };
+        let attr_name = &self.attr_name;
+
+        let mut statemachine = FromEventsStateMachine::new();
+        for variant in self.variants.iter() {
+            statemachine
+                .merge(variant.make_from_events_statemachine(target_ty_ident, state_ty_ident)?);
+        }
+
+        statemachine.set_pre_init(quote! {
+            let attr = {
+                if name.0 != #elem_namespace || name.1 != #elem_name {
+                    return ::core::result::Result::Err(
+                        ::xso::error::FromEventsError::Mismatch {
+                            name,
+                            attrs,
+                        },
+                    );
+                }
+
+                let ::core::option::Option::Some(attr) = attrs.remove(#attr_namespace, #attr_name) else {
+                    return ::core::result::Result::Err(
+                        ::xso::error::FromEventsError::Invalid(
+                            ::xso::error::Error::Other("Missing discriminator attribute.")
+                        ),
+                    );
+                };
+
+                attr
+            };
+        });
+        statemachine.set_fallback(quote! {
+            ::core::result::Result::Err(
+                ::xso::error::FromEventsError::Invalid(
+                    ::xso::error::Error::Other("Unknown value for discriminator attribute.")
+                ),
+            )
+        });
+        statemachine.set_match_mode(FromEventsMatchMode::Matched {
+            expr: quote! { attr.as_str() },
+        });
+
+        Ok(statemachine)
+    }
+
+    /// Build the serialisation statemachine for the attribute-switched enum.
+    fn make_as_item_iter_statemachine(
+        &self,
+        target_ty_ident: &Ident,
+        state_ty_ident: &Ident,
+        item_iter_ty_lifetime: &Lifetime,
+    ) -> Result<AsItemsStateMachine> {
+        let attr_namespace = match self.attr_namespace.as_ref() {
+            Some(v) => v.to_token_stream(),
+            None => quote! {
+                ::xso::exports::rxml::Namespace::NONE
+            },
+        };
+
+        let mut statemachine = AsItemsStateMachine::new();
+        for variant in self.variants.iter() {
+            statemachine.merge(variant.make_as_item_iter_statemachine(
+                &self.elem_namespace,
+                &self.elem_name,
+                &attr_namespace,
+                &self.attr_name,
+                target_ty_ident,
+                state_ty_ident,
+                item_iter_ty_lifetime,
+            )?);
+        }
+
+        Ok(statemachine)
+    }
+}
+
 /// The definition of an enum variant in a [`DynamicEnum`].
 struct DynamicVariant {
     /// The identifier of the enum variant.
@@ -281,6 +579,8 @@ impl DynamicVariant {
             transparent: _,          // used by StructInner
             discard: _,              // used by StructInner
             ref deserialize_callback,
+            ref attribute,
+            ref value,
         } = meta;
 
         reject_key!(debug flag not on "enum variants" only on "enums and structs");
@@ -288,6 +588,8 @@ impl DynamicVariant {
         reject_key!(builder not on "enum variants" only on "enums and structs");
         reject_key!(iterator not on "enum variants" only on "enums and structs");
         reject_key!(deserialize_callback not on "enum variants" only on "enums and structs");
+        reject_key!(attribute not on "enum variants" only on "attribute-switched enums");
+        reject_key!(value not on "dynamic enum variants" only on "attribute-switched enum variants");
 
         let inner = StructInner::new(meta, &variant.fields)?;
         Ok(Self { ident, inner })
@@ -376,6 +678,10 @@ enum EnumInner {
     /// namespace fixed.
     NameSwitched(NameSwitchedEnum),
 
+    /// The enum switches based on the value of an attribute of the XML
+    /// element.
+    AttributeSwitched(AttributeSwitchedEnum),
+
     /// The enum consists of variants with entirely unrelated XML structures.
     Dynamic(DynamicEnum),
 }
@@ -389,7 +695,7 @@ impl EnumInner {
         // added and can handle them, either by processing them or raising
         // an error if they are present.
         let XmlCompoundMeta {
-            span: _,
+            span,
             qname: QNameRef { namespace, name },
             exhaustive,
             debug,
@@ -400,6 +706,8 @@ impl EnumInner {
             transparent,
             discard,
             deserialize_callback,
+            attribute,
+            value,
         } = meta;
 
         // These must've been cleared by the caller. Because these being set
@@ -410,19 +718,64 @@ impl EnumInner {
         assert!(!debug.is_set());
         assert!(deserialize_callback.is_none());
 
-        reject_key!(name not on "enums" only on "their variants");
         reject_key!(transparent flag not on "enums" only on "structs");
         reject_key!(on_unknown_attribute not on "enums" only on "enum variants and structs");
         reject_key!(on_unknown_child not on "enums" only on "enum variants and structs");
         reject_key!(discard vec not on "enums" only on "enum variants and structs");
+        reject_key!(value not on "enums" only on "attribute-switched enum variants");
 
-        if let Some(namespace) = namespace {
+        if let Some(attribute) = attribute {
+            let Some(attr_name) = attribute.qname.name else {
+                return Err(Error::new(
+                    attribute.span,
+                    "missing `name` for `attribute` key",
+                ));
+            };
+
+            let attr_namespace = attribute.qname.namespace;
+
+            let Some(elem_namespace) = namespace else {
+                let mut error =
+                    Error::new(span, "missing `namespace` key on attribute-switched enum");
+                error.combine(Error::new(
+                    attribute.span,
+                    "enum is attribute-switched because of the `attribute` key here",
+                ));
+                return Err(error);
+            };
+
+            let Some(elem_name) = name else {
+                let mut error = Error::new(span, "missing `name` key on attribute-switched enum");
+                error.combine(Error::new(
+                    attribute.span,
+                    "enum is attribute-switched because of the `attribute` key here",
+                ));
+                return Err(error);
+            };
+
+            if !exhaustive.is_set() {
+                return Err(Error::new(
+                    span,
+                    "attribute-switched enums must be marked as `exhaustive`. non-exhaustive attribute-switched enums are not supported."
+                ));
+            }
+
+            Ok(Self::AttributeSwitched(AttributeSwitchedEnum::new(
+                elem_namespace,
+                elem_name,
+                attr_namespace,
+                attr_name,
+                variant_iter,
+            )?))
+        } else if let Some(namespace) = namespace {
+            reject_key!(name not on "name-switched enums" only on "their variants");
             Ok(Self::NameSwitched(NameSwitchedEnum::new(
                 namespace,
                 exhaustive,
                 variant_iter,
             )?))
         } else {
+            reject_key!(name not on "dynamic enums" only on "their variants");
             reject_key!(exhaustive flag not on "dynamic enums" only on "name-switched enums");
             Ok(Self::Dynamic(DynamicEnum::new(variant_iter)?))
         }
@@ -436,6 +789,9 @@ impl EnumInner {
     ) -> Result<FromEventsStateMachine> {
         match self {
             Self::NameSwitched(ref inner) => {
+                inner.make_from_events_statemachine(target_ty_ident, state_ty_ident)
+            }
+            Self::AttributeSwitched(ref inner) => {
                 inner.make_from_events_statemachine(target_ty_ident, state_ty_ident)
             }
             Self::Dynamic(ref inner) => {
@@ -453,6 +809,11 @@ impl EnumInner {
     ) -> Result<AsItemsStateMachine> {
         match self {
             Self::NameSwitched(ref inner) => inner.make_as_item_iter_statemachine(
+                target_ty_ident,
+                state_ty_ident,
+                item_iter_ty_lifetime,
+            ),
+            Self::AttributeSwitched(ref inner) => inner.make_as_item_iter_statemachine(
                 target_ty_ident,
                 state_ty_ident,
                 item_iter_ty_lifetime,

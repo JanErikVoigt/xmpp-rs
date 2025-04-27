@@ -28,8 +28,10 @@ pub const XMLNS_XMLNS: &str = "http://www.w3.org/2000/xmlns/";
 macro_rules! reject_key {
     ($key:ident not on $not_allowed_on:literal $(only on $only_allowed_on:literal)?) => {
         if let Some(ref $key) = $key {
-            return Err(Error::new_spanned(
-                $key,
+            #[allow(unused_imports)]
+            use syn::spanned::Spanned as _;
+            return Err(Error::new(
+                $key.span(),
                 concat!(
                     "`",
                     stringify!($key),
@@ -437,6 +439,22 @@ impl TryFrom<XmlFieldMeta> for DiscardSpec {
     }
 }
 
+/// Wrapper around `QNameRef` which saves additional span information.
+#[derive(Debug)]
+pub(crate) struct SpannedQNameRef {
+    /// The span which created the (potentially empty) ref.
+    pub span: Span,
+
+    /// The ref itself.
+    pub qname: QNameRef,
+}
+
+impl SpannedQNameRef {
+    pub(crate) fn span(&self) -> Span {
+        self.span
+    }
+}
+
 /// Contents of an `#[xml(..)]` attribute on a struct, enum variant, or enum.
 #[derive(Debug)]
 pub(crate) struct XmlCompoundMeta {
@@ -477,6 +495,12 @@ pub(crate) struct XmlCompoundMeta {
 
     /// The value assigned to `deserialize_callback` inside `#[xml(..)]`, if any.
     pub(crate) deserialize_callback: Option<Path>,
+
+    /// The value assigned to `attribute` inside `#[xml(..)]`, if any.
+    pub(crate) attribute: Option<SpannedQNameRef>,
+
+    /// The value assigned to `value` inside `#[xml(..)]`, if any.
+    pub(crate) value: Option<LitStr>,
 }
 
 impl XmlCompoundMeta {
@@ -495,6 +519,8 @@ impl XmlCompoundMeta {
         let mut transparent = Flag::Absent;
         let mut discard = Vec::new();
         let mut deserialize_callback = None;
+        let mut attribute = None;
+        let mut value = None;
 
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("debug") {
@@ -560,6 +586,37 @@ impl XmlCompoundMeta {
                 }
                 deserialize_callback = Some(meta.value()?.parse()?);
                 Ok(())
+            } else if meta.path.is_ident("attribute") {
+                if attribute.is_some() {
+                    return Err(Error::new_spanned(meta.path, "duplicate `attribute` key"));
+                }
+
+                let span = meta.path.span();
+                let qname = if meta.input.peek(Token![=]) {
+                    let (namespace, name) = parse_prefixed_name(meta.value()?)?;
+                    QNameRef {
+                        name: Some(name),
+                        namespace,
+                    }
+                } else {
+                    let mut qname = QNameRef::default();
+                    meta.parse_nested_meta(|meta| {
+                        match qname.parse_incremental_from_meta(meta)? {
+                            None => Ok(()),
+                            Some(meta) => Err(Error::new_spanned(meta.path, "unsupported key")),
+                        }
+                    })?;
+                    qname
+                };
+
+                attribute = Some(SpannedQNameRef { qname, span });
+                Ok(())
+            } else if meta.path.is_ident("value") {
+                if value.is_some() {
+                    return Err(Error::new_spanned(meta.path, "duplicate `value` key"));
+                }
+                value = Some(meta.value()?.parse()?);
+                Ok(())
             } else {
                 match qname.parse_incremental_from_meta(meta)? {
                     None => Ok(()),
@@ -580,6 +637,8 @@ impl XmlCompoundMeta {
             transparent,
             discard,
             deserialize_callback,
+            attribute,
+            value,
         })
     }
 

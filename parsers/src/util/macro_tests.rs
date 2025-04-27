@@ -2522,3 +2522,110 @@ fn language_roundtrip_nested_parse() {
         other => panic!("unexpected parse result: {:?}", other),
     }
 }
+
+#[derive(FromXml, AsXml, Debug, Clone, PartialEq)]
+#[xml(namespace = NS1, name = "foo", attribute = "bar", exhaustive)]
+enum AttributeSwitchedEnum {
+    #[xml(value = "a")]
+    A {
+        #[xml(attribute = "baz")]
+        baz: String,
+    },
+
+    #[xml(value = "b")]
+    B {
+        #[xml(text)]
+        content: String,
+    },
+}
+
+#[test]
+fn attribute_switched_enum_roundtrip_a() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<AttributeSwitchedEnum>("<foo xmlns='urn:example:ns1' bar='a' baz='abc'/>");
+}
+
+#[test]
+fn attribute_switched_enum_roundtrip_b() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    roundtrip_full::<AttributeSwitchedEnum>("<foo xmlns='urn:example:ns1' bar='b'>abc</foo>");
+}
+
+#[test]
+fn attribute_switched_enum_negative_namespace_mismatch() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<AttributeSwitchedEnum>("<foo xmlns='urn:example:ns2' bar='b'>abc</foo>") {
+        Err(xso::error::Error::TypeMismatch) => (),
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn attribute_switched_enum_negative_name_mismatch() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<AttributeSwitchedEnum>("<quux xmlns='urn:example:ns1' bar='b'>abc</quux>") {
+        Err(xso::error::Error::TypeMismatch) => (),
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn attribute_switched_enum_negative_attribute_missing() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<AttributeSwitchedEnum>("<foo xmlns='urn:example:ns1'/>") {
+        Err(xso::error::Error::Other(e)) => {
+            assert_eq!(e, "Missing discriminator attribute.");
+        }
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn attribute_switched_enum_negative_attribute_mismatch() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<AttributeSwitchedEnum>("<foo xmlns='urn:example:ns1' bar='quux'/>") {
+        Err(xso::error::Error::Other(e)) => {
+            assert_eq!(e, "Unknown value for discriminator attribute.");
+        }
+        other => panic!("unexpected result: {:?}", other),
+    }
+}
+
+#[test]
+fn attribute_switched_enum_positive_attribute_mismatch() {
+    #[allow(unused_imports)]
+    use core::{
+        option::Option::{None, Some},
+        result::Result::{Err, Ok},
+    };
+    match parse_str::<AttributeSwitchedEnum>("<foo xmlns='urn:example:ns1' bar='b'>abc</foo>") {
+        Ok(AttributeSwitchedEnum::B { content }) => {
+            assert_eq!(content, "abc");
+        }
+        other => panic!("unexpected result: {:?}", other),
+    }
+}

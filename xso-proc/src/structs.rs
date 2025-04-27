@@ -74,6 +74,8 @@ impl StructInner {
             transparent,
             discard,
             deserialize_callback,
+            attribute,
+            value,
         } = meta;
 
         // These must've been cleared by the caller. Because these being set
@@ -85,6 +87,8 @@ impl StructInner {
         assert!(deserialize_callback.is_none());
 
         reject_key!(exhaustive flag not on "structs" only on "enums");
+        reject_key!(attribute not on "structs" only on "enums");
+        reject_key!(value not on "structs" only on "attribute-switched enum variants");
 
         if let Flag::Present(_) = transparent {
             reject_key!(namespace not on "transparent structs");
