@@ -25,4 +25,4 @@ rxml = { version = "0.13.1", default-features = false, features = ["compact_str"
 
 [features]
 default = [ "std" ]
-std = []
+std = ["rxml/std"]
