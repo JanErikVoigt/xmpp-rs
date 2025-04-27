@@ -2467,7 +2467,7 @@ struct Language {
     #[xml(child(default))]
     child: core::option::Option<Box<Language>>,
 
-    #[xml(lang)]
+    #[xml(lang(default))]
     lang: core::option::Option<String>,
 }
 

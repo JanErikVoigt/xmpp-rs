@@ -414,7 +414,7 @@ impl TryFrom<XmlFieldMeta> for DiscardSpec {
         match other {
             XmlFieldMeta::Attribute {
                 span,
-                qname,
+                kind: AttributeKind::Generic(qname),
                 default_,
                 type_,
                 codec,
@@ -800,18 +800,28 @@ fn parse_prefixed_name(
     }
 }
 
+/// XML attribute subtypes for `#[xml(attribute)]` and `#[xml(lang)]`.
+#[derive(Debug)]
+pub(crate) enum AttributeKind {
+    /// Any generic attribute (`#[xml(attribute)]`).
+    Generic(QNameRef),
+
+    /// The special `xml:lang` attribute (`#[xml(lang)]`).
+    XmlLang,
+}
+
 /// Contents of an `#[xml(..)]` attribute on a struct or enum variant member.
 #[derive(Debug)]
 pub(crate) enum XmlFieldMeta {
-    /// `#[xml(attribute)]`, `#[xml(attribute = ..)]` or `#[xml(attribute(..))]`
+    /// `#[xml(attribute)]`, `#[xml(attribute = ..)]` or `#[xml(attribute(..))]`, `#[xml(lang)]`
     Attribute {
         /// The span of the `#[xml(attribute)]` meta from which this was parsed.
         ///
         /// This is useful for error messages.
         span: Span,
 
-        /// The namespace/name keys.
-        qname: QNameRef,
+        /// Attribute subtype (normal vs. `xml:lang`).
+        kind: AttributeKind,
 
         /// The `default` flag.
         default_: Flag,
@@ -901,14 +911,6 @@ pub(crate) enum XmlFieldMeta {
         /// The namespace/name keys.
         qname: QNameRef,
     },
-
-    /// `#[xml(lang)]`
-    Language {
-        /// The span of the `#[xml(lang)]` meta from which this was parsed.
-        ///
-        /// This is useful for error messages.
-        span: Span,
-    },
 }
 
 impl XmlFieldMeta {
@@ -924,10 +926,10 @@ impl XmlFieldMeta {
             let (namespace, name) = parse_prefixed_name(meta.value()?)?;
             Ok(Self::Attribute {
                 span: meta.path.span(),
-                qname: QNameRef {
+                kind: AttributeKind::Generic(QNameRef {
                     name: Some(name),
                     namespace,
-                },
+                }),
                 default_: Flag::Absent,
                 type_: None,
                 codec: None,
@@ -977,7 +979,7 @@ impl XmlFieldMeta {
             })?;
             Ok(Self::Attribute {
                 span: meta.path.span(),
-                qname,
+                kind: AttributeKind::Generic(qname),
                 default_,
                 type_,
                 codec,
@@ -986,7 +988,7 @@ impl XmlFieldMeta {
             // argument-less syntax
             Ok(Self::Attribute {
                 span: meta.path.span(),
-                qname: QNameRef::default(),
+                kind: AttributeKind::Generic(QNameRef::default()),
                 default_: Flag::Absent,
                 type_: None,
                 codec: None,
@@ -1219,8 +1221,53 @@ impl XmlFieldMeta {
 
     /// Parse a `#[xml(lang)]` meta.
     fn lang_from_meta(meta: ParseNestedMeta<'_>) -> Result<Self> {
-        Ok(Self::Language {
+        let mut default_ = Flag::Absent;
+        let mut type_ = None;
+        let mut codec = None;
+
+        if meta.input.peek(syn::token::Paren) {
+            meta.parse_nested_meta(|meta| {
+                if meta.path.is_ident("default") {
+                    if default_.is_set() {
+                        return Err(Error::new_spanned(meta.path, "duplicate `default` key"));
+                    }
+                    default_ = (&meta.path).into();
+                    Ok(())
+                } else if meta.path.is_ident("type_") {
+                    if type_.is_some() {
+                        return Err(Error::new_spanned(meta.path, "duplicate `type_` key"));
+                    }
+                    type_ = Some(meta.value()?.parse()?);
+                    Ok(())
+                } else if meta.path.is_ident("codec") {
+                    if codec.is_some() {
+                        return Err(Error::new_spanned(meta.path, "duplicate `codec` key"));
+                    }
+                    let (new_codec, helpful_error) = parse_codec_expr(meta.value()?)?;
+                    // See the comment at the top of text_from_meta() below for why we
+                    // do this.
+                    let lookahead = meta.input.lookahead1();
+                    if !lookahead.peek(Token![,]) && !meta.input.is_empty() {
+                        if let Some(helpful_error) = helpful_error {
+                            let mut e = lookahead.error();
+                            e.combine(helpful_error);
+                            return Err(e);
+                        }
+                    }
+                    codec = Some(new_codec);
+                    Ok(())
+                } else {
+                    Err(Error::new_spanned(meta.path, "unsupported key"))
+                }
+            })?;
+        }
+
+        Ok(Self::Attribute {
             span: meta.path.span(),
+            kind: AttributeKind::XmlLang,
+            default_,
+            type_,
+            codec,
         })
     }
 
@@ -1324,7 +1371,6 @@ impl XmlFieldMeta {
             Self::Extract { ref span, .. } => *span,
             Self::Element { ref span, .. } => *span,
             Self::Flag { ref span, .. } => *span,
-            Self::Language { ref span, .. } => *span,
         }
     }
 

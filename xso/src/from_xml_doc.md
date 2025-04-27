@@ -684,16 +684,37 @@ assert_eq!(foo, Foo {
 
 The `lang` meta allows to access the (potentially inherited) logical
 `xml:lang` value as defined in
-[XML 1.0 § 2.12](https://www.w3.org/TR/REC-xml/#sec-lang-tag).
+[XML 1.0 § 2.12](https://www.w3.org/TR/REC-xml/#sec-lang-tag). For `FromXml`,
+the field's type must implement [`FromXmlText`] and for `AsXml`, the field's
+type must implement [`AsOptionalXmlText`].
 
-This meta supports no arguments and can only be used on fields of type
-`Option<String>`.
+| Key | Value type | Description |
+| --- | --- | --- |
+| `default` | *flag* | If present, an absent attribute will substitute the default value instead of raising an error. |
+| `type_` | *type* | Optional explicit type specification. Only allowed within `#[xml(extract(fields(..)))]`. |
+| `codec` | optional *expression* | [`TextCodec`] implementation which is used to encode or decode the field. |
 
-Unlike `#[xml(attribute = "xml:lang")]`, the `#[xml(lang)]` meta takes
-inheritance into account.
+Unlike `#[xml(attribute = "xml:lang")]`, using `#[xml(lang)]` takes
+the inheritance of the `xml:lang` attribute into account.
 
-**Note:** Using this meta is not roundtrip-safe. `rxml` will always emit its
+**Note:** Using this meta is not roundtrip-safe. `xso` will always emit its
 value on serialisation, even if it was inherited during deserialisation.
+
+If `default` is specified and there is no `xml:lang` specified at the point of
+the element, the value is generated using [`core::default::Default`],
+requiring the field type to implement the `Default` trait for a `FromXml`
+derivation. `default` has no influence on `AsXml`. If `default` is not
+specified, an error is raised if `xml:lang` has not been set on the element
+or any of its ancestors.
+
+Note that no error is generated (by `xso`) for `xml:lang` values of `""`.
+
+If `type_` is specified and the `lang` meta is used within an
+`#[xml(extract(fields(..)))]` meta, the specified type is used instead of the
+field type on which the `extract` is declared.
+
+If `codec` is given, the given `codec` value must implement
+[`TextCodec<T>`][`TextCodec`] where `T` is the type of the field.
 
 #### Example
 

@@ -13,7 +13,9 @@ use rxml_validation::NcName;
 
 use crate::compound::Compound;
 use crate::error_message::ParentRef;
-use crate::meta::{AmountConstraint, Flag, NameRef, NamespaceRef, QNameRef, XmlFieldMeta};
+use crate::meta::{
+    AmountConstraint, AttributeKind, Flag, NameRef, NamespaceRef, QNameRef, XmlFieldMeta,
+};
 use crate::scope::{AsItemsScope, FromEventsScope};
 
 mod attribute;
@@ -21,15 +23,13 @@ mod child;
 #[cfg(feature = "minidom")]
 mod element;
 mod flag;
-mod lang;
 mod text;
 
-use self::attribute::AttributeField;
+use self::attribute::{AttributeField, AttributeFieldKind};
 use self::child::{ChildField, ExtractDef};
 #[cfg(feature = "minidom")]
 use self::element::ElementField;
 use self::flag::FlagField;
-use self::lang::LangField;
 use self::text::TextField;
 
 /// Code slices necessary for declaring and initializing a temporary variable
@@ -276,7 +276,7 @@ fn new_field(
     match meta {
         XmlFieldMeta::Attribute {
             span,
-            qname: QNameRef { namespace, name },
+            kind: AttributeKind::Generic(QNameRef { name, namespace }),
             default_,
             type_,
             codec,
@@ -294,8 +294,34 @@ fn new_field(
             }
 
             Ok(Box::new(AttributeField {
-                xml_name,
-                xml_namespace: namespace,
+                kind: AttributeFieldKind::Generic {
+                    xml_name,
+                    xml_namespace: namespace,
+                },
+                default_,
+                codec,
+            }))
+        }
+
+        XmlFieldMeta::Attribute {
+            span: _,
+            kind: AttributeKind::XmlLang,
+            default_,
+            type_,
+            codec,
+        } => {
+            // This would've been taken via `XmlFieldMeta::take_type` if
+            // this field was within an extract where a `type_` is legal
+            // to have.
+            if let Some(type_) = type_ {
+                return Err(Error::new_spanned(
+                    type_,
+                    "specifying `type_` on fields inside structs and enum variants is redundant and not allowed."
+                ));
+            }
+
+            Ok(Box::new(AttributeField {
+                kind: AttributeFieldKind::XmlLang,
                 default_,
                 codec,
             }))
@@ -451,8 +477,6 @@ fn new_field(
                 xml_name,
             }))
         }
-
-        XmlFieldMeta::Language { span: _ } => Ok(Box::new(LangField)),
     }
 }
 
