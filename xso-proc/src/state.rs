@@ -176,6 +176,7 @@ impl FromEventsSubmachine {
             state_defs,
             advance_match_arms,
             variants: vec![FromEventsEntryPoint { init: self.init }],
+            mode: FromEventsMatchMode::default(),
             pre_init: TokenStream::default(),
             fallback: None,
         }
@@ -343,6 +344,43 @@ pub(crate) struct AsItemsEntryPoint {
     init: TokenStream,
 }
 
+/// Control how a state machine attempts to match elements.
+#[derive(Default)]
+pub(crate) enum FromEventsMatchMode {
+    /// Element matching works by chaining the individual submachine's init
+    /// code.
+    ///
+    /// Each submachine has to provide an expression which evaluates to a
+    /// `Result<#state_ty_ident, xso::FromEventsError>` in its
+    /// [`FromEventsSubmachine::init`] code.
+    ///
+    /// If the expression evaluates to
+    /// `Err(FromEventsError::Mismatch { .. })`, the next submachine in merge
+    /// order is tried. If no further submachines exist, the
+    /// [`fallback`][`FromEventsStateMachine::fallback`] code
+    /// is injected (or the mismatch is returned if no fallback code exists.)
+    ///
+    /// This is the default mode.
+    #[default]
+    Chained,
+
+    /// Element matching works with a `match .. { .. }` block.
+    ///
+    /// Each submachine has to provide a match arm (`pattern => result,`)
+    /// snippet in its [`FromEventsSubmachine::init`] code. The `result` must
+    /// evaluate to a `Result<#state_ty_ident, xso::FromEventsError>`.
+    ///
+    /// The statemachine will generate a final arm (`_ => #fallback,`) using
+    /// the [`fallback`][`FromEventsStateMachine::fallback`] code
+    /// if it exists, and a normal `Mismatch` error otherwise.
+    ///
+    /// The `pattern` must be compatible to the `expr` provided here.
+    Matched {
+        /// Expression which the arms match against.
+        expr: TokenStream,
+    },
+}
+
 /// # State machine to implement `xso::FromEventsBuilder`
 ///
 /// This struct represents a state machine consisting of the following parts:
@@ -380,6 +418,13 @@ pub(crate) struct FromEventsStateMachine {
     /// If absent, a `FromEventsError::Mismatch` is generated.
     fallback: Option<TokenStream>,
 
+    /// Configure how the element is matched.
+    ///
+    /// This controls the syntax required in each submachine's
+    /// [`FromEventsSubmachine::init`]. See [`FromEventsMatchMode`] for
+    /// details.
+    mode: FromEventsMatchMode,
+
     /// A sequence of enum variant declarations, separated and terminated by
     /// commas.
     state_defs: TokenStream,
@@ -408,8 +453,9 @@ impl FromEventsStateMachine {
             state_defs: TokenStream::default(),
             advance_match_arms: TokenStream::default(),
             pre_init: TokenStream::default(),
-            variants: Vec::new(),
             fallback: None,
+            mode: FromEventsMatchMode::default(),
+            variants: Vec::new(),
         }
     }
 
@@ -441,6 +487,13 @@ impl FromEventsStateMachine {
         self.fallback = Some(code);
     }
 
+    /// Set the matching mode for the rendered state machine.
+    ///
+    /// See [`FromEventsMatchMode`] for details.
+    pub(crate) fn set_match_mode(&mut self, mode: FromEventsMatchMode) {
+        self.mode = mode;
+    }
+
     /// Render the state machine as a token stream.
     ///
     /// The token stream contains the following pieces:
@@ -465,25 +518,8 @@ impl FromEventsStateMachine {
             variants,
             pre_init,
             fallback,
+            mode,
         } = self;
-
-        let mut init_body = pre_init;
-        for variant in variants {
-            let FromEventsEntryPoint { init } = variant;
-            init_body.extend(quote! {
-                let (name, mut attrs) = match { { let _ = &mut attrs; } #init } {
-                    ::core::result::Result::Ok(v) => return ::core::result::Result::Ok(v),
-                    ::core::result::Result::Err(::xso::error::FromEventsError::Invalid(e)) => return ::core::result::Result::Err(::xso::error::FromEventsError::Invalid(e)),
-                    ::core::result::Result::Err(::xso::error::FromEventsError::Mismatch { name, attrs }) => (name, attrs),
-                };
-            })
-        }
-
-        let fallback = fallback.unwrap_or_else(|| {
-            quote! {
-                ::core::result::Result::Err(::xso::error::FromEventsError::Mismatch { name, attrs })
-            }
-        });
 
         let output_ty_ref = make_ty_ref(output_ty);
 
@@ -497,6 +533,50 @@ impl FromEventsStateMachine {
             Some(validate_fn) => {
                 quote! {
                     #validate_fn(&mut value)?;
+                }
+            }
+        };
+
+        let fallback = fallback.unwrap_or_else(|| {
+            quote! {
+                ::core::result::Result::Err(::xso::error::FromEventsError::Mismatch { name, attrs })
+            }
+        });
+
+        let new_body = match mode {
+            FromEventsMatchMode::Chained => {
+                let mut init_body = pre_init;
+                for variant in variants {
+                    let FromEventsEntryPoint { init } = variant;
+                    init_body.extend(quote! {
+                        let (name, mut attrs) = match { { let _ = &mut attrs; } #init } {
+                            ::core::result::Result::Ok(v) => return ::core::result::Result::Ok(v),
+                            ::core::result::Result::Err(::xso::error::FromEventsError::Invalid(e)) => return ::core::result::Result::Err(::xso::error::FromEventsError::Invalid(e)),
+                            ::core::result::Result::Err(::xso::error::FromEventsError::Mismatch { name, attrs }) => (name, attrs),
+                        };
+                    })
+                }
+
+                quote! {
+                    #init_body
+                    { let _ = &mut attrs; }
+                    #fallback
+                }
+            }
+
+            FromEventsMatchMode::Matched { expr } => {
+                let mut match_body = TokenStream::default();
+                for variant in variants {
+                    let FromEventsEntryPoint { init } = variant;
+                    match_body.extend(init);
+                }
+
+                quote! {
+                    #pre_init
+                    match #expr {
+                        #match_body
+                        _ => #fallback,
+                    }
                 }
             }
         };
@@ -561,9 +641,7 @@ impl FromEventsStateMachine {
                     mut attrs: ::xso::exports::rxml::AttrMap,
                     ctx: &::xso::Context<'_>,
                 ) -> ::core::result::Result<Self, ::xso::error::FromEventsError> {
-                    #init_body
-                    { let _ = &mut attrs; }
-                    #fallback
+                    #new_body
                 }
             }
         })
