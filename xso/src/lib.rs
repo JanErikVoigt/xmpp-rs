@@ -342,6 +342,13 @@ impl AsXmlText for str {
     }
 }
 
+impl AsXmlText for &str {
+    /// Return the borrowed string contents.
+    fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
+        Ok(Cow::Borrowed(self))
+    }
+}
+
 impl<T: AsXmlText> AsXmlText for Box<T> {
     /// Return the borrowed [`Box`] contents.
     fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
@@ -398,7 +405,7 @@ impl<T: AsXmlText> AsOptionalXmlText for Option<T> {
     }
 }
 
-/// Control how unknown attributes are handled.
+/// # Control how unknown attributes are handled
 ///
 /// The variants of this enum are referenced in the
 /// `#[xml(on_unknown_attribute = ..)]` which can be used on structs and
@@ -435,7 +442,7 @@ impl UnknownAttributePolicy {
     }
 }
 
-/// Control how unknown children are handled.
+/// # Control how unknown child elements are handled
 ///
 /// The variants of this enum are referenced in the
 /// `#[xml(on_unknown_child = ..)]` which can be used on structs and
@@ -472,8 +479,44 @@ impl UnknownChildPolicy {
     }
 }
 
-/// Attempt to transform a type implementing [`AsXml`] into another
-/// type which implements [`FromXml`].
+/// # Transform a value into another value via XML
+///
+/// This function takes `from`, converts it into XML using its [`AsXml`]
+/// implementation and builds a `T` from it (without buffering the tree in
+/// memory).
+///
+/// If conversion fails, a [`Error`][`crate::error::Error`] is returned. In
+/// particular, if `T` expects a different element header than the header
+/// provided by `from`,
+/// [`Error::TypeMismatch`][`crate::error::Error::TypeMismatch`] is returned.
+///
+/// ## Example
+///
+#[cfg_attr(
+    not(all(feature = "std", feature = "macros")),
+    doc = "Because the std or macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
+)]
+#[cfg_attr(all(feature = "std", feature = "macros"), doc = "\n```\n")]
+/// # use xso::{AsXml, FromXml, transform};
+/// #[derive(AsXml)]
+/// #[xml(namespace = "urn:example", name = "foo")]
+/// struct Source {
+///     #[xml(attribute = "xml:lang")]
+///     lang: &'static str,
+/// }
+///
+/// #[derive(FromXml, PartialEq, Debug)]
+/// #[xml(namespace = "urn:example", name = "foo")]
+/// struct Dest {
+///     #[xml(lang)]
+///     lang: Option<String>,
+/// }
+///
+/// assert_eq!(
+///     Dest { lang: Some("en".to_owned()) },
+///     transform(&Source { lang: "en" }).unwrap(),
+/// );
+/// ```
 pub fn transform<T: FromXml, F: AsXml>(from: &F) -> Result<T, self::error::Error> {
     let mut languages = rxml::xml_lang::XmlLangStack::new();
     let mut iter = self::rxml_util::ItemToEvent::new(from.as_xml_iter()?);
@@ -568,8 +611,37 @@ pub fn try_from_element<T: FromXml>(
     unreachable!("minidom::Element did not produce enough events to complete element")
 }
 
-/// Attempt to parse a type implementing [`FromXml`] from a byte buffer
-/// containing XML data.
+/// # Parse a value from a byte slice containing XML data
+///
+/// This function parses the XML found in `buf`, assuming it contains a
+/// complete XML document (with optional XML declaration) and builds a `T`
+/// from it (without buffering the tree in memory).
+///
+/// If conversion fails, a [`Error`][`crate::error::Error`] is returned. In
+/// particular, if `T` expects a different element header than the element
+/// header at the root of the document in `bytes`,
+/// [`Error::TypeMismatch`][`crate::error::Error::TypeMismatch`] is returned.
+///
+/// ## Example
+///
+#[cfg_attr(
+    not(feature = "macros"),
+    doc = "Because the macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
+)]
+#[cfg_attr(feature = "macros", doc = "\n```\n")]
+/// # use xso::{AsXml, FromXml, from_bytes};
+/// #[derive(FromXml, PartialEq, Debug)]
+/// #[xml(namespace = "urn:example", name = "foo")]
+/// struct Foo {
+///     #[xml(attribute)]
+///     a: String,
+/// }
+///
+/// assert_eq!(
+///     Foo { a: "some-value".to_owned() },
+///     from_bytes(b"<foo xmlns='urn:example' a='some-value'/>").unwrap(),
+/// );
+/// ```
 pub fn from_bytes<T: FromXml>(mut buf: &[u8]) -> Result<T, self::error::Error> {
     use rxml::{error::EndOrError, Parse};
 
@@ -649,7 +721,40 @@ fn read_start_event_io(
     ))
 }
 
-/// Attempt to parse a type implementing [`FromXml`] from a reader.
+/// # Parse a value from a [`io::BufRead`][`std::io::BufRead`]
+///
+/// This function parses the XML found in `r`, assuming it contains a
+/// complete XML document (with optional XML declaration) and builds a `T`
+/// from it (without buffering the tree in memory).
+///
+/// If conversion fails, a [`Error`][`crate::error::Error`] is returned. In
+/// particular, if `T` expects a different element header than the element
+/// header at the root of the document in `r`,
+/// [`Error::TypeMismatch`][`crate::error::Error::TypeMismatch`] is returned.
+///
+/// ## Example
+///
+#[cfg_attr(
+    not(feature = "macros"),
+    doc = "Because the macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
+)]
+#[cfg_attr(feature = "macros", doc = "\n```\n")]
+/// # use xso::{AsXml, FromXml, from_reader};
+/// # use std::io::BufReader;
+/// #[derive(FromXml, PartialEq, Debug)]
+/// #[xml(namespace = "urn:example", name = "foo")]
+/// struct Foo {
+///     #[xml(attribute)]
+///     a: String,
+/// }
+///
+/// // let file = ..
+/// # let file = &mut &b"<foo xmlns='urn:example' a='some-value'/>"[..];
+/// assert_eq!(
+///     Foo { a: "some-value".to_owned() },
+///     from_reader(BufReader::new(file)).unwrap(),
+/// );
+/// ```
 #[cfg(feature = "std")]
 pub fn from_reader<T: FromXml, R: io::BufRead>(r: R) -> io::Result<T> {
     let mut reader = rxml::XmlLangTracker::wrap(rxml::Reader::new(r));
@@ -682,7 +787,34 @@ pub fn from_reader<T: FromXml, R: io::BufRead>(r: R) -> io::Result<T> {
     ))
 }
 
-/// Attempt to serialise a type implementing [`AsXml`] to a vector of bytes.
+/// # Serialize a value to UTF-8-encoded XML
+///
+/// This function takes `xso`, converts it into XML using its [`AsXml`]
+/// implementation and serialises the resulting XML events into a `Vec<u8>`.
+///
+/// If serialisation fails, an error is returned instead.
+///
+/// ## Example
+///
+#[cfg_attr(
+    not(feature = "macros"),
+    doc = "Because the macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
+)]
+#[cfg_attr(feature = "macros", doc = "\n```\n")]
+/// # use xso::{AsXml, FromXml, to_vec};
+/// # use std::io::BufReader;
+/// #[derive(AsXml, PartialEq, Debug)]
+/// #[xml(namespace = "urn:example", name = "foo")]
+/// struct Foo {
+///     #[xml(attribute)]
+///     a: String,
+/// }
+///
+/// assert_eq!(
+///     b"<foo xmlns='urn:example' a='some-value'></foo>",
+///     &to_vec(&Foo { a: "some-value".to_owned() }).unwrap()[..],
+/// );
+/// ```
 pub fn to_vec<T: AsXml>(xso: &T) -> Result<Vec<u8>, self::error::Error> {
     let iter = xso.as_xml_iter()?;
     let mut writer = rxml::writer::Encoder::new();
@@ -694,10 +826,20 @@ pub fn to_vec<T: AsXml>(xso: &T) -> Result<Vec<u8>, self::error::Error> {
     Ok(buf)
 }
 
-/// Return true if the string contains exclusively XML whitespace.
+/// # Test if a string contains exclusively XML whitespace
 ///
-/// XML whitespace is defined as U+0020 (space), U+0009 (tab), U+000a
-/// (newline) and U+000d (carriage return).
+/// This function returns true if `s` contains only XML whitespace. XML
+/// whitespace is defined as U+0020 (space), U+0009 (tab), U+000a (newline)
+/// and U+000d (carriage return), so this test is implemented on bytes instead
+/// of codepoints for efficiency.
+///
+/// # Example
+///
+/// ```
+/// # use xso::is_xml_whitespace;
+/// assert!(is_xml_whitespace(" \t\r\n  "));
+/// assert!(!is_xml_whitespace("  hello  "));
+/// ```
 pub fn is_xml_whitespace<T: AsRef<[u8]>>(s: T) -> bool {
     s.as_ref()
         .iter()

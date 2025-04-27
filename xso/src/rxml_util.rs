@@ -10,9 +10,13 @@ use alloc::borrow::{Cow, ToOwned};
 
 use rxml::{parser::EventMetrics, AttrMap, Event, Namespace, NcName, NcNameStr, XmlVersion};
 
-/// An encodable item.
+/// # Serialisable piece of XML
 ///
-/// Unlike [`rxml::Item`], the contents of this item may either be owned or
+/// This item represents a piece of an XML document which can be serialised
+/// into bytes by converting it to an [`rxml::Item`] and then feeding it to a
+/// [`rxml::Encoder`].
+///
+/// Unlike `rxml::Item`, the contents of this item may either be owned or
 /// borrowed, individually. This enables the use in an [`crate::AsXml`] trait
 /// even if data needs to be generated during serialisation.
 #[derive(Debug)]
