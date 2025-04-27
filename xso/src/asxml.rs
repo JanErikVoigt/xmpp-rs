@@ -123,7 +123,7 @@ impl<T: AsXml> fmt::Display for PrintRawXml<'_, T> {
         }
         // TODO: rxml guarantees us that we have utf8 here. This unwrap can nonetheless be removed
         // if Write is implemented for rxml.
-        write!(f, "{}", std::str::from_utf8(&buf).unwrap())
+        write!(f, "{}", core::str::from_utf8(&buf).unwrap())
     }
 }
 
