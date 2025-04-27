@@ -248,18 +248,13 @@ pub trait FromXml {
 
 /// Trait allowing to convert XML text to a value.
 ///
-/// This trait is similar to [`core::str::FromStr`], however, due to
-/// restrictions imposed by the orphan rule, a separate trait is needed.
-/// Implementations for many standard library types are available. In
-/// addition, the following feature flags can enable more implementations:
+/// This trait is similar to [`FromStr`][`core::str::FromStr`], however, to
+/// allow specialisation for XML<->Text conversion, a separate trait is
+/// introduced. Unlike `FromStr`, this trait allows taking ownership of the
+/// original text data, potentially saving allocations.
 ///
-/// - `jid`: `jid::Jid`, `jid::BareJid`, `jid::FullJid`
-/// - `uuid`: `uuid::Uuid`
-///
-/// Because of this unfortunate situation, we are **extremely liberal** with
-/// accepting optional dependencies for this purpose. You are very welcome to
-/// make merge requests against this crate adding support for parsing
-/// third-party crates.
+/// **Important:** See the [`text`][`crate::text`] module's documentation
+/// for notes regarding implementations for types from third-party crates.
 pub trait FromXmlText: Sized {
     /// Convert the given XML text to a value.
     fn from_xml_text(data: String) -> Result<Self, self::error::Error>;
@@ -306,17 +301,8 @@ impl<T: FromXmlText> FromXmlText for Box<T> {
 /// serialisation in XML text, you should *only* implement
 /// [`AsOptionalXmlText`] and omit the [`AsXmlText`] implementation.
 ///
-/// This trait is implemented for many standard library types implementing
-/// [`core::fmt::Display`]. In addition, the following feature flags can enable
-/// more implementations:
-///
-/// - `jid`: `jid::Jid`, `jid::BareJid`, `jid::FullJid`
-/// - `uuid`: `uuid::Uuid`
-///
-/// Because of the unfortunate situation as described in [`FromXmlText`], we
-/// are **extremely liberal** with accepting optional dependencies for this
-/// purpose. You are very welcome to make merge requests against this crate
-/// adding support for parsing third-party crates.
+/// **Important:** See the [`text`][`crate::text`] module's documentation
+/// for notes regarding implementations for types from third-party crates.
 pub trait AsXmlText {
     /// Convert the value to an XML string in a context where an absent value
     /// cannot be represented.
@@ -380,6 +366,9 @@ impl<T: AsXmlText> AsXmlText for &T {
 /// If your type can be serialised as both (text and attribute) but needs
 /// special handling in attributes, implement [`AsXmlText`] but provide a
 /// custom implementation of [`AsXmlText::as_optional_xml_text`].
+///
+/// **Important:** See the [`text`][`crate::text`] module's documentation
+/// for notes regarding implementations for types from third-party crates.
 pub trait AsOptionalXmlText {
     /// Convert the value to an XML string in a context where an absent value
     /// can be represented.

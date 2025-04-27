@@ -4,7 +4,84 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-//! Module containing implementations for conversions to/from XML text.
+//! # Convert data to and from XML text
+//!
+//! This module provides traits and types related to conversion of XML text
+//! data to and from Rust types, as well as the [`AsXmlText`],
+//! [`AsOptionalXmlText`][`crate::AsOptionalXmlText`] and [`FromXmlText`]
+//! implementations for foreign and standard-library types.
+//!
+//! ## Support for types from third-party crates
+//!
+//! Beyond the standard library types, the following additional types are
+//! supported:
+//!
+//! | Feature gate | Types |
+//! | --- | --- |
+//! | `jid` | `jid::Jid`, `jid::BareJid`, `jid::FullJid` |
+//! | `serde_json` | `serde_json::Value` |
+//! | `uuid` | `uuid::Uuid` |
+//!
+//! ### Adding support for more types
+//!
+//! Due to the orphan rule, it is not possible for applications to implement
+//! [`AsXmlText`], [`AsOptionalXmlText`][`crate::AsOptionalXmlText`] or
+//! [`FromXmlText`] on types which originate from third-party crates. Because
+//! of that, we are **extremely liberal** at accepting merge requests for
+//! implementations of these traits for types from third-party crates.
+//!
+//! The only requirement is that the implementation is gated behind a feature
+//! flag which is disabled-by-default.
+//!
+//! ### Workaround for unsupported types
+//!
+//! If making a merge request against `xso` and waiting for a release is not
+//! an option, you can use newtype wrappers in almost all cases, for example:
+//!
+#![cfg_attr(
+    not(all(feature = "std", feature = "macros")),
+    doc = "Because the std or macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
+)]
+#![cfg_attr(all(feature = "std", feature = "macros"), doc = "\n```\n")]
+//! # use xso::{AsXml, FromXml, AsXmlText, FromXmlText, error::Error};
+//! # use std::borrow::Cow;
+//! use std::process::ExitCode;
+//!
+//! struct MyExitCode(ExitCode);
+//!
+//! impl AsXmlText for MyExitCode {
+//!     fn as_xml_text(&self) -> Result<Cow<'_, str>, Error> {
+//!         match self.0 {
+//!             ExitCode::FAILURE => Ok(Cow::Borrowed("failure")),
+//!             ExitCode::SUCCESS => Ok(Cow::Borrowed("success")),
+//!             _ => Err(Error::Other("unknown exit code")),
+//!         }
+//!     }
+//! }
+//!
+//! impl FromXmlText for MyExitCode {
+//!     fn from_xml_text(s: String) -> Result<Self, Error> {
+//!         match s.as_str() {
+//!             "failure" => Ok(Self(ExitCode::FAILURE)),
+//!             "success" => Ok(Self(ExitCode::SUCCESS)),
+//!             _ => Err(Error::Other("unknown exit code")),
+//!         }
+//!     }
+//! }
+//!
+//! #[derive(AsXml, FromXml)]
+//! #[xml(namespace = "urn:example", name = "process-result")]
+//! struct ProcessResult {
+//!     #[xml(attribute)]
+//!     code: MyExitCode,
+//!     #[xml(text)]
+//!     stdout: String,
+//! }
+//! ```
+//!
+//! Of course, such an approach reduces the usability of your struct (and
+//! comes with issues once references are needed), so making a merge request
+//! against `xso` is generally preferable.
 
 use core::marker::PhantomData;
 
