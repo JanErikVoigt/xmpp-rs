@@ -52,9 +52,9 @@ pub enum Error {
 
     /// An element header did not match an expected element.
     ///
-    /// This is only rarely generated: most of the time, a mismatch of element
-    /// types is reported as either an unexpected or a missing child element,
-    /// errors which are generally more specific.
+    /// This error condition is only generated when the top-level element
+    /// passed to [`transform`][`crate::transform`] or similar does not match
+    /// the type.
     TypeMismatch,
 }
 

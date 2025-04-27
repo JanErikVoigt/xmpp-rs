@@ -61,6 +61,12 @@ enum IntoEventsInner {
 // NOTE to developers: The limitations are not fully trivial to overcome:
 // the attributes use a BTreeMap internally, which does not offer a `drain`
 // iterator.
+#[deprecated(
+    since = "0.1.3",
+    note = "obsolete since the transition to AsXml. no replacement."
+)]
+// NOTE: instead of deleting this, make it non-pub to be able to continue to
+// use it in IntoEventsInner.
 pub fn make_start_ev_parts(el: &Element) -> Result<(rxml::QName, AttrMap), Error> {
     let name = NcName::try_from(el.name())?;
     let namespace = Namespace::from(el.ns());
@@ -95,6 +101,7 @@ impl IntoEventsInner {
     fn next(&mut self) -> Result<Option<Event>, Error> {
         match self {
             IntoEventsInner::Header(ref mut el) => {
+                #[allow(deprecated)]
                 let (qname, attrs) = make_start_ev_parts(el)?;
                 let event = Event::StartElement(EventMetrics::zero(), qname, attrs);
 

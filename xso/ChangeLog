@@ -61,6 +61,7 @@ Version NEXT:
       - Update rxml dependency to 0.13.
       - xso now rejects conflicting `#[xml(attribute)]` (and `#[xml(lang)]`)
         specifications at compile time.
+      - Deprecate `try_from_element` in favour of `transform`.
 
 Version 0.1.2:
 2024-07-26 Jonas Schäfer <jonas@zombofant.net>

@@ -19,28 +19,28 @@ mod helpers {
     // this is to ensure that the macros do not have hidden dependencies on
     // any specific names being imported.
     use minidom::Element;
-    use xso::{error::FromElementError, transform, try_from_element, AsXml, FromXml};
+    use xso::{error::Error, transform, AsXml, FromXml};
 
     pub(super) fn roundtrip_full<T: AsXml + FromXml + PartialEq + core::fmt::Debug + Clone>(
         s: &str,
     ) {
         let initial: Element = s.parse().unwrap();
-        let structural: T = match try_from_element(initial.clone()) {
+        let structural: T = match transform(&initial) {
             Ok(v) => v,
             Err(e) => panic!("failed to parse from {:?}: {}", s, e),
         };
         let recovered = transform(&structural).expect("roundtrip did not produce an element");
         assert_eq!(initial, recovered);
-        let structural2: T = match try_from_element(recovered) {
+        let structural2: T = match transform(&recovered) {
             Ok(v) => v,
             Err(e) => panic!("failed to parse from serialisation of {:?}: {}", s, e),
         };
         assert_eq!(structural, structural2);
     }
 
-    pub(super) fn parse_str<T: FromXml>(s: &str) -> Result<T, FromElementError> {
+    pub(super) fn parse_str<T: FromXml>(s: &str) -> Result<T, Error> {
         let initial: Element = s.parse().unwrap();
-        try_from_element(initial)
+        transform(&initial)
     }
 }
 
@@ -102,7 +102,7 @@ fn empty_name_mismatch() {
         result::Result::{Err, Ok},
     };
     match parse_str::<Empty>("<bar xmlns='urn:example:ns1'/>") {
-        Err(xso::error::FromElementError::Mismatch(..)) => (),
+        Err(xso::error::Error::TypeMismatch) => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -115,7 +115,7 @@ fn empty_namespace_mismatch() {
         result::Result::{Err, Ok},
     };
     match parse_str::<Empty>("<foo xmlns='urn:example:ns2'/>") {
-        Err(xso::error::FromElementError::Mismatch(..)) => (),
+        Err(xso::error::Error::TypeMismatch) => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -132,7 +132,7 @@ fn empty_unexpected_attribute() {
         result::Result::{Err, Ok},
     };
     match parse_str::<Empty>("<foo xmlns='urn:example:ns1' fnord='bar'/>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+        Err(xso::error::Error::Other(e)) => {
             assert_eq!(e, "Unknown attribute in Empty element.");
         }
         other => panic!("unexpected result: {:?}", other),
@@ -168,7 +168,7 @@ fn empty_unexpected_child() {
         result::Result::{Err, Ok},
     };
     match parse_str::<Empty>("<foo xmlns='urn:example:ns1'><coucou/></foo>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+        Err(xso::error::Error::Other(e)) => {
             assert_eq!(e, "Unknown child in Empty element.");
         }
         other => panic!("unexpected result: {:?}", other),
@@ -183,7 +183,7 @@ fn empty_qname_check_has_precedence_over_attr_check() {
         result::Result::{Err, Ok},
     };
     match parse_str::<Empty>("<bar xmlns='urn:example:ns1' fnord='bar'/>") {
-        Err(xso::error::FromElementError::Mismatch(..)) => (),
+        Err(xso::error::Error::TypeMismatch) => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -252,7 +252,7 @@ fn required_attribute_missing() {
         result::Result::{Err, Ok},
     };
     match parse_str::<RequiredAttribute>("<attr xmlns='urn:example:ns1'/>") {
-        Err(::xso::error::FromElementError::Invalid(::xso::error::Error::Other(e)))
+        Err(::xso::error::Error::Other(e))
             if e.contains("Required attribute field") && e.contains("missing") =>
         {
             ()
@@ -531,11 +531,7 @@ fn fails_text_without_text_consumer_positive() {
     };
     match parse_str::<FailsTextWithoutTextConsumer>("<elem xmlns='urn:example:ns1'>  quak  </elem>")
     {
-        Err(::xso::error::FromElementError::Invalid(::xso::error::Error::Other(e)))
-            if e.contains("Unexpected text") =>
-        {
-            ()
-        }
+        Err(::xso::error::Error::Other(e)) if e.contains("Unexpected text") => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -605,7 +601,7 @@ fn parent_negative_duplicate_child() {
         result::Result::{Err, Ok},
     };
     match parse_str::<Parent>("<parent xmlns='urn:example:ns1'><attr foo='hello world!'/><attr foo='hello world!'/></parent>") {
-        Err(::xso::error::FromElementError::Invalid(::xso::error::Error::Other(e))) if e.contains("must not have more than one") => (),
+        Err(::xso::error::Error::Other(e)) if e.contains("must not have more than one") => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -759,7 +755,7 @@ fn name_switched_enum_negative_name_mismatch() {
         result::Result::{Err, Ok},
     };
     match parse_str::<NameSwitchedEnum>("<x xmlns='urn:example:ns1'>hello</x>") {
-        Err(xso::error::FromElementError::Mismatch { .. }) => (),
+        Err(xso::error::Error::TypeMismatch) => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -772,7 +768,7 @@ fn name_switched_enum_negative_namespace_mismatch() {
         result::Result::{Err, Ok},
     };
     match parse_str::<NameSwitchedEnum>("<b xmlns='urn:example:ns2'>hello</b>") {
-        Err(xso::error::FromElementError::Mismatch { .. }) => (),
+        Err(xso::error::Error::TypeMismatch) => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -846,7 +842,10 @@ fn exhaustive_name_switched_enum_negative_name_mismatch() {
         result::Result::{Err, Ok},
     };
     match parse_str::<ExhaustiveNameSwitchedEnum>("<x xmlns='urn:example:ns1'>hello</x>") {
-        Err(xso::error::FromElementError::Invalid { .. }) => (),
+        Err(xso::error::Error::TypeMismatch) => {
+            panic!("unexpected result: {:?}", xso::error::Error::TypeMismatch)
+        }
+        Err(_) => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -859,7 +858,7 @@ fn exhaustive_name_switched_enum_negative_namespace_mismatch() {
         result::Result::{Err, Ok},
     };
     match parse_str::<ExhaustiveNameSwitchedEnum>("<b xmlns='urn:example:ns2'>hello</b>") {
-        Err(xso::error::FromElementError::Mismatch { .. }) => (),
+        Err(xso::error::Error::TypeMismatch) => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -935,11 +934,7 @@ fn text_extract_negative_absent_child() {
         result::Result::{Err, Ok},
     };
     match parse_str::<TextExtract>("<parent xmlns='urn:example:ns1'/>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e)))
-            if e.contains("Missing child field") =>
-        {
-            ()
-        }
+        Err(xso::error::Error::Other(e)) if e.contains("Missing child field") => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -956,11 +951,7 @@ fn text_extract_negative_unexpected_attribute_in_child() {
         result::Result::{Err, Ok},
     };
     match parse_str::<TextExtract>("<parent xmlns='urn:example:ns1'><child foo='bar'/></parent>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e)))
-            if e.contains("Unknown attribute") =>
-        {
-            ()
-        }
+        Err(xso::error::Error::Other(e)) if e.contains("Unknown attribute") => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -979,11 +970,7 @@ fn text_extract_negative_unexpected_child_in_child() {
     match parse_str::<TextExtract>(
         "<parent xmlns='urn:example:ns1'><child><quak/></child></parent>",
     ) {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e)))
-            if e.contains("Unknown child in extraction") =>
-        {
-            ()
-        }
+        Err(xso::error::Error::Other(e)) if e.contains("Unknown child in extraction") => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -998,11 +985,7 @@ fn text_extract_negative_duplicate_child() {
     match parse_str::<TextExtract>(
         "<parent xmlns='urn:example:ns1'><child>hello world</child><child>more</child></parent>",
     ) {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e)))
-            if e.contains("must not have more than one") =>
-        {
-            ()
-        }
+        Err(xso::error::Error::Other(e)) if e.contains("must not have more than one") => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -1051,11 +1034,7 @@ fn attribute_extract_negative_absent_attribute() {
         result::Result::{Err, Ok},
     };
     match parse_str::<AttributeExtract>("<parent xmlns='urn:example:ns1'><child/></parent>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e)))
-            if e.contains("Required attribute") =>
-        {
-            ()
-        }
+        Err(xso::error::Error::Other(e)) if e.contains("Required attribute") => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -1070,11 +1049,7 @@ fn attribute_extract_negative_unexpected_text_in_child() {
     match parse_str::<AttributeExtract>(
         "<parent xmlns='urn:example:ns1'><child foo='hello world'>fnord</child></parent>",
     ) {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e)))
-            if e.contains("Unexpected text") =>
-        {
-            ()
-        }
+        Err(xso::error::Error::Other(e)) if e.contains("Unexpected text") => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -1662,11 +1637,7 @@ fn element_catch_one_negative_none() {
         result::Result::{Err, Ok},
     };
     match parse_str::<ElementCatchOne>("<parent xmlns='urn:example:ns1'/>") {
-        Err(::xso::error::FromElementError::Invalid(::xso::error::Error::Other(e)))
-            if e.contains("Missing child field") =>
-        {
-            ()
-        }
+        Err(::xso::error::Error::Other(e)) if e.contains("Missing child field") => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -1679,7 +1650,7 @@ fn element_catch_one_negative_more_than_one_child() {
         result::Result::{Err, Ok},
     };
     match parse_str::<ElementCatchOne>("<parent xmlns='urn:example:ns1'><child><deeper/></child><child xmlns='urn:example:ns2'/></parent>") {
-        Err(::xso::error::FromElementError::Invalid(::xso::error::Error::Other(e))) if e == "Unknown child in ElementCatchOne element." => (),
+        Err(::xso::error::Error::Other(e)) if e == "Unknown child in ElementCatchOne element." => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -1721,7 +1692,7 @@ fn element_catch_maybe_one_negative_more_than_one_child() {
         result::Result::{Err, Ok},
     };
     match parse_str::<ElementCatchMaybeOne>("<parent xmlns='urn:example:ns1'><child><deeper/></child><child xmlns='urn:example:ns2'/></parent>") {
-        Err(::xso::error::FromElementError::Invalid(::xso::error::Error::Other(e))) if e == "Unknown child in ElementCatchMaybeOne element." => (),
+        Err(::xso::error::Error::Other(e)) if e == "Unknown child in ElementCatchMaybeOne element." => (),
         other => panic!("unexpected result: {:?}", other),
     }
 }
@@ -2078,7 +2049,7 @@ fn ignore_unknown_attributes_negative_unexpected_child() {
         result::Result::{Err, Ok},
     };
     match parse_str::<IgnoreUnknownAttributes>("<foo xmlns='urn:example:ns1'><coucou/></foo>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+        Err(xso::error::Error::Other(e)) => {
             assert_eq!(e, "Unknown child in IgnoreUnknownAttributes element.");
         }
         other => panic!("unexpected result: {:?}", other),
@@ -2124,7 +2095,7 @@ fn ignore_unknown_children_negative_unexpected_attribute() {
         result::Result::{Err, Ok},
     };
     match parse_str::<IgnoreUnknownChildren>("<foo xmlns='urn:example:ns1' fnord='bar'/>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+        Err(xso::error::Error::Other(e)) => {
             assert_eq!(e, "Unknown attribute in IgnoreUnknownChildren element.");
         }
         other => panic!("unexpected result: {:?}", other),
@@ -2270,7 +2241,7 @@ fn discard_attribute_fails_on_other_unexpected_attributes() {
         result::Result::{Err, Ok},
     };
     match parse_str::<DiscardAttribute>("<foo xmlns='urn:example:ns1' fnord='bar'/>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+        Err(xso::error::Error::Other(e)) => {
             assert_eq!(e, "Unknown attribute in DiscardAttribute element.");
         }
         other => panic!("unexpected result: {:?}", other),
@@ -2375,7 +2346,7 @@ fn deserialize_callback_can_fail() {
         result::Result::{Err, Ok},
     };
     match parse_str::<DeserializeCallback>("<foo xmlns='urn:example:ns1' outcome='0'/>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+        Err(xso::error::Error::Other(e)) => {
             assert_eq!(e, "saw outcome == 0");
         }
         other => panic!("unexpected result: {:?}", other),
@@ -2447,7 +2418,7 @@ fn enum_deserialize_callback_can_fail() {
         result::Result::{Err, Ok},
     };
     match parse_str::<DeserializeCallbackEnum>("<foo xmlns='urn:example:ns1' outcome='0'/>") {
-        Err(xso::error::FromElementError::Invalid(xso::error::Error::Other(e))) => {
+        Err(xso::error::Error::Other(e)) => {
             assert_eq!(e, "saw outcome == 0");
         }
         other => panic!("unexpected result: {:?}", other),

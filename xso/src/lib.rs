@@ -510,10 +510,15 @@ pub fn transform<T: FromXml, F: AsXml>(from: &F) -> Result<T, self::error::Error
 /// function will return the element unharmed if its element header does not
 /// match the expectations of `T`.
 #[cfg(feature = "minidom")]
+#[deprecated(
+    since = "0.1.3",
+    note = "obsolete since the transition to AsXml, which works by reference; use xso::transform instead."
+)]
 pub fn try_from_element<T: FromXml>(
     from: minidom::Element,
 ) -> Result<T, self::error::FromElementError> {
     let mut languages = rxml::xml_lang::XmlLangStack::new();
+    #[allow(deprecated)]
     let (qname, attrs) = minidom_compat::make_start_ev_parts(&from)?;
 
     languages.push_from_attrs(&attrs);
