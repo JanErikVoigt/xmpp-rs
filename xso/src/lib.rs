@@ -104,7 +104,6 @@ use alloc::{
     vec::Vec,
 };
 
-#[doc(inline)]
 pub use text::TextCodec;
 
 #[doc(inline)]
