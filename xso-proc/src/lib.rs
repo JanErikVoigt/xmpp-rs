@@ -95,7 +95,7 @@ fn from_xml_impl(input: Item) -> Result<TokenStream> {
         impl ::core::convert::TryFrom<::xso::exports::minidom::Element> for #ident {
             type Error = ::xso::error::FromElementError;
 
-            fn try_from(other: ::xso::exports::minidom::Element) -> ::core::result::Result<Self, Self::Error> {
+            fn try_from(other: ::xso::exports::minidom::Element) -> ::core::result::Result<Self, ::xso::error::FromElementError> {
                 ::xso::try_from_element(other)
             }
         }
