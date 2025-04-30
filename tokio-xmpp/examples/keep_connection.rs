@@ -88,8 +88,7 @@ async fn main() {
             _ = ping_timer.tick() => {
                 log::info!("sending ping for fun & profit");
                 ping_ctr = ping_ctr.wrapping_add(1);
-                let mut iq = Iq::from_get(format!("ping-{}", ping_ctr), ping::Ping);
-                iq.to = Some(domain.clone());
+                let iq = Iq::from_get(format!("ping-{}", ping_ctr), ping::Ping).with_to(domain.clone());
                 stream.send(Box::new(iq.into())).await;
             }
             ev = stream.next() => match ev {

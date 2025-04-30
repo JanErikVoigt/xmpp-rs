@@ -85,6 +85,17 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
            optional `parent` attribute.
       - presence::Presence has been ported to use xso (!477). It also uses the
         message::Lang newtype since !561.
+      - iq::Iq has been ported to use xso (!572). That entails a couple
+        breaking changes:
+
+        - The IqType type has been removed and loosely replaced by the
+          IqPayload type.
+        - The Iq type is now an enum. Access to `from`, `to` and `id` needs
+          to happen via the provided accessor functions, by `match`-ing the
+          enum variant or by splitting the Iq into its IqHeader and IqPayload
+          using the `split()` method.
+        - The inverse is possible through the `assemble()` methods on
+          IqPayload, IqHeader and Iq, whichever is more convenient.
     * New parsers/serialisers:
       - Stream Features (RFC 6120) (!400)
       - Spam Reporting (XEP-0377) (!506)

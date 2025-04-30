@@ -43,10 +43,11 @@ impl Stanza {
     pub fn ensure_id(&mut self) -> &str {
         match self {
             Self::Iq(iq) => {
-                if iq.id.is_empty() {
-                    iq.id = make_id();
+                let id = iq.id_mut();
+                if id.is_empty() {
+                    *id = make_id();
                 }
-                &iq.id
+                id
             }
             Self::Message(message) => message.id.get_or_insert_with(|| Id(make_id())).0.as_ref(),
             Self::Presence(presence) => presence.id.get_or_insert_with(make_id),
@@ -97,7 +98,7 @@ impl TryFrom<Stanza> for Presence {
 impl TryFrom<Stanza> for Iq {
     type Error = Stanza;
 
-    fn try_from(other: Stanza) -> Result<Self, Self::Error> {
+    fn try_from(other: Stanza) -> Result<Self, Stanza> {
         match other {
             Stanza::Iq(st) => Ok(st),
             other => Err(other),

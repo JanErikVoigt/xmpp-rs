@@ -13,7 +13,7 @@ use futures::{ready, Sink, Stream};
 
 use xmpp_parsers::{
     bind::{BindQuery, BindResponse},
-    iq::{Iq, IqType},
+    iq::Iq,
     jid::{FullJid, Jid},
     sm,
     stream_error::{DefinedCondition, StreamError},
@@ -200,31 +200,34 @@ impl NegotiationState {
 
                 match item {
                     Ok(XmppStreamElement::Stanza(data)) => match data {
-                        Stanza::Iq(iq) if iq.id == BIND_REQ_ID => {
-                            let error = match iq.payload {
-                                IqType::Result(Some(payload)) => {
-                                    match BindResponse::try_from(payload) {
-                                        Ok(v) => {
-                                            let bound_jid = v.into();
-                                            if *sm_supported {
-                                                *self = Self::SendSmRequest {
+                        Stanza::Iq(iq) if iq.id() == BIND_REQ_ID => {
+                            let error = match iq {
+                                Iq::Result {
+                                    payload: Some(payload),
+                                    ..
+                                } => match BindResponse::try_from(payload) {
+                                    Ok(v) => {
+                                        let bound_jid = v.into();
+                                        if *sm_supported {
+                                            *self = Self::SendSmRequest {
+                                                sm_state: None,
+                                                bound_jid: Some(bound_jid),
+                                            };
+                                            return Poll::Ready(Continue(None));
+                                        } else {
+                                            return Poll::Ready(Break(
+                                                NegotiationResult::StreamReset {
                                                     sm_state: None,
-                                                    bound_jid: Some(bound_jid),
-                                                };
-                                                return Poll::Ready(Continue(None));
-                                            } else {
-                                                return Poll::Ready(Break(
-                                                    NegotiationResult::StreamReset {
-                                                        sm_state: None,
-                                                        bound_jid: Jid::from(bound_jid),
-                                                    },
-                                                ));
-                                            }
+                                                    bound_jid: Jid::from(bound_jid),
+                                                },
+                                            ));
                                         }
-                                        Err(e) => e.to_string(),
                                     }
+                                    Err(e) => e.to_string(),
+                                },
+                                Iq::Result { payload: None, .. } => {
+                                    "Bind response has no payload".to_owned()
                                 }
-                                IqType::Result(None) => "Bind response has no payload".to_owned(),
                                 _ => "Unexpected IQ type in response to bind request".to_owned(),
                             };
                             log::warn!("Received IQ matching the bind request, but parsing failed ({error})! Emitting stream error.");

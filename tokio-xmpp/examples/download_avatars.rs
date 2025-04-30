@@ -11,7 +11,7 @@ use xmpp_parsers::{
     caps::{compute_disco, hash_caps, Caps},
     disco::{DiscoInfoQuery, DiscoInfoResult, Feature, Identity},
     hashes::Algo,
-    iq::{Iq, IqType},
+    iq::Iq,
     jid::{BareJid, Jid},
     ns,
     presence::{Presence, Type as PresenceType},
@@ -54,63 +54,41 @@ async fn main() {
             client.send_stanza(presence.into()).await.unwrap();
         } else if let Some(stanza) = event.into_stanza() {
             match stanza {
-                Stanza::Iq(iq) => {
-                    if let IqType::Get(payload) = iq.payload {
-                        if payload.is("query", ns::DISCO_INFO) {
-                            let query = DiscoInfoQuery::try_from(payload);
-                            match query {
-                                Ok(query) => {
-                                    let mut disco = disco_info.clone();
-                                    disco.node = query.node;
-                                    let iq = Iq::from_result(iq.id, Some(disco))
-                                        .with_to(iq.from.unwrap());
-                                    client.send_stanza(iq.into()).await.unwrap();
-                                }
-                                Err(err) => {
-                                    client
-                                        .send_stanza(
-                                            make_error(
-                                                iq.from.unwrap(),
-                                                iq.id,
-                                                ErrorType::Modify,
-                                                DefinedCondition::BadRequest,
-                                                &format!("{}", err),
-                                            )
-                                            .into(),
-                                        )
-                                        .await
-                                        .unwrap();
-                                }
+                Stanza::Iq(Iq::Get {
+                    payload, id, from, ..
+                }) => {
+                    if payload.is("query", ns::DISCO_INFO) {
+                        let query = DiscoInfoQuery::try_from(payload);
+                        match query {
+                            Ok(query) => {
+                                let mut disco = disco_info.clone();
+                                disco.node = query.node;
+                                let iq = Iq::from_result(id, Some(disco)).with_to(from.unwrap());
+                                client.send_stanza(iq.into()).await.unwrap();
                             }
-                        } else {
-                            // We MUST answer unhandled get iqs with a service-unavailable error.
-                            client
-                                .send_stanza(
-                                    make_error(
-                                        iq.from.unwrap(),
-                                        iq.id,
-                                        ErrorType::Cancel,
-                                        DefinedCondition::ServiceUnavailable,
-                                        "No handler defined for this kind of iq.",
+                            Err(err) => {
+                                client
+                                    .send_stanza(
+                                        make_error(
+                                            from.unwrap(),
+                                            id,
+                                            ErrorType::Modify,
+                                            DefinedCondition::BadRequest,
+                                            &format!("{}", err),
+                                        )
+                                        .into(),
                                     )
-                                    .into(),
-                                )
-                                .await
-                                .unwrap();
+                                    .await
+                                    .unwrap();
+                            }
                         }
-                    } else if let IqType::Result(Some(payload)) = iq.payload {
-                        if payload.is("pubsub", ns::PUBSUB) {
-                            let pubsub = PubSub::try_from(payload).unwrap();
-                            let from = iq.from.clone().unwrap_or(jid.clone().into());
-                            handle_iq_result(pubsub, &from);
-                        }
-                    } else if let IqType::Set(_) = iq.payload {
-                        // We MUST answer unhandled set iqs with a service-unavailable error.
+                    } else {
+                        // We MUST answer unhandled get iqs with a service-unavailable error.
                         client
                             .send_stanza(
                                 make_error(
-                                    iq.from.unwrap(),
-                                    iq.id,
+                                    from.unwrap(),
+                                    id,
                                     ErrorType::Cancel,
                                     DefinedCondition::ServiceUnavailable,
                                     "No handler defined for this kind of iq.",
@@ -121,6 +99,34 @@ async fn main() {
                             .unwrap();
                     }
                 }
+                Stanza::Iq(Iq::Result {
+                    payload: Some(payload),
+                    from,
+                    ..
+                }) => {
+                    if payload.is("pubsub", ns::PUBSUB) {
+                        let pubsub = PubSub::try_from(payload).unwrap();
+                        let from = from.unwrap_or(jid.clone().into());
+                        handle_iq_result(pubsub, &from);
+                    }
+                }
+                Stanza::Iq(Iq::Set { from, id, .. }) => {
+                    // We MUST answer unhandled set iqs with a service-unavailable error.
+                    client
+                        .send_stanza(
+                            make_error(
+                                from.unwrap(),
+                                id,
+                                ErrorType::Cancel,
+                                DefinedCondition::ServiceUnavailable,
+                                "No handler defined for this kind of iq.",
+                            )
+                            .into(),
+                        )
+                        .await
+                        .unwrap();
+                }
+                Stanza::Iq(Iq::Error { .. }) | Stanza::Iq(Iq::Result { payload: None, .. }) => (),
                 Stanza::Message(message) => {
                     let from = message.from.clone().unwrap();
                     if let Some(body) = message.get_best_body(vec!["en"]) {

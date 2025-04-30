@@ -18,10 +18,7 @@ use std::sync::Mutex;
 use futures::Stream;
 use tokio::sync::oneshot;
 
-use xmpp_parsers::{
-    iq::{Iq, IqType},
-    stanza_error::StanzaError,
-};
+use xmpp_parsers::{iq::Iq, stanza_error::StanzaError};
 
 use crate::{
     event::make_id,
@@ -40,11 +37,21 @@ pub enum IqRequest {
     Set(Element),
 }
 
-impl From<IqRequest> for IqType {
-    fn from(other: IqRequest) -> IqType {
-        match other {
-            IqRequest::Get(v) => Self::Get(v),
-            IqRequest::Set(v) => Self::Set(v),
+impl IqRequest {
+    fn into_iq(self, from: Option<Jid>, to: Option<Jid>, id: String) -> Iq {
+        match self {
+            Self::Get(payload) => Iq::Get {
+                from,
+                to,
+                id,
+                payload,
+            },
+            Self::Set(payload) => Iq::Set {
+                from,
+                to,
+                id,
+                payload,
+            },
         }
     }
 }
@@ -59,11 +66,22 @@ pub enum IqResponse {
     Error(StanzaError),
 }
 
-impl From<IqResponse> for IqType {
-    fn from(other: IqResponse) -> IqType {
-        match other {
-            IqResponse::Result(v) => Self::Result(v),
-            IqResponse::Error(v) => Self::Error(v),
+impl IqResponse {
+    fn into_iq(self, from: Option<Jid>, to: Option<Jid>, id: String) -> Iq {
+        match self {
+            Self::Error(error) => Iq::Error {
+                from,
+                to,
+                id,
+                error,
+                payload: None,
+            },
+            Self::Result(payload) => Iq::Result {
+                from,
+                to,
+                id,
+                payload,
+            },
         }
     }
 }
@@ -251,22 +269,28 @@ impl IqResponseTracker {
     /// Returns the IQ stanza unharmed if it is not an IQ response matching
     /// any request which is still being tracked.
     pub fn handle_iq(&self, iq: Iq) -> ControlFlow<(), Iq> {
-        let payload = match iq.payload {
-            IqType::Error(error) => IqResponse::Error(error),
-            IqType::Result(result) => IqResponse::Result(result),
+        let (from, to, id, payload) = match iq {
+            Iq::Error {
+                from,
+                to,
+                id,
+                error,
+                payload: _,
+            } => (from, to, id, IqResponse::Error(error)),
+            Iq::Result {
+                from,
+                to,
+                id,
+                payload,
+            } => (from, to, id, IqResponse::Result(payload)),
             _ => return ControlFlow::Continue(iq),
         };
-        let key = (iq.from, iq.id);
+        let key = (from, id);
         let mut map = self.map.lock().unwrap();
         match map.remove(&key) {
             None => {
                 log::trace!("not handling IQ response from {:?} with id {:?}: no active tracker for this tuple", key.0, key.1);
-                ControlFlow::Continue(Iq {
-                    from: key.0,
-                    id: key.1,
-                    to: iq.to,
-                    payload: payload.into(),
-                })
+                ControlFlow::Continue(payload.into_iq(key.0, to, key.1))
             }
             Some(sink) => {
                 sink.complete(payload);
@@ -298,14 +322,6 @@ impl IqResponseTracker {
             inner: rx,
         };
         map.insert(key.clone(), sink);
-        (
-            Iq {
-                from,
-                to: key.0,
-                id: key.1,
-                payload: req.into(),
-            },
-            token,
-        )
+        (req.into_iq(from, key.0, key.1), token)
     }
 }
