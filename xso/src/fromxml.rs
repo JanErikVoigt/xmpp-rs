@@ -84,9 +84,9 @@ impl<T: FromXml> FromXml for Option<T> {
 }
 
 /// Helper struct to construct an `Box<T>` from XML events.
-pub struct BoxBuilder<T: FromEventsBuilder>(Box<T>);
+pub struct BoxBuilder<T: FromEventsBuilder + ?Sized>(Box<T>);
 
-impl<T: FromEventsBuilder> FromEventsBuilder for BoxBuilder<T> {
+impl<T: FromEventsBuilder + ?Sized> FromEventsBuilder for BoxBuilder<T> {
     type Output = Box<T::Output>;
 
     fn feed(&mut self, ev: rxml::Event, ctx: &Context<'_>) -> Result<Option<Self::Output>, Error> {
@@ -94,8 +94,8 @@ impl<T: FromEventsBuilder> FromEventsBuilder for BoxBuilder<T> {
     }
 }
 
-/// Parsers `T` into a `Box`.
-impl<T: FromXml> FromXml for Box<T> {
+/// Parses `T` into a `Box`.
+impl<T: FromXml + ?Sized> FromXml for Box<T> {
     type Builder = BoxBuilder<T::Builder>;
 
     fn from_events(
@@ -104,6 +104,14 @@ impl<T: FromXml> FromXml for Box<T> {
         ctx: &Context<'_>,
     ) -> Result<Self::Builder, FromEventsError> {
         Ok(BoxBuilder(Box::new(T::from_events(name, attrs, ctx)?)))
+    }
+}
+
+impl<T: FromEventsBuilder + ?Sized> FromEventsBuilder for Box<T> {
+    type Output = T::Output;
+
+    fn feed(&mut self, ev: rxml::Event, ctx: &Context<'_>) -> Result<Option<Self::Output>, Error> {
+        (**self).feed(ev, ctx)
     }
 }
 
