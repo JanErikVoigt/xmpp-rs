@@ -127,6 +127,28 @@ impl<T: AsXml> fmt::Display for PrintRawXml<'_, T> {
     }
 }
 
+/// Dyn-compatible version of [`AsXml`].
+///
+/// This trait is automatically implemented for all types which implement
+/// `AsXml`.
+pub trait AsXmlDyn {
+    /// Return an iterator which emits the contents of the struct or enum as
+    /// serialisable [`Item`] items.
+    fn as_xml_dyn_iter<'x>(
+        &'x self,
+    ) -> Result<Box<dyn Iterator<Item = Result<Item<'x>, Error>> + 'x>, Error>;
+}
+
+impl<T: AsXml> AsXmlDyn for T {
+    /// Return an iterator which emits the contents of the struct or enum as
+    /// serialisable [`Item`] items by calling [`AsXml::as_xml_dyn_iter`].
+    fn as_xml_dyn_iter<'x>(
+        &'x self,
+    ) -> Result<Box<dyn Iterator<Item = Result<Item<'x>, Error>> + 'x>, Error> {
+        <T as AsXml>::as_xml_dyn_iter(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

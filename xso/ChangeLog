@@ -53,6 +53,7 @@ Version NEXT:
       - `xso::convert_via_fromstr_and_display`, a declarative macro to provide
         `AsXmlText` and `FromXmlText` implementations based on the standard
         library's `Display` and `FromStr` traits.
+      - `AsXmlDyn`, a dyn-compatible variant of `AsXml` (!573).
     * Changes
       - Generated AsXml iterator and FromXml builder types are now
         doc(hidden), to not clutter hand-written documentation with auto

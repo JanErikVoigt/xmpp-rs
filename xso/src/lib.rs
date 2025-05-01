@@ -100,7 +100,7 @@ pub mod exports {
     }
 }
 
-use alloc::{borrow::Cow, string::String, vec::Vec};
+use alloc::{borrow::Cow, boxed::Box, string::String, vec::Vec};
 
 #[doc(inline)]
 pub use fromxml::Context;
@@ -150,6 +150,22 @@ pub trait AsXml {
     /// Return an iterator which emits the contents of the struct or enum as
     /// serialisable [`Item`] items.
     fn as_xml_iter(&self) -> Result<Self::ItemIter<'_>, self::error::Error>;
+
+    /// Return the same iterator as [`as_xml_iter`][`Self::as_xml_iter`], but
+    /// boxed to erase the concrete iterator type.
+    ///
+    /// The provided implementation uses a simple cast. In most cases, it does
+    /// not make sense to override the implementation. The only exception is
+    /// if [`Self::ItemIter`] is already a boxed type, in which case
+    /// overriding this method can avoid double-boxing the iterator.
+    fn as_xml_dyn_iter<'x>(
+        &'x self,
+    ) -> Result<
+        Box<dyn Iterator<Item = Result<Item<'x>, self::error::Error>> + 'x>,
+        self::error::Error,
+    > {
+        self.as_xml_iter().map(|x| Box::new(x) as Box<_>)
+    }
 }
 
 /// Trait for a temporary object allowing to construct a struct from
