@@ -38,6 +38,34 @@ pub mod minidom_compat;
 mod rxml_util;
 pub mod text;
 
+// This is a hack to not make `const_str_eq` publicly available, except
+// through the `exports` module if the `macros` feature is enabled, but have
+// it available internally in all cases.
+mod util {
+    /// Compile-time comparison of two strings.
+    ///
+    /// Used by macro-generated code.
+    ///
+    /// This is necessary because `<str as PartialEq>::eq` is not `const`.
+    pub const fn const_str_eq(a: &str, b: &str) -> bool {
+        let a = a.as_bytes();
+        let b = b.as_bytes();
+        if a.len() != b.len() {
+            return false;
+        }
+
+        let mut i = 0;
+        while i < a.len() {
+            if a[i] != b[i] {
+                return false;
+            }
+            i += 1;
+        }
+
+        true
+    }
+}
+
 #[doc(hidden)]
 pub mod exports {
     #[cfg(all(feature = "minidom", feature = "macros"))]
@@ -75,35 +103,15 @@ pub mod exports {
     #[cfg(feature = "macros")]
     pub type CoreU8 = u8;
 
-    /// Compile-time comparison of two strings.
-    ///
-    /// Used by macro-generated code.
-    ///
-    /// This is necessary because `<str as PartialEq>::eq` is not `const`.
     #[cfg(feature = "macros")]
-    pub const fn const_str_eq(a: &'static str, b: &'static str) -> bool {
-        let a = a.as_bytes();
-        let b = b.as_bytes();
-        if a.len() != b.len() {
-            return false;
-        }
-
-        let mut i = 0;
-        while i < a.len() {
-            if a[i] != b[i] {
-                return false;
-            }
-            i += 1;
-        }
-
-        true
-    }
+    pub use super::util::const_str_eq;
 }
 
 use alloc::{borrow::Cow, boxed::Box, string::String, vec::Vec};
 
 #[doc(inline)]
 pub use fromxml::Context;
+use fromxml::XmlNameMatcher;
 
 pub use text::TextCodec;
 
@@ -235,6 +243,21 @@ pub trait FromXml {
         attrs: rxml::AttrMap,
         ctx: &Context<'_>,
     ) -> Result<Self::Builder, self::error::FromEventsError>;
+
+    /// Return a predicate which determines if `Self` *may* be parsed from
+    /// a given XML element.
+    ///
+    /// The returned matcher **must** match all elements from which `Self`
+    /// can be parsed, but it may also match elements from which `Self`
+    /// cannot be parsed.
+    ///
+    /// This is an optimisation utility for code locations which have to
+    /// disambiguate between many `FromXml` implementations. The provided
+    /// implementation returns a matcher which matches all elements, which is
+    /// correct, but also very inefficient.
+    fn xml_name_matcher() -> XmlNameMatcher<'static> {
+        XmlNameMatcher::Any
+    }
 }
 
 /// Trait allowing to convert XML text to a value.

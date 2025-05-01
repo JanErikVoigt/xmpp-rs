@@ -17,6 +17,68 @@ use alloc::boxed::Box;
 use crate::error::{Error, FromEventsError};
 use crate::{FromEventsBuilder, FromXml};
 
+/// Match an XML element qualified name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum XmlNameMatcher<'x> {
+    /// Match any XML element
+    Any,
+
+    /// Match any XML element in the given namespace.
+    InNamespace(&'x str),
+
+    /// Match any XML element with the exact namespace/name combination.
+    Specific(&'x str, &'x str),
+}
+
+impl<'x> XmlNameMatcher<'x> {
+    /// Return the superset of two `XmlNameMatcher` instances.
+    pub const fn superset(self, other: Self) -> Self {
+        match self {
+            Self::Any => Self::Any,
+            Self::InNamespace(my_namespace) => match other {
+                Self::Any => Self::Any,
+                Self::InNamespace(other_namespace) | Self::Specific(other_namespace, _) => {
+                    if crate::util::const_str_eq(my_namespace, other_namespace) {
+                        Self::InNamespace(my_namespace)
+                    } else {
+                        Self::Any
+                    }
+                }
+            },
+            Self::Specific(my_namespace, my_name) => match other {
+                Self::Any => Self::Any,
+                Self::InNamespace(other_namespace) => {
+                    if crate::util::const_str_eq(my_namespace, other_namespace) {
+                        Self::InNamespace(my_namespace)
+                    } else {
+                        Self::Any
+                    }
+                }
+                Self::Specific(other_namespace, other_name) => {
+                    if crate::util::const_str_eq(my_namespace, other_namespace) {
+                        if crate::util::const_str_eq(my_name, other_name) {
+                            Self::Specific(my_name, other_name)
+                        } else {
+                            Self::InNamespace(my_namespace)
+                        }
+                    } else {
+                        Self::Any
+                    }
+                }
+            },
+        }
+    }
+
+    /// Return true if the given `qname` matches this matcher.
+    pub fn matches(&self, qname: &rxml::QName) -> bool {
+        match self {
+            Self::Any => true,
+            Self::InNamespace(ns) => qname.0.as_str() == *ns,
+            Self::Specific(ns, name) => qname.0.as_str() == *ns && qname.1.as_str() == *name,
+        }
+    }
+}
+
 /// # Parsing context for [`FromEventsBuilder`]
 ///
 /// For the most part, [`FromEventsBuilder`] implementations can work with

@@ -54,6 +54,9 @@ Version NEXT:
         `AsXmlText` and `FromXmlText` implementations based on the standard
         library's `Display` and `FromStr` traits.
       - `AsXmlDyn`, a dyn-compatible variant of `AsXml` (!573).
+      - `FromXml::xml_name_matcher()` and related types, which allow `FromXml`
+        implementors to provide cachable hints to callers about which XML
+        elements are valid candidates for parsing (!573).
     * Changes
       - Generated AsXml iterator and FromXml builder types are now
         doc(hidden), to not clutter hand-written documentation with auto
