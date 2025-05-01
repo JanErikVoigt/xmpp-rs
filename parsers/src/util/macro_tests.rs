@@ -95,6 +95,14 @@ fn empty_roundtrip() {
 }
 
 #[test]
+fn empty_xml_name_matcher_is_specific() {
+    assert_eq!(
+        Empty::xml_name_matcher(),
+        xso::fromxml::XmlNameMatcher::Specific(NS1, "foo")
+    );
+}
+
+#[test]
 fn empty_name_mismatch() {
     #[allow(unused_imports)]
     use core::{
@@ -715,6 +723,14 @@ enum NameSwitchedEnum {
         #[xml(text)]
         foo: String,
     },
+}
+
+#[test]
+fn name_switched_enum_matcher_is_in_namespace() {
+    assert_eq!(
+        NameSwitchedEnum::xml_name_matcher(),
+        xso::fromxml::XmlNameMatcher::InNamespace(NS1)
+    );
 }
 
 #[test]
@@ -1845,6 +1861,14 @@ enum DynamicEnum {
 }
 
 #[test]
+fn dynamic_enum_matcher_is_any() {
+    assert_eq!(
+        DynamicEnum::xml_name_matcher(),
+        xso::fromxml::XmlNameMatcher::Any
+    );
+}
+
+#[test]
 fn dynamic_enum_roundtrip_a() {
     #[allow(unused_imports)]
     use core::{
@@ -1901,6 +1925,27 @@ fn fallible_parse_positive_err() {
         }
         other => panic!("unexpected result: {:?}", other),
     }
+}
+
+#[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
+#[xml()]
+enum DynamicEnumWithSharedNamespace {
+    #[xml(transparent)]
+    A(RequiredAttribute),
+
+    #[xml(namespace = NS1, name = "b")]
+    B {
+        #[xml(text)]
+        contents: String,
+    },
+}
+
+#[test]
+fn dynamic_enum_with_shared_namespace_matcher_is_in_namespace() {
+    assert_eq!(
+        DynamicEnumWithSharedNamespace::xml_name_matcher(),
+        xso::fromxml::XmlNameMatcher::InNamespace(NS1)
+    );
 }
 
 #[derive(FromXml, AsXml, PartialEq, Debug, Clone)]

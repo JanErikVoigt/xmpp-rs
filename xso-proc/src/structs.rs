@@ -7,10 +7,10 @@
 //! Handling of structs
 
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{spanned::Spanned, *};
 
-use crate::common::{AsXmlParts, FromXmlParts, ItemDef};
+use crate::common::{AsXmlParts, FromXmlParts, ItemDef, XmlNameMatcher};
 use crate::compound::Compound;
 use crate::error_message::ParentRef;
 use crate::meta::{reject_key, Flag, NameRef, NamespaceRef, QNameRef, XmlCompoundMeta};
@@ -165,6 +165,22 @@ impl StructInner {
                 xml_namespace,
                 xml_name,
             })
+        }
+    }
+
+    pub(crate) fn xml_name_matcher(&self) -> Result<XmlNameMatcher> {
+        match self {
+            Self::Transparent { ty, .. } => Ok(XmlNameMatcher::Custom(quote! {
+                <#ty as ::xso::FromXml>::xml_name_matcher()
+            })),
+            Self::Compound {
+                xml_namespace,
+                xml_name,
+                ..
+            } => Ok(XmlNameMatcher::Specific(
+                xml_namespace.to_token_stream(),
+                xml_name.to_token_stream(),
+            )),
         }
     }
 
@@ -399,6 +415,7 @@ impl ItemDef for StructDef {
                 #builder_ty_ident::new(#name_ident, #attrs_ident, ctx)
             },
             builder_ty_ident: builder_ty_ident.clone(),
+            name_matcher: self.inner.xml_name_matcher()?,
         })
     }
 

@@ -12,7 +12,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::*;
 
-use crate::common::{AsXmlParts, FromXmlParts, ItemDef};
+use crate::common::{AsXmlParts, FromXmlParts, ItemDef, XmlNameMatcher};
 use crate::compound::Compound;
 use crate::error_message::ParentRef;
 use crate::meta::{reject_key, Flag, NameRef, NamespaceRef, QNameRef, XmlCompoundMeta};
@@ -201,6 +201,16 @@ impl NameSwitchedEnum {
             variants,
             exhaustive: exhaustive.is_set(),
         })
+    }
+
+    /// Provide the `XmlNameMatcher` template for this enum.
+    ///
+    /// Name-switched enums always return a matcher in the namespace of the
+    /// elements they match against.
+    fn xml_name_matcher(&self) -> Result<XmlNameMatcher> {
+        Ok(XmlNameMatcher::InNamespace(
+            self.namespace.to_token_stream(),
+        ))
     }
 
     /// Build the deserialisation statemachine for the name-switched enum.
@@ -461,6 +471,17 @@ impl AttributeSwitchedEnum {
         })
     }
 
+    /// Provide the `XmlNameMatcher` template for this enum.
+    ///
+    /// Attribute-switched enums always return a matcher specific to the
+    /// element they operate on.
+    fn xml_name_matcher(&self) -> Result<XmlNameMatcher> {
+        Ok(XmlNameMatcher::Specific(
+            self.elem_namespace.to_token_stream(),
+            self.elem_name.to_token_stream(),
+        ))
+    }
+
     /// Build the deserialisation statemachine for the attribute-switched enum.
     fn make_from_events_statemachine(
         &self,
@@ -611,6 +632,31 @@ impl DynamicEnum {
         }
 
         Ok(Self { variants })
+    }
+
+    /// Provide the `XmlNameMatcher` template for this dynamic enum.
+    ///
+    /// Dynamic enums return the superset of the matchers of their variants,
+    /// which in many cases will be XmlNameMatcher::Any.
+    fn xml_name_matcher(&self) -> Result<XmlNameMatcher> {
+        let mut iter = self.variants.iter();
+        let Some(first) = iter.next() else {
+            // Since the enum has no variants, it cannot match anything. We
+            // use an empty namespace and an empty name, which will never
+            // match.
+            return Ok(XmlNameMatcher::Custom(quote! {
+                ::xso::fromxml::XmlNameMatcher::<'static>::Specific("", "")
+            }));
+        };
+
+        let first_matcher = first.inner.xml_name_matcher()?;
+        let mut composition = quote! { #first_matcher };
+        for variant in iter {
+            let next_matcher = variant.inner.xml_name_matcher()?;
+            composition.extend(quote! { .superset(#next_matcher) });
+        }
+
+        Ok(XmlNameMatcher::Custom(composition))
     }
 
     /// Build the deserialisation statemachine for the dynamic enum.
@@ -781,6 +827,15 @@ impl EnumInner {
         }
     }
 
+    /// Provide the `XmlNameMatcher` template for this enum.
+    fn xml_name_matcher(&self) -> Result<XmlNameMatcher> {
+        match self {
+            Self::NameSwitched(ref inner) => inner.xml_name_matcher(),
+            Self::AttributeSwitched(ref inner) => inner.xml_name_matcher(),
+            Self::Dynamic(ref inner) => inner.xml_name_matcher(),
+        }
+    }
+
     /// Build the deserialisation statemachine for the enum.
     fn make_from_events_statemachine(
         &self,
@@ -911,6 +966,7 @@ impl ItemDef for EnumDef {
                 #builder_ty_ident::new(#name_ident, #attrs_ident, ctx)
             },
             builder_ty_ident: builder_ty_ident.clone(),
+            name_matcher: self.inner.xml_name_matcher()?,
         })
     }
 

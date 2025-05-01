@@ -71,6 +71,7 @@ fn from_xml_impl(input: Item) -> Result<TokenStream> {
         defs,
         from_events_body,
         builder_ty_ident,
+        name_matcher,
     } = def.make_from_events_builder(&vis, &name_ident, &attrs_ident)?;
 
     #[cfg_attr(not(feature = "minidom"), allow(unused_mut))]
@@ -86,6 +87,10 @@ fn from_xml_impl(input: Item) -> Result<TokenStream> {
                 ctx: &::xso::Context<'_>,
             ) -> ::core::result::Result<Self::Builder, ::xso::error::FromEventsError> {
                 #from_events_body
+            }
+
+            fn xml_name_matcher() -> ::xso::fromxml::XmlNameMatcher<'static> {
+                #name_matcher
             }
         }
     };
