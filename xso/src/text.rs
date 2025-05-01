@@ -86,13 +86,14 @@
 use core::marker::PhantomData;
 
 use alloc::{
-    borrow::Cow,
+    borrow::{Cow, ToOwned},
+    boxed::Box,
     format,
     string::{String, ToString},
     vec::Vec,
 };
 
-use crate::{error::Error, AsXmlText, FromXmlText};
+use crate::{error::Error, AsOptionalXmlText, AsXmlText, FromXmlText};
 
 #[cfg(feature = "base64")]
 use base64::engine::general_purpose::STANDARD as StandardBase64Engine;
@@ -249,6 +250,91 @@ convert_via_fromstr_and_display! {
 
     #[cfg(feature = "serde_json")]
     serde_json::Value,
+}
+
+impl FromXmlText for String {
+    /// Return the string unchanged.
+    fn from_xml_text(data: String) -> Result<Self, Error> {
+        Ok(data)
+    }
+}
+
+impl<T: FromXmlText, B: ToOwned<Owned = T>> FromXmlText for Cow<'_, B> {
+    /// Return a [`Cow::Owned`] containing the parsed value.
+    fn from_xml_text(data: String) -> Result<Self, Error> {
+        Ok(Cow::Owned(T::from_xml_text(data)?))
+    }
+}
+
+impl<T: FromXmlText> FromXmlText for Option<T> {
+    /// Return a [`Some`] containing the parsed value.
+    fn from_xml_text(data: String) -> Result<Self, Error> {
+        Ok(Some(T::from_xml_text(data)?))
+    }
+}
+
+impl<T: FromXmlText> FromXmlText for Box<T> {
+    /// Return a [`Box`] containing the parsed value.
+    fn from_xml_text(data: String) -> Result<Self, Error> {
+        Ok(Box::new(T::from_xml_text(data)?))
+    }
+}
+
+impl AsXmlText for String {
+    /// Return the borrowed string contents.
+    fn as_xml_text(&self) -> Result<Cow<'_, str>, Error> {
+        Ok(Cow::Borrowed(self))
+    }
+}
+
+impl AsXmlText for str {
+    /// Return the borrowed string contents.
+    fn as_xml_text(&self) -> Result<Cow<'_, str>, Error> {
+        Ok(Cow::Borrowed(self))
+    }
+}
+
+impl AsXmlText for &str {
+    /// Return the borrowed string contents.
+    fn as_xml_text(&self) -> Result<Cow<'_, str>, Error> {
+        Ok(Cow::Borrowed(self))
+    }
+}
+
+impl<T: AsXmlText> AsXmlText for Box<T> {
+    /// Return the borrowed [`Box`] contents.
+    fn as_xml_text(&self) -> Result<Cow<'_, str>, Error> {
+        T::as_xml_text(self)
+    }
+}
+
+impl<B: AsXmlText + ToOwned> AsXmlText for Cow<'_, B> {
+    /// Return the borrowed [`Cow`] contents.
+    fn as_xml_text(&self) -> Result<Cow<'_, str>, Error> {
+        B::as_xml_text(self)
+    }
+}
+
+impl<T: AsXmlText> AsXmlText for &T {
+    /// Delegate to the `AsXmlText` implementation on `T`.
+    fn as_xml_text(&self) -> Result<Cow<'_, str>, Error> {
+        T::as_xml_text(*self)
+    }
+}
+
+impl<T: AsXmlText> AsOptionalXmlText for T {
+    fn as_optional_xml_text(&self) -> Result<Option<Cow<'_, str>>, Error> {
+        <Self as AsXmlText>::as_optional_xml_text(self)
+    }
+}
+
+impl<T: AsXmlText> AsOptionalXmlText for Option<T> {
+    fn as_optional_xml_text(&self) -> Result<Option<Cow<'_, str>>, Error> {
+        self.as_ref()
+            .map(T::as_optional_xml_text)
+            .transpose()
+            .map(Option::flatten)
+    }
 }
 
 /// Represent a way to encode/decode text data into a Rust type.

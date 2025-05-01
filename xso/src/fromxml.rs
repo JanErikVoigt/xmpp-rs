@@ -15,7 +15,44 @@
 use alloc::boxed::Box;
 
 use crate::error::{Error, FromEventsError};
-use crate::{Context, FromEventsBuilder, FromXml};
+use crate::{FromEventsBuilder, FromXml};
+
+/// # Parsing context for [`FromEventsBuilder`]
+///
+/// For the most part, [`FromEventsBuilder`] implementations can work with
+/// only the information inside the [`rxml::Event`] which is delivered to
+/// them (and any information they may have stored from previous events).
+///
+/// However, there is (currently) one special case: the `xml:lang` attribute.
+/// That attribute is inherited across the entire document tree hierarchy. If
+/// the parsed element is not the top-level element, there may be an implicit
+/// value for `xml:lang`.
+#[derive(Debug)]
+#[doc(hidden)]
+pub struct Context<'x> {
+    language: Option<&'x str>,
+}
+
+impl<'x> Context<'x> {
+    /// A context suitable for the beginning of the document.
+    ///
+    /// `xml:lang` is assumed to be unset.
+    pub fn empty() -> Self {
+        Self { language: None }
+    }
+
+    /// Set the effective `xml:lang` value on the context and return it.
+    pub fn with_language(mut self, language: Option<&'x str>) -> Self {
+        self.language = language;
+        self
+    }
+
+    /// Return the `xml:lang` value in effect at the end of the event which
+    /// is currently being processed.
+    pub fn language(&self) -> Option<&str> {
+        self.language.as_deref()
+    }
+}
 
 /// Helper struct to construct an `Option<T>` from XML events.
 pub struct OptionBuilder<T: FromEventsBuilder>(T);

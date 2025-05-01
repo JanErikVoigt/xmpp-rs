@@ -100,12 +100,10 @@ pub mod exports {
     }
 }
 
-use alloc::{
-    borrow::{Cow, ToOwned},
-    boxed::Box,
-    string::String,
-    vec::Vec,
-};
+use alloc::{borrow::Cow, string::String, vec::Vec};
+
+#[doc(inline)]
+pub use fromxml::Context;
 
 pub use text::TextCodec;
 
@@ -152,42 +150,6 @@ pub trait AsXml {
     /// Return an iterator which emits the contents of the struct or enum as
     /// serialisable [`Item`] items.
     fn as_xml_iter(&self) -> Result<Self::ItemIter<'_>, self::error::Error>;
-}
-
-/// # Parsing context for [`FromEventsBuilder`]
-///
-/// For the most part, [`FromEventsBuilder`] implementations can work with
-/// only the information inside the [`rxml::Event`] which is delivered to
-/// them (and any information they may have stored from previous events).
-///
-/// However, there is (currently) one special case: the `xml:lang` attribute.
-/// That attribute is inherited across the entire document tree hierarchy. If
-/// the parsed element is not the top-level element, there may be an implicit
-/// value for `xml:lang`.
-#[derive(Debug)]
-pub struct Context<'x> {
-    language: Option<&'x str>,
-}
-
-impl<'x> Context<'x> {
-    /// A context suitable for the beginning of the document.
-    ///
-    /// `xml:lang` is assumed to be unset.
-    pub fn empty() -> Self {
-        Self { language: None }
-    }
-
-    /// Set the effective `xml:lang` value on the context and return it.
-    pub fn with_language(mut self, language: Option<&'x str>) -> Self {
-        self.language = language;
-        self
-    }
-
-    /// Return the `xml:lang` value in effect at the end of the event which
-    /// is currently being processed.
-    pub fn language(&self) -> Option<&str> {
-        self.language.as_deref()
-    }
 }
 
 /// Trait for a temporary object allowing to construct a struct from
@@ -277,34 +239,6 @@ pub trait FromXmlText: Sized {
     fn from_xml_text(data: String) -> Result<Self, self::error::Error>;
 }
 
-impl FromXmlText for String {
-    /// Return the string unchanged.
-    fn from_xml_text(data: String) -> Result<Self, self::error::Error> {
-        Ok(data)
-    }
-}
-
-impl<T: FromXmlText, B: ToOwned<Owned = T>> FromXmlText for Cow<'_, B> {
-    /// Return a [`Cow::Owned`] containing the parsed value.
-    fn from_xml_text(data: String) -> Result<Self, self::error::Error> {
-        Ok(Cow::Owned(T::from_xml_text(data)?))
-    }
-}
-
-impl<T: FromXmlText> FromXmlText for Option<T> {
-    /// Return a [`Some`] containing the parsed value.
-    fn from_xml_text(data: String) -> Result<Self, self::error::Error> {
-        Ok(Some(T::from_xml_text(data)?))
-    }
-}
-
-impl<T: FromXmlText> FromXmlText for Box<T> {
-    /// Return a [`Box`] containing the parsed value.
-    fn from_xml_text(data: String) -> Result<Self, self::error::Error> {
-        Ok(Box::new(T::from_xml_text(data)?))
-    }
-}
-
 /// Trait to convert a value to an XML text string.
 ///
 /// Implementing this trait for a type allows it to be used both for XML
@@ -341,48 +275,6 @@ pub trait AsXmlText {
     }
 }
 
-impl AsXmlText for String {
-    /// Return the borrowed string contents.
-    fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
-        Ok(Cow::Borrowed(self))
-    }
-}
-
-impl AsXmlText for str {
-    /// Return the borrowed string contents.
-    fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
-        Ok(Cow::Borrowed(self))
-    }
-}
-
-impl AsXmlText for &str {
-    /// Return the borrowed string contents.
-    fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
-        Ok(Cow::Borrowed(self))
-    }
-}
-
-impl<T: AsXmlText> AsXmlText for Box<T> {
-    /// Return the borrowed [`Box`] contents.
-    fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
-        T::as_xml_text(self)
-    }
-}
-
-impl<B: AsXmlText + ToOwned> AsXmlText for Cow<'_, B> {
-    /// Return the borrowed [`Cow`] contents.
-    fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
-        B::as_xml_text(self)
-    }
-}
-
-impl<T: AsXmlText> AsXmlText for &T {
-    /// Delegate to the `AsXmlText` implementation on `T`.
-    fn as_xml_text(&self) -> Result<Cow<'_, str>, self::error::Error> {
-        T::as_xml_text(*self)
-    }
-}
-
 /// Specialized variant of [`AsXmlText`].
 ///
 /// Normally, it should not be necessary to implement this trait as it is
@@ -405,21 +297,6 @@ pub trait AsOptionalXmlText {
     /// Convert the value to an XML string in a context where an absent value
     /// can be represented.
     fn as_optional_xml_text(&self) -> Result<Option<Cow<'_, str>>, self::error::Error>;
-}
-
-impl<T: AsXmlText> AsOptionalXmlText for T {
-    fn as_optional_xml_text(&self) -> Result<Option<Cow<'_, str>>, self::error::Error> {
-        <Self as AsXmlText>::as_optional_xml_text(self)
-    }
-}
-
-impl<T: AsXmlText> AsOptionalXmlText for Option<T> {
-    fn as_optional_xml_text(&self) -> Result<Option<Cow<'_, str>>, self::error::Error> {
-        self.as_ref()
-            .map(T::as_optional_xml_text)
-            .transpose()
-            .map(Option::flatten)
-    }
 }
 
 /// # Control how unknown attributes are handled
