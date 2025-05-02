@@ -316,43 +316,46 @@ pub(crate) fn as_xml_text_fn(ty: Type) -> Expr {
 
 /// Construct a [`syn::Path`] referring to `::xso::TextCodec::<#for_ty>`,
 /// returning the span of `for_ty` alongside it.
-fn text_codec_of(for_ty: Type) -> (Span, Path) {
-    let span = for_ty.span();
-    (
-        span,
-        Path {
-            leading_colon: Some(syn::token::PathSep {
-                spans: [span, span],
-            }),
-            segments: [
-                PathSegment {
-                    ident: Ident::new("xso", span),
-                    arguments: PathArguments::None,
-                },
-                PathSegment {
-                    ident: Ident::new("TextCodec", span),
-                    arguments: PathArguments::AngleBracketed(AngleBracketedGenericArguments {
-                        colon2_token: Some(syn::token::PathSep {
-                            spans: [span, span],
-                        }),
-                        lt_token: syn::token::Lt { spans: [span] },
-                        args: [GenericArgument::Type(for_ty)].into_iter().collect(),
-                        gt_token: syn::token::Gt { spans: [span] },
+///
+/// The span used is `codec_span`, in order to ensure that error messages
+/// about a missing implementation point at the codec, not at the type.
+fn text_codec_of(for_ty: Type, codec_span: Span) -> Path {
+    let span = codec_span;
+    Path {
+        leading_colon: Some(syn::token::PathSep {
+            spans: [span, span],
+        }),
+        segments: [
+            PathSegment {
+                ident: Ident::new("xso", span),
+                arguments: PathArguments::None,
+            },
+            PathSegment {
+                ident: Ident::new("TextCodec", span),
+                arguments: PathArguments::AngleBracketed(AngleBracketedGenericArguments {
+                    colon2_token: Some(syn::token::PathSep {
+                        spans: [span, span],
                     }),
-                },
-            ]
-            .into_iter()
-            .collect(),
-        },
-    )
+                    lt_token: syn::token::Lt { spans: [span] },
+                    args: [GenericArgument::Type(for_ty)].into_iter().collect(),
+                    gt_token: syn::token::Gt { spans: [span] },
+                }),
+            },
+        ]
+        .into_iter()
+        .collect(),
+    }
 }
 
 /// Construct a [`syn::Expr`] referring to
 /// `::xso::TextCodec::<#for_ty>::encode`.
-pub(crate) fn text_codec_encode_fn(for_ty: Type) -> Expr {
-    let (span, mut path) = text_codec_of(for_ty);
+///
+/// The span used is `codec_span`, in order to ensure that error messages
+/// about a missing implementation point at the codec, not at the type.
+pub(crate) fn text_codec_encode_fn(for_ty: Type, codec_span: Span) -> Expr {
+    let mut path = text_codec_of(for_ty, codec_span);
     path.segments.push(PathSegment {
-        ident: Ident::new("encode", span),
+        ident: Ident::new("encode", codec_span),
         arguments: PathArguments::None,
     });
     Expr::Path(ExprPath {
@@ -364,10 +367,13 @@ pub(crate) fn text_codec_encode_fn(for_ty: Type) -> Expr {
 
 /// Construct a [`syn::Expr`] referring to
 /// `::xso::TextCodec::<#for_ty>::decode`.
-pub(crate) fn text_codec_decode_fn(for_ty: Type) -> Expr {
-    let (span, mut path) = text_codec_of(for_ty);
+///
+/// The span used is `codec_span`, in order to ensure that error messages
+/// about a missing implementation point at the codec, not at the type.
+pub(crate) fn text_codec_decode_fn(for_ty: Type, codec_span: Span) -> Expr {
+    let mut path = text_codec_of(for_ty, codec_span);
     path.segments.push(PathSegment {
-        ident: Ident::new("decode", span),
+        ident: Ident::new("decode", codec_span),
         arguments: PathArguments::None,
     });
     Expr::Path(ExprPath {

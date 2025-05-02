@@ -68,7 +68,8 @@ impl Field for ChildField {
 
                 let from_events = from_events_fn(element_ty.clone());
 
-                let matcher = quote! { #from_events(name, attrs, ctx) };
+                let span = element_ty.span();
+                let matcher = quote_spanned! { span=> #from_events(name, attrs, ctx) };
                 let builder = from_xml_builder_ty(element_ty.clone());
 
                 (
@@ -178,9 +179,10 @@ impl Field for ChildField {
                 let as_xml_iter = as_xml_iter_fn(item_ty.clone());
                 let item_iter = item_iter_ty(item_ty.clone(), lifetime.clone());
 
+                let span = item_ty.span();
                 (
                     TokenStream::default(),
-                    quote! { #as_xml_iter(#bound_name)? },
+                    quote_spanned! { span=> #as_xml_iter(#bound_name)? },
                     item_iter,
                 )
             }

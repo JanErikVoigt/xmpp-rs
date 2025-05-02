@@ -430,12 +430,14 @@ impl Compound {
                 } => {
                     let feed = feed_fn(builder.clone());
 
+                    let mut substate_data_ident = substate_data.clone();
+                    substate_data_ident.set_span(ty.span());
                     states.push(State::new_with_builder(
                         state_name.clone(),
                         builder_data_ident,
                         &builder_data_ty,
                     ).with_field(
-                        substate_data,
+                        &substate_data_ident,
                         &builder,
                     ).with_mut(substate_data).with_impl(quote! {
                         match #feed(&mut #substate_data, ev, ctx)? {
