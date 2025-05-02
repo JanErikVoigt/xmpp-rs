@@ -59,6 +59,8 @@ Version NEXT:
         elements are valid candidates for parsing (!573).
       - `Xso<dyn Trait>`, a Box-like struct which can hold a dynamically-typed
         XSO, alongside related traits and (declarative) macros (!573).
+      - `XsoVec<dyn Trait>`, a container which can hold dynamically-typed
+        XSOs (!573).
     * Changes
       - Generated AsXml iterator and FromXml builder types are now
         doc(hidden), to not clutter hand-written documentation with auto

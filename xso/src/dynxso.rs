@@ -61,12 +61,20 @@
 //! assert_eq!(Bar, *x.downcast::<Bar>().unwrap());
 //! ```
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{
+    boxed::Box,
+    collections::{
+        btree_map::{self, Entry},
+        BTreeMap,
+    },
+    vec::{self, Vec},
+};
 use core::{
     any::{Any, TypeId},
     fmt,
     marker::PhantomData,
     ops::{Deref, DerefMut},
+    slice,
 };
 use std::sync::Mutex;
 
@@ -721,6 +729,21 @@ impl<T: DynXso + ?Sized + 'static> Xso<T> {
         }
     }
 
+    fn force_downcast<U: 'static>(self) -> Box<U>
+    where
+        T: MayContain<U>,
+    {
+        match self.downcast::<U>() {
+            Ok(v) => v,
+            Err(v) => panic!(
+                "force_downcast called on mismatching types: requested {:?} ({}) != actual {:?}",
+                TypeId::of::<U>(),
+                core::any::type_name::<U>(),
+                v.inner_type_id()
+            ),
+        }
+    }
+
     /// Downcast `&self` to `&U`.
     ///
     /// ```
@@ -776,7 +799,7 @@ impl<T: DynXso + ?Sized + 'static> Xso<T> {
     }
 
     fn inner_type_id(&self) -> TypeId {
-        (&self.inner as &dyn Any).type_id()
+        DynXso::type_id(&*self.inner)
     }
 
     /// Register a new type to be constructible.
@@ -882,5 +905,700 @@ impl<T: DynXso + AsXmlDyn + ?Sized + 'static> AsXml for Xso<T> {
 
     fn as_xml_dyn_iter(&self) -> Result<Self::ItemIter<'_>, Error> {
         self.inner.as_xml_dyn_iter()
+    }
+}
+
+/// Error type for retrieving a single item from `XsoVec`.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TakeOneError {
+    /// More than one item was found.
+    MultipleEntries,
+}
+
+impl fmt::Display for TakeOneError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::MultipleEntries => f.write_str("multiple entries found"),
+        }
+    }
+}
+
+/// # Container for dynamically-typed XSOs optimized for type-keyed access
+///
+/// This container holds dynamically typed XSOs (see
+/// [`Xso<dyn Trait>`][`Xso`]). It allows efficient access to its contents
+/// based on the actual type.
+///
+/// Like `Xso<dyn Trait>` itself, `XsoVec<dyn Trait>` requires that
+/// `MayContain` is implemented by `dyn Trait` for all items which are added
+/// to the container. This is automatically the case for all `T: Trait`
+/// if [`derive_dyn_traits`][`crate::derive_dyn_traits`] has been used on
+/// `Trait`.
+///
+/// Note that `XsoVec` has a non-obvious iteration order, which is described
+/// in [`XsoVec::iter()`][`Self::iter`].
+pub struct XsoVec<T: ?Sized> {
+    inner: BTreeMap<TypeId, Vec<Xso<T>>>,
+}
+
+impl<T: ?Sized> fmt::Debug for XsoVec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "XsoVec[{} types, {} items]",
+            self.inner.len(),
+            self.len()
+        )
+    }
+}
+
+impl<T: ?Sized> Default for XsoVec<T> {
+    fn default() -> Self {
+        Self {
+            inner: BTreeMap::default(),
+        }
+    }
+}
+
+impl<T: DynXso + ?Sized + 'static> XsoVec<T> {
+    /// Construct a new, empty `XsoVec`.
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// ```
+    pub const fn new() -> Self {
+        Self {
+            inner: BTreeMap::new(),
+        }
+    }
+
+    /// Return a reference to the first item of type `U`.
+    ///
+    /// If the container does not hold any item of type `U`, return `None`.
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Bar(u16);
+    /// impl Trait for Bar {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Baz(u32);
+    /// impl Trait for Baz {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Bar(1));
+    /// vec.push(Foo(2));
+    /// vec.push(Foo(1));
+    /// assert_eq!(vec.get_first::<Foo>(), Some(&Foo(2)));
+    /// assert_eq!(vec.get_first::<Bar>(), Some(&Bar(1)));
+    /// assert_eq!(vec.get_first::<Baz>(), None);
+    ///
+    /// ```
+    pub fn get_first<U: 'static>(&self) -> Option<&U>
+    where
+        T: MayContain<U>,
+    {
+        self.iter_typed::<U>().next()
+    }
+
+    /// Return a mutable reference to the first item of type `U`.
+    ///
+    /// If the container does not hold any item of type `U`, return `None`.
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Foo(1));
+    /// vec.get_first_mut::<Foo>().unwrap().0 = 2;
+    /// assert_eq!(vec.get_first::<Foo>(), Some(&Foo(2)));
+    /// ```
+    pub fn get_first_mut<U: 'static>(&mut self) -> Option<&mut U>
+    where
+        T: MayContain<U>,
+    {
+        self.iter_typed_mut::<U>().next()
+    }
+
+    /// Take and return exactly one item of type `U`.
+    ///
+    /// If no item of type `U` is present in the container, return Ok(None).
+    /// If more than one item of type `U` is present in the container,
+    /// return an error.
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Bar(u16);
+    /// impl Trait for Bar {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Baz(u32);
+    /// impl Trait for Baz {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Bar(1));
+    /// vec.push(Foo(2));
+    /// vec.push(Foo(1));
+    /// assert_eq!(vec.take_one::<Foo>(), Err(TakeOneError::MultipleEntries));
+    /// assert_eq!(*vec.take_one::<Bar>().unwrap().unwrap(), Bar(1));
+    /// assert_eq!(vec.take_one::<Bar>(), Ok(None));
+    /// assert_eq!(vec.take_one::<Baz>(), Ok(None));
+    /// ```
+    pub fn take_one<U: 'static>(&mut self) -> Result<Option<Box<U>>, TakeOneError>
+    where
+        T: MayContain<U>,
+    {
+        let source = match self.inner.get_mut(&TypeId::of::<U>()) {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+        if source.len() > 1 {
+            return Err(TakeOneError::MultipleEntries);
+        }
+        Ok(source.pop().map(Xso::force_downcast))
+    }
+
+    /// Take and return the first item of type `U`.
+    ///
+    /// If no item of type `U` is present in the container, return None.
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Bar(u16);
+    /// impl Trait for Bar {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Baz(u32);
+    /// impl Trait for Baz {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Bar(1));
+    /// vec.push(Foo(2));
+    /// vec.push(Foo(1));
+    /// assert_eq!(*vec.take_first::<Foo>().unwrap(), Foo(2));
+    /// assert_eq!(*vec.take_first::<Foo>().unwrap(), Foo(1));
+    /// assert_eq!(*vec.take_first::<Bar>().unwrap(), Bar(1));
+    /// assert_eq!(vec.take_first::<Bar>(), None);
+    /// assert_eq!(vec.take_first::<Baz>(), None);
+    /// ```
+    pub fn take_first<U: 'static>(&mut self) -> Option<Box<U>>
+    where
+        T: MayContain<U>,
+    {
+        let source = self.inner.get_mut(&TypeId::of::<U>())?;
+        if source.len() == 0 {
+            return None;
+        }
+        Some(source.remove(0).force_downcast())
+    }
+
+    /// Take and return the last item of type `U`.
+    ///
+    /// If no item of type `U` is present in the container, return None.
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Bar(u16);
+    /// impl Trait for Bar {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Baz(u32);
+    /// impl Trait for Baz {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Bar(1));
+    /// vec.push(Foo(2));
+    /// vec.push(Foo(1));
+    /// assert_eq!(*vec.take_last::<Foo>().unwrap(), Foo(1));
+    /// assert_eq!(*vec.take_last::<Foo>().unwrap(), Foo(2));
+    /// assert_eq!(*vec.take_last::<Bar>().unwrap(), Bar(1));
+    /// assert_eq!(vec.take_last::<Bar>(), None);
+    /// assert_eq!(vec.take_last::<Baz>(), None);
+    /// ```
+    pub fn take_last<U: 'static>(&mut self) -> Option<Box<U>>
+    where
+        T: MayContain<U>,
+    {
+        let source = self.inner.get_mut(&TypeId::of::<U>())?;
+        source.pop().map(Xso::force_downcast)
+    }
+
+    /// Iterate all items of type `U` as references.
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Bar(u16);
+    /// impl Trait for Bar {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Baz(u32);
+    /// impl Trait for Baz {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Bar(1));
+    /// vec.push(Foo(2));
+    /// vec.push(Foo(1));
+    ///
+    /// let foos: Vec<_> = vec.iter_typed::<Foo>().collect();
+    /// assert_eq!(&foos[..], &[&Foo(2), &Foo(1)]);
+    /// ```
+    pub fn iter_typed<U: 'static>(&self) -> impl Iterator<Item = &U>
+    where
+        T: MayContain<U>,
+    {
+        let iter = match self.inner.get(&TypeId::of::<U>()) {
+            Some(v) => v.deref().iter(),
+            None => (&[]).iter(),
+        };
+        // UNWRAP: We group the values by TypeId, so the downcast should never
+        // fail, but I am too chicken to use the unchecked variants :).
+        iter.map(|x| x.downcast_ref::<U>().unwrap())
+    }
+
+    /// Iterate all items of type `U` as mutable references.
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Bar(u16);
+    /// impl Trait for Bar {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Baz(u32);
+    /// impl Trait for Baz {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Bar(1));
+    /// vec.push(Foo(2));
+    /// vec.push(Foo(1));
+    ///
+    /// let foos: Vec<_> = vec.iter_typed_mut::<Foo>().collect();
+    /// assert_eq!(&foos[..], &[&mut Foo(2), &mut Foo(1)]);
+    /// ```
+    pub fn iter_typed_mut<U: 'static>(&mut self) -> impl Iterator<Item = &mut U>
+    where
+        T: MayContain<U>,
+    {
+        let iter = match self.inner.get_mut(&TypeId::of::<U>()) {
+            Some(v) => v.deref_mut().iter_mut(),
+            None => (&mut []).iter_mut(),
+        };
+        // UNWRAP: We group the values by TypeId, so the downcast should never
+        // fail, but I am too chicken to use the unchecked variants :).
+        iter.map(|x| x.downcast_mut::<U>().unwrap())
+    }
+
+    /// Drain all items of type `U` out of the container.
+    ///
+    /// If the result is dropped before the end of the iterator has been
+    /// reached, the remaining items are still dropped out of the container.
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Bar(u16);
+    /// impl Trait for Bar {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Baz(u32);
+    /// impl Trait for Baz {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Bar(1));
+    /// vec.push(Foo(2));
+    /// vec.push(Foo(1));
+    ///
+    /// let foos: Vec<_> = vec.drain_typed::<Foo>().map(|x| *x).collect();
+    /// //                             converts Box<T> to T ↑
+    /// assert_eq!(&foos[..], &[Foo(2), Foo(1)]);
+    /// ```
+    pub fn drain_typed<U: 'static>(&mut self) -> impl Iterator<Item = Box<U>>
+    where
+        T: MayContain<U>,
+    {
+        let iter = match self.inner.remove(&TypeId::of::<U>()) {
+            Some(v) => v.into_iter(),
+            None => Vec::new().into_iter(),
+        };
+        // UNWRAP: We group the values by TypeId, so the downcast should never
+        // fail, but I am too chicken to use the unchecked variants :).
+        iter.map(|x| match x.downcast::<U>() {
+            Ok(v) => v,
+            Err(_) => {
+                unreachable!("TypeId disagrees with Xso<_>::downcast, or internal state corruption")
+            }
+        })
+    }
+
+    fn ensure_vec_mut_for(&mut self, type_id: TypeId) -> &mut Vec<Xso<T>> {
+        match self.inner.entry(type_id) {
+            Entry::Vacant(v) => v.insert(Vec::new()),
+            Entry::Occupied(o) => o.into_mut(),
+        }
+    }
+
+    /// Push a new item of type `U` to the end of the section of `U` inside
+    /// the container.
+    ///
+    /// Please note the information about iteration order of the `XsoVec`
+    /// at [`XsoVec::iter`][`Self::iter`].
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Foo(1));
+    /// ```
+    pub fn push<U: 'static>(&mut self, value: U)
+    where
+        T: MayContain<U>,
+    {
+        self.ensure_vec_mut_for(TypeId::of::<U>())
+            .push(Xso::wrap(value));
+    }
+
+    /// Push a new dynamically typed item to the end of the section of values
+    /// with the same type inside the container.
+    ///
+    /// Please note the information about iteration order of the `XsoVec`
+    /// at [`XsoVec::iter`][`Self::iter`].
+    ///
+    /// ```
+    /// # use xso::dynxso::Xso;
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Bar(u8);
+    /// impl Trait for Bar {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Foo(1));
+    /// vec.push_dyn(Xso::wrap(Foo(2)));
+    /// vec.push_dyn(Xso::wrap(Bar(1)));
+    /// vec.push(Bar(2));
+    ///
+    /// let foos: Vec<_> = vec.iter_typed::<Foo>().collect();
+    /// assert_eq!(&foos[..], &[&Foo(1), &Foo(2)]);
+    ///
+    /// let bars: Vec<_> = vec.iter_typed::<Bar>().collect();
+    /// assert_eq!(&bars[..], &[&Bar(1), &Bar(2)]);
+    /// ```
+    pub fn push_dyn(&mut self, value: Xso<T>) {
+        self.ensure_vec_mut_for(value.inner_type_id()).push(value);
+    }
+}
+
+impl<T: ?Sized> XsoVec<T> {
+    /// Clear all contents, without deallocating memory.
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Foo(1));
+    /// vec.push(Foo(2));
+    /// vec.clear();
+    /// assert_eq!(vec.len(), 0);
+    /// ```
+    pub fn clear(&mut self) {
+        self.inner.values_mut().for_each(|x| x.clear());
+    }
+
+    /// Return true if there are no items in the container.
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// assert!(vec.is_empty());
+    /// vec.push(Foo(1));
+    /// assert!(!vec.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.inner.values().all(|x| x.is_empty())
+    }
+
+    /// Reduce memory use of the container to the minimum required to hold
+    /// the current data.
+    ///
+    /// This may be expensive if lots of data needs to be shuffled.
+    pub fn shrink_to_fit(&mut self) {
+        self.inner.retain(|_, x| {
+            if x.is_empty() {
+                return false;
+            }
+            x.shrink_to_fit();
+            true
+        });
+    }
+
+    /// Return the total amount of items in the container.
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// assert_eq!(vec.len(), 0);
+    /// vec.push(Foo(1));
+    /// assert_eq!(vec.len(), 1);
+    /// ```
+    pub fn len(&self) -> usize {
+        self.inner.values().map(|x| x.len()).sum()
+    }
+
+    /// Iterate the items inside the container.
+    ///
+    /// This iterator (unlike the iterator returned by
+    /// [`iter_typed()`][`Self::iter_typed`]) yields references to **untyped**
+    /// [`Xso<dyn Trait>`][`Xso`].
+    ///
+    /// # Iteration order
+    ///
+    /// Items which have the same concrete type are grouped and their ordering
+    /// with respect to one another is preserved. However, the ordering of
+    /// items with *different* concrete types is unspecified.
+    ///
+    /// # Example
+    ///
+    /// ```
+    #[doc = include_str!("xso_vec_test_prelude.rs")]
+    /// #[derive(PartialEq, Debug)]
+    /// struct Foo(u8);
+    /// impl Trait for Foo {}
+    ///
+    /// #[derive(PartialEq, Debug)]
+    /// struct Bar(u16);
+    /// impl Trait for Bar {}
+    ///
+    /// let mut vec = XsoVec::<dyn Trait>::new();
+    /// vec.push(Foo(1));
+    /// vec.push(Bar(1));
+    /// vec.push(Foo(2));
+    ///
+    /// for item in vec.iter() {
+    ///     println!("{:?}", item);
+    /// }
+    /// ```
+    pub fn iter(&self) -> XsoVecIter<'_, T> {
+        XsoVecIter {
+            remaining: self.len(),
+            outer: self.inner.values(),
+            inner: None,
+        }
+    }
+
+    /// Iterate the items inside the container, mutably.
+    ///
+    /// This iterator (unlike the iterator returned by
+    /// [`iter_typed_mut()`][`Self::iter_typed_mut`]) yields mutable
+    /// references to **untyped** [`Xso<dyn Trait>`][`Xso`].
+    ///
+    /// Please note the information about iteration order of the `XsoVec`
+    /// at [`XsoVec::iter`][`Self::iter`].
+    pub fn iter_mut(&mut self) -> XsoVecIterMut<'_, T> {
+        XsoVecIterMut {
+            remaining: self.len(),
+            outer: self.inner.values_mut(),
+            inner: None,
+        }
+    }
+}
+
+impl<T: ?Sized> IntoIterator for XsoVec<T> {
+    type Item = Xso<T>;
+    type IntoIter = XsoVecIntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        XsoVecIntoIter {
+            remaining: self.len(),
+            outer: self.inner.into_values(),
+            inner: None,
+        }
+    }
+}
+
+impl<'x, T: ?Sized> IntoIterator for &'x XsoVec<T> {
+    type Item = &'x Xso<T>;
+    type IntoIter = XsoVecIter<'x, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'x, T: ?Sized> IntoIterator for &'x mut XsoVec<T> {
+    type Item = &'x mut Xso<T>;
+    type IntoIter = XsoVecIterMut<'x, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
+impl<T: DynXso + ?Sized + 'static> Extend<Xso<T>> for XsoVec<T> {
+    fn extend<I: IntoIterator<Item = Xso<T>>>(&mut self, iter: I) {
+        for item in iter {
+            self.ensure_vec_mut_for(item.inner_type_id()).push(item);
+        }
+    }
+}
+
+/// Helper types for [`XsoVec`].
+pub mod xso_vec {
+    use super::*;
+
+    /// Iterator over the contents of an [`XsoVec`].
+    pub struct XsoVecIter<'x, T: ?Sized> {
+        pub(super) outer: btree_map::Values<'x, TypeId, Vec<Xso<T>>>,
+        pub(super) inner: Option<slice::Iter<'x, Xso<T>>>,
+        pub(super) remaining: usize,
+    }
+
+    impl<'x, T: ?Sized> Iterator for XsoVecIter<'x, T> {
+        type Item = &'x Xso<T>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            loop {
+                if let Some(inner) = self.inner.as_mut() {
+                    if let Some(item) = inner.next() {
+                        self.remaining = self.remaining.saturating_sub(1);
+                        return Some(item);
+                    }
+                    // Inner is exhausted, so equivalent to None, fall through.
+                }
+                // The `?` in there is our exit condition.
+                self.inner = Some(self.outer.next()?.deref().iter())
+            }
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.remaining, Some(self.remaining))
+        }
+    }
+
+    /// Mutable iterator over the contents of an [`XsoVec`].
+    pub struct XsoVecIterMut<'x, T: ?Sized> {
+        pub(super) outer: btree_map::ValuesMut<'x, TypeId, Vec<Xso<T>>>,
+        pub(super) inner: Option<slice::IterMut<'x, Xso<T>>>,
+        pub(super) remaining: usize,
+    }
+
+    impl<'x, T: ?Sized> Iterator for XsoVecIterMut<'x, T> {
+        type Item = &'x mut Xso<T>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            loop {
+                if let Some(inner) = self.inner.as_mut() {
+                    if let Some(item) = inner.next() {
+                        self.remaining = self.remaining.saturating_sub(1);
+                        return Some(item);
+                    }
+                    // Inner is exhausted, so equivalent to None, fall through.
+                }
+                // The `?` in there is our exit condition.
+                self.inner = Some(self.outer.next()?.deref_mut().iter_mut())
+            }
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.remaining, Some(self.remaining))
+        }
+    }
+
+    /// Iterator over the owned contents of an [`XsoVec`].
+    pub struct XsoVecIntoIter<T: ?Sized> {
+        pub(super) outer: btree_map::IntoValues<TypeId, Vec<Xso<T>>>,
+        pub(super) inner: Option<vec::IntoIter<Xso<T>>>,
+        pub(super) remaining: usize,
+    }
+
+    impl<T: ?Sized> Iterator for XsoVecIntoIter<T> {
+        type Item = Xso<T>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            loop {
+                if let Some(inner) = self.inner.as_mut() {
+                    if let Some(item) = inner.next() {
+                        self.remaining = self.remaining.saturating_sub(1);
+                        return Some(item);
+                    }
+                    // Inner is exhausted, so equivalent to None, fall through.
+                }
+                // The `?` in there is our exit condition.
+                self.inner = Some(self.outer.next()?.into_iter())
+            }
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.remaining, Some(self.remaining))
+        }
+    }
+}
+
+use xso_vec::*;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn xso_inner_type_id_is_correct() {
+        trait Trait: Any {}
+        crate::derive_dyn_traits!(Trait use () = ());
+        struct Foo;
+        impl Trait for Foo {}
+
+        let ty_id = TypeId::of::<Foo>();
+        let x: Xso<dyn Trait> = Xso::wrap(Foo);
+        assert_eq!(x.inner_type_id(), ty_id);
     }
 }
