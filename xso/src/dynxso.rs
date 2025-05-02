@@ -32,10 +32,10 @@
 //! ## Example
 //!
 #![cfg_attr(
-    not(feature = "macros"),
+    not(all(feature = "macros", feature = "std")),
     doc = "Because the macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
 )]
-#![cfg_attr(feature = "macros", doc = "\n```\n")]
+#![cfg_attr(all(feature = "macros", feature = "std"), doc = "\n```\n")]
 //! # use core::any::Any;
 //! # use xso::{dynxso::{Xso, BuilderRegistry}, FromXml, from_bytes, derive_dyn_traits};
 //! trait MyPayload: Any {}
@@ -69,19 +69,22 @@ use alloc::{
     },
     vec::{self, Vec},
 };
+#[cfg(feature = "std")]
+use core::marker::PhantomData;
 use core::{
     any::{Any, TypeId},
     fmt,
-    marker::PhantomData,
     ops::{Deref, DerefMut},
     slice,
 };
+#[cfg(feature = "std")]
 use std::sync::Mutex;
 
+#[cfg(feature = "std")]
+use crate::fromxml::XmlNameMatcher;
 use crate::{
     asxml::AsXmlDyn,
     error::{Error, FromEventsError},
-    fromxml::XmlNameMatcher,
     AsXml, Context, FromEventsBuilder, FromXml, Item,
 };
 
@@ -92,9 +95,25 @@ use crate::{
 /// that is a useful thing to have, see the [`dynxso`][`crate::dynxso`]
 /// module.
 ///
+/// ## Syntax
+///
+/// This macro can be called in two forms:
+///
+/// - `derive_dyn_traits!(Trait)` uses the default [`BuilderRegistry`]
+///    as [`DynXso::Registry`] type and is only available if `xso` is built
+///    with the `"std"` feature.
+/// - `derive_dyn_traits!(Trait use Type = expr)` where `Type` is used as
+///   [`DynXso::Registry`], initialized with `expr`. This form is available
+///   for any set of crate features.
+///
 /// ## Example
 ///
-/// ```
+/// When `std` is enabled, the simple syntax can be used.
+#[cfg_attr(
+    not(feature = "std"),
+    doc = "Because the std feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
+)]
+#[cfg_attr(feature = "std", doc = "\n```\n")]
 /// # use core::any::Any;
 /// use xso::derive_dyn_traits;
 /// trait Foo: Any {}
@@ -104,19 +123,38 @@ use crate::{
 /// Note that the trait this macro is called on **must** have a bound on
 /// `Any`, otherwise the generated code will not compile:
 ///
-/// ```compile_fail
+#[cfg_attr(
+    not(feature = "std"),
+    doc = "Because the std feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
+)]
+#[cfg_attr(feature = "std", doc = "\n```compile_fail\n")]
 /// use xso::derive_dyn_traits;
 /// trait Foo {}
 /// derive_dyn_traits!(Foo);
 /// // ↑ will generate a bunch of errors about incompatible types
 /// ```
+///
+/// If the `std` feature is not enabled or if you want to use another
+/// `Registry` for whichever reason, the explicit form can be used:
+///
+/// ```
+/// # use core::any::Any;
+/// use xso::derive_dyn_traits;
+/// trait Foo: Any {}
+/// struct Registry { /* .. */ }
+/// derive_dyn_traits!(Foo use Registry = Registry { /* .. */ });
+/// ```
+///
+/// In that case, you should review the trait requirements of the
+/// [`DynXso::Registry`] associated type.
 #[macro_export]
 macro_rules! derive_dyn_traits {
-    ($trait:ident) => {
+    ($trait:ident use $registry:ty = $reginit:expr) => {
         impl $crate::dynxso::DynXso for dyn $trait {
-            fn registry() -> &'static $crate::dynxso::BuilderRegistry<Self> {
-                static DATA: $crate::dynxso::BuilderRegistry<dyn $trait> =
-                    $crate::dynxso::BuilderRegistry::new();
+            type Registry = $registry;
+
+            fn registry() -> &'static Self::Registry {
+                static DATA: $registry = $reginit;
                 &DATA
             }
 
@@ -173,8 +211,30 @@ macro_rules! derive_dyn_traits {
             }
         }
     };
+    ($trait:ident) => {
+        $crate::_internal_derive_dyn_traits_std_only!($trait);
+    };
 }
 
+#[macro_export]
+#[doc(hidden)]
+#[cfg(feature = "std")]
+macro_rules! _internal_derive_dyn_traits_std_only {
+    ($trait:ident) => {
+        $crate::derive_dyn_traits!($trait use $crate::dynxso::BuilderRegistry<dyn $trait> = $crate::dynxso::BuilderRegistry::new());
+    };
+}
+
+#[macro_export]
+#[doc(hidden)]
+#[cfg(not(feature = "std"))]
+macro_rules! _internal_derive_dyn_traits_std_only {
+    ($trait:ident) => {
+        compile_error!(concat!("derive_dyn_traits!(", stringify!($trait), ") can only be used if the xso crate has been built with the \"std\" feature enabled. Without \"std\", the explicit form of derive_dyn_traits!(", stringify!($trait), " use .. = ..) must be used (see docs)."));
+    };
+}
+
+#[cfg(feature = "std")]
 type BuilderRegistryBuilder<T> = Box<
     dyn Fn(
             rxml::QName,
@@ -186,12 +246,14 @@ type BuilderRegistryBuilder<T> = Box<
         + 'static,
 >;
 
+#[cfg(feature = "std")]
 struct BuilderRegistryEntry<T: ?Sized> {
     matcher: XmlNameMatcher<'static>,
     ty: TypeId,
     builder: BuilderRegistryBuilder<T>,
 }
 
+#[cfg(feature = "std")]
 impl<T: ?Sized> fmt::Debug for BuilderRegistryEntry<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BuilderRegistryEntry")
@@ -203,16 +265,7 @@ impl<T: ?Sized> fmt::Debug for BuilderRegistryEntry<T> {
 
 /// # Registry for type-erased [`FromXml`] builders which construct `T`
 ///
-/// This registry holds type-erased [`FromXml::from_events`] implementations.
-/// It can be used to dynamically dispatch to a set of `FromXml`
-/// implementations which is not known at compile time.
-///
-/// Under the hood, this is used by the `FromXml` implementation on
-/// [`Xso<T>`][`Xso`], via the [`DynXso`] trait.
-///
-/// Note that this registry does not allow to add arbitrary builders. All
-/// builders must originate in a [`FromXml`] implementation and their output
-/// must be convertible to `T`.
+/// For general information on builder registries, see [`registry`].
 ///
 /// ## Performance trade-offs
 ///
@@ -238,7 +291,7 @@ impl<T: ?Sized> fmt::Debug for BuilderRegistryEntry<T> {
     doc = "Because the macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
 )]
 #[cfg_attr(feature = "macros", doc = "\n```\n")]
-/// # use xso::{dynxso::{BuilderRegistry, MayContain}, FromXml, from_bytes, exports::rxml::{Namespace, AttrMap, QName, Event, parser::EventMetrics, xml_ncname}, Context, FromEventsBuilder, error::FromEventsError};
+/// # use xso::{dynxso::{BuilderRegistry, MayContain, registry::{DynXsoRegistryAdd, DynXsoRegistryLookup}}, FromXml, from_bytes, exports::rxml::{Namespace, AttrMap, QName, Event, parser::EventMetrics, xml_ncname}, Context, FromEventsBuilder, error::FromEventsError};
 /// #[derive(FromXml, Debug, PartialEq)]
 /// #[xml(namespace = "urn:example", name = "foo")]
 /// struct Foo;
@@ -299,7 +352,7 @@ impl<T: ?Sized> fmt::Debug for BuilderRegistryEntry<T> {
     doc = "Because the macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
 )]
 #[cfg_attr(feature = "macros", doc = "\n```\n")]
-/// # use xso::{dynxso::{BuilderRegistry, MayContain}, FromXml, from_bytes, exports::rxml::{Namespace, AttrMap, QName, Event, parser::EventMetrics}, Context, FromEventsBuilder, error::FromEventsError};
+/// # use xso::{dynxso::{BuilderRegistry, MayContain, registry::{DynXsoRegistryAdd, DynXsoRegistryLookup}}, FromXml, from_bytes, exports::rxml::{Namespace, AttrMap, QName, Event, parser::EventMetrics}, Context, FromEventsBuilder, error::FromEventsError};
 /// # #[derive(FromXml, Debug, PartialEq)]
 /// # #[xml(namespace = "urn:example", name = "foo")]
 /// # struct Foo;
@@ -350,10 +403,12 @@ impl<T: ?Sized> fmt::Debug for BuilderRegistryEntry<T> {
 /// );
 /// ```
 #[derive(Debug)]
+#[cfg(feature = "std")]
 pub struct BuilderRegistry<T: ?Sized> {
     inner: Mutex<Vec<BuilderRegistryEntry<T>>>,
 }
 
+#[cfg(feature = "std")]
 impl<T: ?Sized + 'static> BuilderRegistry<T> {
     /// Create an empty registry.
     pub const fn new() -> Self {
@@ -409,11 +464,41 @@ impl<T: ?Sized + 'static> BuilderRegistry<T> {
         self.inner.lock().unwrap().reserve(n);
     }
 
-    /// Add a new builder to the registry.
-    ///
-    /// This allows to add any `FromXml` implementation whose output can be
-    /// converted to `T`.
-    pub fn add<U: Any + FromXml>(&self)
+    fn try_build(
+        inner: &mut Vec<BuilderRegistryEntry<T>>,
+        mut name: rxml::QName,
+        mut attrs: rxml::AttrMap,
+        ctx: &Context<'_>,
+        matcher_builder: impl for<'x> FnOnce(&'x rxml::QName) -> XmlNameMatcher<'x>,
+    ) -> Result<Box<dyn FromEventsBuilder<Output = Box<T>>>, FromEventsError> {
+        let matcher = matcher_builder(&name);
+        let start_scan_at = inner.partition_point(|entry| entry.matcher < matcher);
+
+        for entry in &inner[start_scan_at..] {
+            if !entry.matcher.matches(&name) {
+                return Err(FromEventsError::Mismatch { name, attrs });
+            }
+
+            match (entry.builder)(name, attrs, ctx) {
+                Ok(v) => return Ok(v),
+                Err(FromEventsError::Invalid(e)) => return Err(FromEventsError::Invalid(e)),
+                Err(FromEventsError::Mismatch {
+                    name: new_name,
+                    attrs: new_attrs,
+                }) => {
+                    name = new_name;
+                    attrs = new_attrs;
+                }
+            }
+        }
+
+        Err(FromEventsError::Mismatch { name, attrs })
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T: ?Sized + 'static> DynXsoRegistryAdd<T> for BuilderRegistry<T> {
+    fn add<U: Any + FromXml>(&self)
     where
         T: MayContain<U>,
     {
@@ -452,50 +537,11 @@ impl<T: ?Sized + 'static> BuilderRegistry<T> {
             }),
         )
     }
+}
 
-    fn try_build(
-        inner: &mut Vec<BuilderRegistryEntry<T>>,
-        mut name: rxml::QName,
-        mut attrs: rxml::AttrMap,
-        ctx: &Context<'_>,
-        matcher_builder: impl for<'x> FnOnce(&'x rxml::QName) -> XmlNameMatcher<'x>,
-    ) -> Result<Box<dyn FromEventsBuilder<Output = Box<T>>>, FromEventsError> {
-        let matcher = matcher_builder(&name);
-        let start_scan_at = inner.partition_point(|entry| entry.matcher < matcher);
-
-        for entry in &inner[start_scan_at..] {
-            if !entry.matcher.matches(&name) {
-                return Err(FromEventsError::Mismatch { name, attrs });
-            }
-
-            match (entry.builder)(name, attrs, ctx) {
-                Ok(v) => return Ok(v),
-                Err(FromEventsError::Invalid(e)) => return Err(FromEventsError::Invalid(e)),
-                Err(FromEventsError::Mismatch {
-                    name: new_name,
-                    attrs: new_attrs,
-                }) => {
-                    name = new_name;
-                    attrs = new_attrs;
-                }
-            }
-        }
-
-        Err(FromEventsError::Mismatch { name, attrs })
-    }
-
-    /// Make a builder for the given element header.
-    ///
-    /// This tries all applicable `FromXml` implementations which have
-    /// previously been added via [`add`][`Self::add`] in unspecified order.
-    /// The first implementation to either fail or succeed at constructing a
-    /// builder determines the result. Implementations which return a
-    /// [`FromEventsError::Mismatch`][`crate::error::FromEventsError::Mismatch`]
-    /// are ignored.
-    ///
-    /// If all applicable implementations return `Mismatch`, this function
-    /// returns `Mismatch`, too.
-    pub fn make_builder(
+#[cfg(feature = "std")]
+impl<T: ?Sized + 'static> DynXsoRegistryLookup<T> for BuilderRegistry<T> {
+    fn make_builder(
         &self,
         name: rxml::QName,
         attrs: rxml::AttrMap,
@@ -522,6 +568,62 @@ impl<T: ?Sized + 'static> BuilderRegistry<T> {
     }
 }
 
+/// # Helper traits for dynamic XSO builder registries.
+///
+/// Builder registries hold type-erased [`FromXml::from_events`]
+/// implementations. Registries can be used to dynamically dispatch to a set
+/// of `FromXml` implementations which is not known at compile time.
+///
+/// Under the hood, they are used by the `FromXml` implementation on
+/// [`Xso<T>`][`Xso`], via the [`DynXso::Registry`] type.
+///
+/// Note that registries generally do not allow to add arbitrary builders. All
+/// builders must originate in a [`FromXml`] implementation and their output
+/// must be convertible to the specific type the registry is defined for.
+///
+/// The default implementation is [`BuilderRegistry`], which is only available
+/// if `xso` is built with the `"std"` feature due to the inherent need for a
+/// `Mutex`.
+pub mod registry {
+    use super::*;
+
+    /// Trait for a builder registry supports constructing elements.
+    pub trait DynXsoRegistryLookup<T: ?Sized> {
+        /// Make a builder for the given element header.
+        ///
+        /// This tries all applicable `FromXml` implementations which have
+        /// previously been added via [`add`][`DynXsoRegistryAdd::add`] in
+        /// unspecified order. The first implementation to either fail or
+        /// succeed at constructing a builder determines the result.
+        /// Implementations which return a
+        /// [`FromEventsError::Mismatch`][`crate::error::FromEventsError::Mismatch`]
+        /// are ignored.
+        ///
+        /// If all applicable implementations return `Mismatch`, this function
+        /// returns `Mismatch`, too.
+        fn make_builder(
+            &self,
+            name: rxml::QName,
+            attrs: rxml::AttrMap,
+            ctx: &Context<'_>,
+        ) -> Result<Box<dyn FromEventsBuilder<Output = Box<T>>>, FromEventsError>;
+    }
+
+    /// Trait for a builder registry supports registering new builders at
+    /// runtime.
+    pub trait DynXsoRegistryAdd<T: ?Sized> {
+        /// Add a new builder to the registry.
+        ///
+        /// This allows to add any `FromXml` implementation whose output can be
+        /// converted to `T`.
+        fn add<U: Any + FromXml>(&self)
+        where
+            T: MayContain<U>;
+    }
+}
+
+use registry::*;
+
 /// # Dynamic XSO type
 ///
 /// This trait provides the infrastructure for dynamic XSO types. In
@@ -544,11 +646,24 @@ impl<T: ?Sized + 'static> BuilderRegistry<T> {
 /// *Hint*: It should not be necessary for user code to directly interact
 /// with this trait.
 pub trait DynXso: 'static {
+    /// Builder registry type for this dynamic type.
+    ///
+    /// The `Registry` type *should* implement the following traits:
+    ///
+    /// - [`DynXsoRegistryAdd`] is required to make
+    ///   [`Xso::<Self>::register_type()`][`Xso::register_type`] available.
+    /// - [`DynXsoRegistryLookup`] is required to make [`FromXml`] available
+    ///   on [`Xso<Self>`][`Xso`] (and, by extension, on
+    ///   [`XsoVec<Self>`][`XsoVec`]).
+    ///
+    /// However, any type with static lifetime can be used, even without the
+    /// trait implementations above, if the limitations are acceptable.
+    type Registry: 'static;
+
     /// Return the builder registry for this dynamic type.
     ///
-    /// The builder registry is used by [`Xso::register_type`] and the
-    /// `FromXml` implementation.
-    fn registry() -> &'static BuilderRegistry<Self>;
+    /// See [`Registry`][`Self::Registry`] for details.
+    fn registry() -> &'static Self::Registry;
 
     /// Try to downcast a boxed dynamic XSO to a specific type.
     ///
@@ -661,7 +776,8 @@ impl<T: ?Sized> Xso<T> {
     /// # use core::any::Any;
     /// # use xso::{dynxso::Xso, derive_dyn_traits};
     /// trait Trait: Any {}
-    /// derive_dyn_traits!(Trait);
+    #[cfg_attr(feature = "std", doc = "derive_dyn_traits!(Trait);")]
+    #[cfg_attr(not(feature = "std"), doc = "derive_dyn_traits!(Trait use () = ());")]
     ///
     /// struct Foo;
     /// impl Trait for Foo {}
@@ -683,7 +799,8 @@ impl<T: ?Sized> Xso<T> {
     /// # use core::any::Any;
     /// # use xso::{dynxso::Xso, derive_dyn_traits};
     /// trait Trait: Any {}
-    /// derive_dyn_traits!(Trait);
+    #[cfg_attr(feature = "std", doc = "derive_dyn_traits!(Trait);")]
+    #[cfg_attr(not(feature = "std"), doc = "derive_dyn_traits!(Trait use () = ());")]
     ///
     /// struct Foo;
     /// impl Trait for Foo {}
@@ -705,7 +822,8 @@ impl<T: DynXso + ?Sized + 'static> Xso<T> {
     /// # use core::any::Any;
     /// # use xso::{dynxso::Xso, derive_dyn_traits};
     /// trait Trait: Any {}
-    /// derive_dyn_traits!(Trait);
+    #[cfg_attr(feature = "std", doc = "derive_dyn_traits!(Trait);")]
+    #[cfg_attr(not(feature = "std"), doc = "derive_dyn_traits!(Trait use () = ());")]
     ///
     /// struct Foo;
     /// impl Trait for Foo {}
@@ -750,7 +868,8 @@ impl<T: DynXso + ?Sized + 'static> Xso<T> {
     /// # use core::any::Any;
     /// # use xso::{dynxso::Xso, derive_dyn_traits};
     /// trait Trait: Any {}
-    /// derive_dyn_traits!(Trait);
+    #[cfg_attr(feature = "std", doc = "derive_dyn_traits!(Trait);")]
+    #[cfg_attr(not(feature = "std"), doc = "derive_dyn_traits!(Trait use () = ());")]
     ///
     /// struct Foo;
     /// impl Trait for Foo {}
@@ -777,7 +896,8 @@ impl<T: DynXso + ?Sized + 'static> Xso<T> {
     /// # use core::any::Any;
     /// # use xso::{dynxso::Xso, derive_dyn_traits};
     /// trait Trait: Any {}
-    /// derive_dyn_traits!(Trait);
+    #[cfg_attr(feature = "std", doc = "derive_dyn_traits!(Trait);")]
+    #[cfg_attr(not(feature = "std"), doc = "derive_dyn_traits!(Trait use () = ());")]
     ///
     /// struct Foo;
     /// impl Trait for Foo {}
@@ -801,7 +921,9 @@ impl<T: DynXso + ?Sized + 'static> Xso<T> {
     fn inner_type_id(&self) -> TypeId {
         DynXso::type_id(&*self.inner)
     }
+}
 
+impl<R: DynXsoRegistryAdd<T> + 'static, T: DynXso<Registry = R> + ?Sized + 'static> Xso<T> {
     /// Register a new type to be constructible.
     ///
     /// Only types registered through this function can be parsed from XML via
@@ -809,10 +931,10 @@ impl<T: DynXso + ?Sized + 'static> Xso<T> {
     /// [`dynxso`][`crate::dynxso`] for details.
     ///
     #[cfg_attr(
-        not(feature = "macros"),
-        doc = "Because the macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
+        not(all(feature = "macros", feature = "std")),
+        doc = "Because the macros and std features were not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
     )]
-    #[cfg_attr(feature = "macros", doc = "\n```\n")]
+    #[cfg_attr(all(feature = "macros", feature = "std"), doc = "\n```\n")]
     /// # use core::any::Any;
     /// # use xso::{dynxso::Xso, derive_dyn_traits, from_bytes, FromXml};
     /// trait Trait: Any {}
@@ -882,7 +1004,9 @@ impl<O, T: FromEventsBuilder<Output = Box<O>>> FromEventsBuilder for UnboxBuilde
     }
 }
 
-impl<T: DynXso + ?Sized + 'static> FromXml for Xso<T> {
+impl<R: DynXsoRegistryLookup<T> + 'static, T: DynXso<Registry = R> + ?Sized + 'static> FromXml
+    for Xso<T>
+{
     type Builder = DynBuilder<Box<dyn FromEventsBuilder<Output = Box<T>>>>;
 
     fn from_events(
