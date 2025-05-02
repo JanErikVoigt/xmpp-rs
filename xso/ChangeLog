@@ -57,6 +57,8 @@ Version NEXT:
       - `FromXml::xml_name_matcher()` and related types, which allow `FromXml`
         implementors to provide cachable hints to callers about which XML
         elements are valid candidates for parsing (!573).
+      - `Xso<dyn Trait>`, a Box-like struct which can hold a dynamically-typed
+        XSO, alongside related traits and (declarative) macros (!573).
     * Changes
       - Generated AsXml iterator and FromXml builder types are now
         doc(hidden), to not clutter hand-written documentation with auto

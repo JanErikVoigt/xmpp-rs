@@ -31,6 +31,8 @@ extern crate std;
 use std::io;
 
 pub mod asxml;
+#[cfg(feature = "std")]
+pub mod dynxso;
 pub mod error;
 pub mod fromxml;
 #[cfg(feature = "minidom")]
