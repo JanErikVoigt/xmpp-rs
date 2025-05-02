@@ -97,26 +97,67 @@ use crate::{error::Error, AsXmlText, FromXmlText};
 #[cfg(feature = "base64")]
 use base64::engine::general_purpose::STANDARD as StandardBase64Engine;
 
+/// # Generate `AsXmlText` and `FromXmlText` implementations
+///
+/// This macro generates an `AsXmlText` implementation which uses
+/// [`Display`][`core::fmt::Display`] and an `FromXmlText` which uses
+/// [`FromStr`][`core::str::FromStr`] for the types it is called on.
+///
+/// ## Syntax
+///
+/// The macro accepts a comma-separated list of types. Optionally, each type
+/// can be preceded by a `#[cfg(..)]` attribute to make the implementations
+/// conditional on a feature.
+///
+/// ## Example
+///
+#[cfg_attr(
+    not(feature = "macros"),
+    doc = "Because the macros feature was not enabled at doc build time, the example cannot be tested.\n\n```ignore\n"
+)]
+#[cfg_attr(feature = "macros", doc = "\n```\n")]
+/// # use xso::convert_via_fromstr_and_display;
+/// # use core::fmt::{self, Display};
+/// # use core::str::FromStr;
+/// struct Foo;
+///
+/// impl FromStr for Foo {
+/// #    type Err = core::convert::Infallible;
+/// #
+/// #    fn from_str(s: &str) -> Result<Self, Self::Err> { todo!() }
+///     /* ... */
+/// }
+///
+/// impl Display for Foo {
+/// #    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { todo!() }
+///     /* ... */
+/// }
+///
+/// convert_via_fromstr_and_display!(
+///     Foo,
+/// );
+/// ```
+#[macro_export]
 macro_rules! convert_via_fromstr_and_display {
-    ($($(#[cfg $cfg:tt])?$t:ty,)+) => {
+    ($($(#[cfg $cfg:tt])?$t:ty),+ $(,)?) => {
         $(
             $(
                 #[cfg $cfg]
             )?
-            impl FromXmlText for $t {
+            impl $crate::FromXmlText for $t {
                 #[doc = concat!("Parse [`", stringify!($t), "`] from XML text via [`FromStr`][`core::str::FromStr`].")]
-                fn from_xml_text(s: String) -> Result<Self, Error> {
-                    s.parse().map_err(Error::text_parse_error)
+                fn from_xml_text(s: String) -> Result<Self, $crate::error::Error> {
+                    s.parse().map_err($crate::error::Error::text_parse_error)
                 }
             }
 
             $(
                 #[cfg $cfg]
             )?
-            impl AsXmlText for $t {
+            impl $crate::AsXmlText for $t {
                 #[doc = concat!("Convert [`", stringify!($t), "`] to XML text via [`Display`][`core::fmt::Display`].\n\nThis implementation never fails.")]
-                fn as_xml_text(&self) -> Result<Cow<'_, str>, Error> {
-                    Ok(Cow::Owned(self.to_string()))
+                fn as_xml_text(&self) -> Result<$crate::exports::alloc::borrow::Cow<'_, str>, $crate::error::Error> {
+                    Ok($crate::exports::alloc::borrow::Cow::Owned(self.to_string()))
                 }
             }
         )+

@@ -39,10 +39,10 @@ mod rxml_util;
 pub mod text;
 
 #[doc(hidden)]
-#[cfg(feature = "macros")]
 pub mod exports {
-    #[cfg(feature = "minidom")]
+    #[cfg(all(feature = "minidom", feature = "macros"))]
     pub use minidom;
+    #[cfg(feature = "macros")]
     pub use rxml;
 
     // These re-exports are necessary to support both std and no_std in code
@@ -65,12 +65,14 @@ pub mod exports {
     ///
     /// This is re-exported for use by macros in cases where we cannot rely on
     /// people not having done `type bool = str` or some similar shenanigans.
+    #[cfg(feature = "macros")]
     pub type CoreBool = bool;
 
     /// The built-in `u8` type.
     ///
     /// This is re-exported for use by macros in cases where we cannot rely on
     /// people not having done `type u8 = str` or some similar shenanigans.
+    #[cfg(feature = "macros")]
     pub type CoreU8 = u8;
 
     /// Compile-time comparison of two strings.
@@ -78,6 +80,7 @@ pub mod exports {
     /// Used by macro-generated code.
     ///
     /// This is necessary because `<str as PartialEq>::eq` is not `const`.
+    #[cfg(feature = "macros")]
     pub const fn const_str_eq(a: &'static str, b: &'static str) -> bool {
         let a = a.as_bytes();
         let b = b.as_bytes();
