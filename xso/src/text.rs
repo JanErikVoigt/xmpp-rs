@@ -265,6 +265,9 @@ convert_via_fromstr_and_display! {
 /// The codec to use for a text can be specified in the attributes understood
 /// by `FromXml` and `AsXml` derive macros. See the documentation of the
 /// [`FromXml`][`macro@crate::FromXml`] derive macro for details.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` cannot be used as XML text codec for values of type `{T}`."
+)]
 pub trait TextCodec<T> {
     /// Decode a string value into the type.
     fn decode(&self, s: String) -> Result<T, Error>;

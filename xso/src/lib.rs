@@ -137,6 +137,7 @@ pub use xso_proc::AsXml;
 /// type is considered a non-breaking change for any given implementation of
 /// this trait. Always refer to a type's iterator type using fully-qualified
 /// notation, for example: `<T as xso::AsXml>::ItemIter`.
+#[diagnostic::on_unimplemented(message = "`{Self}` cannot be serialised as XML")]
 pub trait AsXml {
     /// The iterator type.
     ///
@@ -234,6 +235,7 @@ pub trait FromEventsBuilder {
 /// is considered a non-breaking change for any given implementation of this
 /// trait. Always refer to a type's builder type using fully-qualified
 /// notation, for example: `<T as xso::FromXml>::Builder`.
+#[diagnostic::on_unimplemented(message = "`{Self}` cannot be parsed from XML")]
 pub trait FromXml {
     /// A builder type used to construct the element.
     ///
@@ -266,6 +268,10 @@ pub trait FromXml {
 ///
 /// **Important:** See the [`text`][`crate::text`] module's documentation
 /// for notes regarding implementations for types from third-party crates.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` cannot be parsed from XML text",
+    note = "If `{Self}` implements `core::fmt::Display` and `core::str::FromStr`, you may be able to provide a suitable implementation using `xso::convert_via_fromstr_and_display!({Self});`."
+)]
 pub trait FromXmlText: Sized {
     /// Convert the given XML text to a value.
     fn from_xml_text(data: String) -> Result<Self, self::error::Error>;
@@ -314,6 +320,10 @@ impl<T: FromXmlText> FromXmlText for Box<T> {
 ///
 /// **Important:** See the [`text`][`crate::text`] module's documentation
 /// for notes regarding implementations for types from third-party crates.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` cannot be serialised to XML text",
+    note = "If `{Self}` implements `core::fmt::Display` and `core::str::FromStr`, you may be able to provide a suitable implementation using `xso::convert_via_fromstr_and_display!({Self});`."
+)]
 pub trait AsXmlText {
     /// Convert the value to an XML string in a context where an absent value
     /// cannot be represented.
@@ -387,6 +397,10 @@ impl<T: AsXmlText> AsXmlText for &T {
 ///
 /// **Important:** See the [`text`][`crate::text`] module's documentation
 /// for notes regarding implementations for types from third-party crates.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` cannot be serialised as XML attribute",
+    note = "If `{Self}` implements `core::fmt::Display` and `core::str::FromStr`, you may be able to provide a suitable implementation using `xso::convert_via_fromstr_and_display!({Self});`."
+)]
 pub trait AsOptionalXmlText {
     /// Convert the value to an XML string in a context where an absent value
     /// can be represented.
