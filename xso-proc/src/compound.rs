@@ -278,7 +278,13 @@ impl Compound {
                     format!("{}", name_b)
                 };
 
-                // See TODO below for why we do the extra replace calls.
+                // We need to escape `{` and `}` because we feed it into
+                // a generated `panic!()` as message template below. We cannot
+                // do something like `panic!("member {} […]", #field_a, […])`,
+                // because rustc does not allow that in a const context.
+                // (It *did* briefly (and unintentionally, see
+                // https://github.com/rust-lang/rust/issues/140585 ) allow
+                // that in version 1.86, but that was rolled back.
                 let attr_a = attr_a.replace('{', "{{").replace('}', "}}");
                 let attr_b = attr_b.replace('{', "{{").replace('}', "}}");
                 let field_a = FieldName(&member_a)
@@ -295,11 +301,6 @@ impl Compound {
                 // is never used.
                 checks.extend(quote_spanned! {span=>
                     const _: () = { if #check {
-                        // TODO: Rust nightly from 2025-05-02 (or around that date) didn't like our fancy panic, so we use something simpler.
-                        // Filed bug upstream: https://github.com/rust-lang/rust/issues/140585
-                        // For now, we work around this because it breaks our docs builds...
-                        //panic!("member {} and member {} match the same XML attribute: {} == {}", #field_a, #field_b, #attr_a, #attr_b);
-                        // Note that we cannot replace it with concat!(..), because we may have `{` and `}` in the strings...
                         panic!(concat!("member ", #field_a, " and member ", #field_b, " match the same XML attribute: ", #attr_a, " == ", #attr_b));
                     } };
                 })
