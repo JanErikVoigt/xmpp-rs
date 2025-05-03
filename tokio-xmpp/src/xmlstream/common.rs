@@ -300,7 +300,7 @@ impl<Io: AsyncBufRead + AsyncWrite> RawXmlStream<Io> {
         let parser = rxml::AsyncReader::wrap(io, p);
         RawXmlStream {
             parser,
-            lang_stack: XmlLangStack::new(),
+            lang_stack: self.lang_stack,
             timeouts: self.timeouts,
             writer: self.writer,
             tx_buffer: self.tx_buffer,
