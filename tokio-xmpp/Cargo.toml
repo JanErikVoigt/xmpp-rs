@@ -40,7 +40,7 @@ ktls = { version = "6", optional = true }
 env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
 # this is needed for echo-component example
 tokio = { version = "1", features = ["signal", "test-util"] }
-tokio-xmpp = { path = ".", features = ["insecure-tcp"]}
+tokio-xmpp = { path = ".", default-features = false, features = ["insecure-tcp"]}
 
 [features]
 default = ["starttls-rust", "rustls-native-certs", "tls-rust-aws_lc_rs"]
