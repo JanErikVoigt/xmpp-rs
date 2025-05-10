@@ -15,6 +15,13 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
       - Agent::send_room_private_message now takes RoomPrivateMessageSettings (!487)
       - Event now exposes Option<MessageId> for incoming messages, and MessageId
         for incoming message corrections; type alias Id has been removed (!504)
+      - The `starttls-rust` feature flag does not automatically enable a
+        `rustls` crypto provider anymore. This is to avoid conflict between
+        two crypto providers and to avoid linking unnecessary code. The
+        `aws_lc_rs` crypto provider is still built by default, however,
+        applications which use `xmpp` without default features will have to
+        adapt their feature flags to explicitly enable the
+        `starttls-rust-aws_lc_rs` or `starttls-rust-ring` features. (!581)
     * Added:
       - Agent::send_room_message takes RoomMessageSettings argument (!483)
       - Agent::send_raw_message takes RawMessageSettings for any message type (!487)

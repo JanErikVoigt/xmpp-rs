@@ -4,7 +4,12 @@ use std::fs::{create_dir_all, File};
 use std::io::{self, Write};
 use std::process::exit;
 use std::str::FromStr;
-use tokio_xmpp::{rustls, Client, Stanza};
+#[cfg(all(
+    feature = "tls-rust",
+    any(feature = "tls-rust-aws_lc_rs", feature = "tls-rust-ring")
+))]
+use tokio_xmpp::rustls;
+use tokio_xmpp::{Client, Stanza};
 use xmpp_parsers::{
     avatar::{Data as AvatarData, Metadata as AvatarMetadata},
     caps::{compute_disco, hash_caps, Caps},
@@ -26,8 +31,17 @@ use xmpp_parsers::{
 async fn main() {
     env_logger::init();
 
-    #[cfg(feature = "tls-rust")]
+    #[cfg(all(feature = "tls-rust", feature = "tls-rust-aws_lc_rs"))]
     rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
+
+    #[cfg(all(
+        feature = "tls-rust",
+        feature = "tls-rust-ring",
+        not(feature = "tls-rust-aws_lc_rs")
+    ))]
+    rustls::crypto::ring::default_provider()
         .install_default()
         .expect("failed to install rustls crypto provider");
 

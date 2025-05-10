@@ -1,17 +1,30 @@
 use futures::{SinkExt, StreamExt};
 use tokio::{self, io, net::TcpSocket};
 
+#[cfg(all(
+    feature = "tls-rust",
+    any(feature = "tls-rust-aws_lc_rs", feature = "tls-rust-ring")
+))]
+use tokio_xmpp::rustls;
 use tokio_xmpp::{
     minidom::Element,
     parsers::stream_features::StreamFeatures,
-    rustls,
     xmlstream::{accept_stream, StreamHeader, Timeouts},
 };
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
-    #[cfg(feature = "tls-rust")]
+    #[cfg(all(feature = "tls-rust", feature = "tls-rust-aws_lc_rs"))]
     rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
+
+    #[cfg(all(
+        feature = "tls-rust",
+        feature = "tls-rust-ring",
+        not(feature = "tls-rust-aws_lc_rs")
+    ))]
+    rustls::crypto::ring::default_provider()
         .install_default()
         .expect("failed to install rustls crypto provider");
 

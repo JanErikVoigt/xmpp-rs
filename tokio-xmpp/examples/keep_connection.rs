@@ -19,6 +19,11 @@ use rand::{thread_rng, Rng};
 
 use futures::StreamExt;
 
+#[cfg(all(
+    feature = "tls-rust",
+    any(feature = "tls-rust-aws_lc_rs", feature = "tls-rust-ring")
+))]
+use tokio_xmpp::rustls;
 use tokio_xmpp::{
     connect::{DnsConfig, StartTlsServerConnector},
     parsers::{
@@ -26,7 +31,6 @@ use tokio_xmpp::{
         jid::{BareJid, Jid},
         ping,
     },
-    rustls,
     stanzastream::StanzaStream,
     xmlstream::Timeouts,
 };
@@ -35,8 +39,17 @@ use tokio_xmpp::{
 async fn main() {
     env_logger::init();
 
-    #[cfg(feature = "tls-rust")]
+    #[cfg(all(feature = "tls-rust", feature = "tls-rust-aws_lc_rs"))]
     rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
+
+    #[cfg(all(
+        feature = "tls-rust",
+        feature = "tls-rust-ring",
+        not(feature = "tls-rust-aws_lc_rs")
+    ))]
+    rustls::crypto::ring::default_provider()
         .install_default()
         .expect("failed to install rustls crypto provider");
 

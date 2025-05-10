@@ -4,6 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#[cfg(all(
+    feature = "starttls-rust",
+    any(feature = "starttls-rust-aws_lc_rs", feature = "starttls-rust-ring")
+))]
+use xmpp::tokio_xmpp::rustls;
 use xmpp::{
     jid::BareJid,
     muc::room::{JoinRoomSettings, RoomMessageSettings},
@@ -18,6 +23,20 @@ use std::str::FromStr;
 #[tokio::main]
 async fn main() -> Result<(), Option<()>> {
     env_logger::init();
+
+    #[cfg(all(feature = "starttls-rust", feature = "starttls-rust-aws_lc_rs"))]
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
+
+    #[cfg(all(
+        feature = "starttls-rust",
+        feature = "starttls-rust-ring",
+        not(feature = "starttls-rust-aws_lc_rs")
+    ))]
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
 
     let args: Vec<String> = args().collect();
     if args.len() < 3 {
