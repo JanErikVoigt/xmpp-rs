@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#[cfg(any(feature = "starttls-rust", feature = "starttls-native"))]
+#[cfg(feature = "starttls")]
 use crate::tokio_xmpp::connect::{DnsConfig, StartTlsServerConnector};
 use core::str::FromStr;
 
@@ -52,7 +52,7 @@ pub struct ClientBuilder<'a, C: ServerConnector> {
     timeouts: Timeouts,
 }
 
-#[cfg(any(feature = "starttls-rust", feature = "starttls-native"))]
+#[cfg(feature = "starttls")]
 impl ClientBuilder<'_, StartTlsServerConnector> {
     pub fn new<'a>(jid: BareJid, password: &'a str) -> ClientBuilder<'a, StartTlsServerConnector> {
         Self::new_with_connector(

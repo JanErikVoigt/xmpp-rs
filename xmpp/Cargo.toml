@@ -31,11 +31,20 @@ name = "hello_bot"
 required-features = ["avatars"]
 
 [features]
-default = ["avatars", "starttls-rust"]
-starttls-native = ["tokio-xmpp/starttls", "tokio-xmpp/tls-native", "reqwest/native-tls"]
-starttls-rust = ["tokio-xmpp/starttls", "tokio-xmpp/tls-rust", "reqwest/rustls-tls-no-provider", "tokio-xmpp/tls-rust-webpki-roots"]
-starttls-rust-aws_lc_rs = ["tokio-xmpp/tls-rust-aws_lc_rs", "starttls-rust"]
-starttls-rust-ring = ["tokio-xmpp/tls-rust-ring", "starttls-rust"]
+default = ["avatars", "aws_lc_rs", "starttls", "rustls-native-certs"]
+
+aws_lc_rs = ["rustls-any-backend", "tokio-xmpp/aws_lc_rs", "reqwest/rustls-tls-no-provider"]
+ring = ["rustls-any-backend", "tokio-xmpp/ring", "reqwest/rustls-tls-no-provider"]
+native-tls = ["tokio-xmpp/native-tls", "reqwest/native-tls"]
+ktls = ["rustls-any-backend", "tokio-xmpp/ktls", "reqwest/rustls-tls"]
+
+rustls-any-backend = ["tokio-xmpp/rustls-any-backend"]
+
+rustls-native-certs = ["tokio-xmpp/rustls-native-certs"]
+webpki-roots = ["tokio-xmpp/webpki-roots"]
+
+starttls = ["tokio-xmpp/starttls"]
+
 avatars = []
 escape-hatch = []
 syntax-highlighting = [ "tokio-xmpp/syntax-highlighting" ]

@@ -15,7 +15,7 @@ edition = "2021"
 bytes = "1"
 futures = "0.3"
 log = "0.4"
-tokio = { version = "1", features = ["net", "rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["net", "rt", "rt-multi-thread", "macros", "io-util"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 webpki-roots = { version = "0.26", optional = true }
 rustls-native-certs = { version = "0.7", optional = true }
@@ -40,21 +40,47 @@ ktls = { version = "6", optional = true }
 env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
 # this is needed for echo-component example
 tokio = { version = "1", features = ["signal", "test-util"] }
-tokio-xmpp = { path = ".", default-features = false, features = ["insecure-tcp"]}
+tokio-xmpp = { path = ".", default-features = false, features = ["rustls-native-certs"]}
+
+[[example]]
+name = "contact_addr"
+required-features = ["starttls"]
+
+[[example]]
+name = "download_avatars"
+required-features = ["starttls"]
+
+[[example]]
+name = "echo_bot"
+required-features = ["starttls"]
+
+[[example]]
+name = "echo_component"
+required-features = ["starttls", "insecure-tcp"]
+
+[[example]]
+name = "echo_server"
+required-features = ["starttls"]
+
+[[example]]
+name = "keep_connection"
+required-features = ["starttls"]
 
 [features]
-default = ["starttls-rust", "rustls-native-certs", "tls-rust-aws_lc_rs"]
+default = ["starttls", "aws_lc_rs", "rustls-native-certs"]
 starttls = ["dns"]
-tls-rust = ["tokio-rustls"]
-tls-rust-aws_lc_rs = ["tokio-rustls?/aws_lc_rs"]
-tls-rust-ring = ["tokio-rustls?/ring"]
-tls-rust-ktls = ["tls-rust", "ktls"]
-tls-rust-native-certs = ["tls-rust", "rustls-native-certs"]
-tls-rust-webpki-roots = ["tls-rust", "webpki-roots"]
-tls-native = ["tokio-native-tls", "native-tls"]
-starttls-native = ["starttls", "tls-native"]
-starttls-rust = ["starttls", "tls-rust"]
-insecure-tcp = ["tokio/io-util"]
+
+aws_lc_rs = ["rustls-any-backend", "tokio-rustls/aws_lc_rs"]
+ring = ["rustls-any-backend", "tokio-rustls/ring"]
+native-tls = ["dep:tokio-native-tls", "dep:native-tls"]
+ktls = ["rustls-any-backend", "dep:ktls"]
+
+rustls-any-backend = ["dep:tokio-rustls"]
+
+rustls-native-certs = ["dep:rustls-native-certs"]
+webpki-roots = ["dep:webpki-roots"]
+
+insecure-tcp = []
 syntax-highlighting = ["syntect"]
 # Enable serde support in jid crate
 serde = [ "xmpp-parsers/serde" ]

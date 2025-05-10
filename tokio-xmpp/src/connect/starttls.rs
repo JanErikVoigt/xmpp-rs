@@ -2,18 +2,22 @@
 
 use alloc::borrow::Cow;
 use core::{error::Error as StdError, fmt};
-#[cfg(feature = "tls-native")]
+#[cfg(feature = "native-tls")]
 use native_tls::Error as TlsError;
 use std::io;
 use std::os::fd::AsRawFd;
-#[cfg(all(feature = "tls-rust", not(feature = "tls-native")))]
+#[cfg(feature = "rustls-any-backend")]
 use tokio_rustls::rustls::pki_types::InvalidDnsNameError;
-#[cfg(all(feature = "tls-rust", not(feature = "tls-native")))]
+// Note: feature = "rustls-any-backend" and feature = "native-tls" are
+// mutually exclusive during normal compiles, but we allow it for rustdoc
+// builds. Thus, we have to make sure that the compilation still succeeds in
+// such a case.
+#[cfg(all(feature = "rustls-any-backend", not(feature = "native-tls")))]
 use tokio_rustls::rustls::Error as TlsError;
 
 use futures::{sink::SinkExt, stream::StreamExt};
 
-#[cfg(all(feature = "tls-rust", not(feature = "tls-native")))]
+#[cfg(all(feature = "rustls-any-backend", not(feature = "native-tls")))]
 use {
     alloc::sync::Arc,
     tokio_rustls::{
@@ -24,16 +28,16 @@ use {
 };
 
 #[cfg(all(
-    feature = "tls-rust",
-    not(feature = "tls-native"),
-    not(feature = "tls-rust-ktls")
+    feature = "rustls-any-backend",
+    not(feature = "ktls"),
+    not(feature = "native-tls")
 ))]
 use tokio_rustls::client::TlsStream;
 
-#[cfg(all(feature = "tls-rust-ktls", not(feature = "tls-native")))]
+#[cfg(all(feature = "ktls", not(feature = "native-tls")))]
 type TlsStream<S> = ktls::KtlsStream<S>;
 
-#[cfg(feature = "tls-native")]
+#[cfg(feature = "native-tls")]
 use {
     native_tls::TlsConnector as NativeTlsConnector,
     tokio_native_tls::{TlsConnector, TlsStream},
@@ -123,7 +127,7 @@ impl ServerConnector for StartTlsServerConnector {
     }
 }
 
-#[cfg(feature = "tls-native")]
+#[cfg(feature = "native-tls")]
 async fn get_tls_stream<S: AsyncRead + AsyncWrite + Unpin>(
     xmpp_stream: XmppStream<BufStream<S>>,
     domain: &str,
@@ -140,7 +144,7 @@ async fn get_tls_stream<S: AsyncRead + AsyncWrite + Unpin>(
     Ok((tls_stream, ChannelBinding::None))
 }
 
-#[cfg(all(feature = "tls-rust", not(feature = "tls-native")))]
+#[cfg(all(feature = "rustls-any-backend", not(feature = "native-tls")))]
 async fn get_tls_stream<S: AsyncRead + AsyncWrite + Unpin + AsRawFd>(
     xmpp_stream: XmppStream<BufStream<S>>,
     domain: &str,
@@ -160,7 +164,7 @@ async fn get_tls_stream<S: AsyncRead + AsyncWrite + Unpin + AsRawFd>(
     let mut config = ClientConfig::builder()
         .with_root_certificates(root_store)
         .with_no_client_auth();
-    #[cfg(feature = "tls-rust-ktls")]
+    #[cfg(feature = "ktls")]
     let stream = {
         config.enable_secret_extraction = true;
         ktls::CorkStream::new(stream)
@@ -184,7 +188,7 @@ async fn get_tls_stream<S: AsyncRead + AsyncWrite + Unpin + AsRawFd>(
         _ => ChannelBinding::None,
     };
 
-    #[cfg(feature = "tls-rust-ktls")]
+    #[cfg(feature = "ktls")]
     let tls_stream = ktls::config_ktls_client(tls_stream)
         .await
         .map_err(StartTlsError::KtlsError)?;
@@ -228,10 +232,10 @@ pub async fn starttls<S: AsyncRead + AsyncWrite + Unpin + AsRawFd>(
 pub enum StartTlsError {
     /// TLS error
     Tls(TlsError),
-    #[cfg(all(feature = "tls-rust", not(feature = "tls-native")))]
+    #[cfg(feature = "rustls-any-backend")]
     /// DNS name parsing error
     DnsNameError(InvalidDnsNameError),
-    #[cfg(feature = "tls-rust-ktls")]
+    #[cfg(feature = "ktls")]
     /// Error while setting up kernel TLS
     KtlsError(ktls::Error),
 }
@@ -242,9 +246,9 @@ impl fmt::Display for StartTlsError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Tls(e) => write!(fmt, "TLS error: {}", e),
-            #[cfg(all(feature = "tls-rust", not(feature = "tls-native")))]
+            #[cfg(feature = "rustls-any-backend")]
             Self::DnsNameError(e) => write!(fmt, "DNS name error: {}", e),
-            #[cfg(feature = "tls-rust-ktls")]
+            #[cfg(feature = "ktls")]
             Self::KtlsError(e) => write!(fmt, "Kernel TLS error: {}", e),
         }
     }
@@ -258,7 +262,7 @@ impl From<TlsError> for StartTlsError {
     }
 }
 
-#[cfg(all(feature = "tls-rust", not(feature = "tls-native")))]
+#[cfg(feature = "rustls-any-backend")]
 impl From<InvalidDnsNameError> for StartTlsError {
     fn from(e: InvalidDnsNameError) -> Self {
         Self::DnsNameError(e)

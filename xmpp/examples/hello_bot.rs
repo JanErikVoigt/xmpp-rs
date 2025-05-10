@@ -4,10 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#[cfg(all(
-    feature = "starttls-rust",
-    any(feature = "starttls-rust-aws_lc_rs", feature = "starttls-rust-ring")
-))]
+#[cfg(feature = "rustls-any-backend")]
 use xmpp::tokio_xmpp::rustls;
 use xmpp::{
     jid::BareJid,
@@ -20,20 +17,22 @@ use tokio::signal::ctrl_c;
 use std::env::args;
 use std::str::FromStr;
 
+#[cfg(all(
+    feature = "rustls-any-backend",
+    not(any(feature = "aws_lc_rs", feature = "ring"))
+))]
+compile_error!("using rustls (e.g. via the ktls feature) needs an enabled rustls backend feature (either aws_lc_rs or ring).");
+
 #[tokio::main]
 async fn main() -> Result<(), Option<()>> {
     env_logger::init();
 
-    #[cfg(all(feature = "starttls-rust", feature = "starttls-rust-aws_lc_rs"))]
+    #[cfg(all(feature = "aws_lc_rs", not(feature = "ring")))]
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("failed to install rustls crypto provider");
 
-    #[cfg(all(
-        feature = "starttls-rust",
-        feature = "starttls-rust-ring",
-        not(feature = "starttls-rust-aws_lc_rs")
-    ))]
+    #[cfg(all(feature = "ring"))]
     rustls::crypto::ring::default_provider()
         .install_default()
         .expect("failed to install rustls crypto provider");

@@ -25,13 +25,15 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - `Component` is now gated behind `insecure-tcp` feature flag
       - `XMPPStream` and `XmppCodec` were removed in favour of the newly
         implemented `tokio_xmpp::xmlstream module.
-      - The `starttls-rust`, `tls-rust` and `tls-rust-ktls` feature flags do
-        not automatically enable a `rustls` crypto provider anymore. This is
-        to avoid conflict between two crypto providers and to avoid linking
-        unnecessary code. The `aws_lc_rs` crypto provider is still built by
-        default, however, applications which use `tokio_xmpp` without default
-        features will have to adapt their feature flags to explicitly enable
-        the `tls-rust-aws_lc_rs` or `tls-rust-ring` features. (!581)
+      - The TLS-related feature flags have been completely reworked to make
+        them easier to use. The `tls-rust-*`, `tls-native` and `starttls-*`
+        feature flags have been removed in favour of more concise flag names
+        identifying the TLS backends directly (`aws_lc_rs`, `ring`,
+        `native-tls`). The `starttls` feature is now independent of the
+        specific backend (but a backend still needs to be enabled for
+        compilation to succeed).
+
+        Please refer to the crate docs for details. (!581)
     * Added:
       - Support for sending IQ requests while tracking their responses in a
         Future.

@@ -22,6 +22,50 @@
 //! - [ ] Websockets
 //! - [ ] BOSH
 //!
+//! # Cargo features
+//!
+//! ## TLS backends
+//!
+//! - `aws_lc_rs` (default) enables rustls with the `aws_lc_rs` backend.
+//! - `ring` enables rustls with the `ring` backend`.
+//! - `rustls-any-backend` enables rustls, but without enabling a backend. It
+//!   is the application's responsibility to ensure that a backend is enabled
+//!   and installed.
+//! - `ktls` enables the use of ktls.
+//!   **Important:** Currently, connections will fail if the `tls` kernel
+//!   module is not available. There is no fallback to non-ktls connections!
+//! - `native-tls` enables the system-native TLS library (commonly
+//!   libssl/OpenSSL).
+//!
+//! **Note:** It is not allowed to mix rustls-based TLS backends with
+//! `tls-native`. Attempting to do so will result in a compilation error.
+//!
+//! **Note:** The `ktls` feature requires at least one `rustls` backend to be
+//! enabled (`aws_lc_rs` or `ring`).
+//!
+//! **Note:** When enabling not exactly one rustls backend, it is the
+//! application's responsibility to make sure that a default crypto provider is
+//! installed in `rustls`. Otherwise, all TLS connections will fail.
+//!
+//! ## Certificate validation
+//!
+//! When using `native-tls`, the system's native certificate store is used.
+//! Otherwise, you need to pick one of the following to ensure that TLS
+//! connections will succeed:
+//!
+//! - `rustls-native-certs` (default): Uses [rustls-native-certs](https://crates.io/crates/rustls-native-certs).
+//! - `webpki-roots`: Uses [webpki-roots](https://crates.io/crates/webpki-roots).
+//!
+//! ## Other features
+//!
+//! - `starttls` (default): Enables support for `<starttls/>`. Required as per
+//!   RFC 6120.
+//! - `insecure-tcp`: Allow the use of insecure TCP connections to connect to
+//!   XMPP servers. Required for XMPP components, but disabled by default to
+//!   prevent accidental use.
+//! - `serde`: Enable the `serde` feature in `xmpp-parsers`.
+//! - `component`: Enable component support (implies `insecure-tcp`).
+//!
 //! # More information
 //!
 //! You can find more information on our website [xmpp.rs](https://xmpp.rs/) or by joining our chatroom [chat@xmpp.rs](xmpp:chat@xmpp.rs?join).
@@ -29,21 +73,35 @@
 #![deny(unsafe_code, missing_docs, bare_trait_objects)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
-#[cfg(all(
-    not(xmpprs_doc_build),
-    not(doc),
-    feature = "tls-native",
-    feature = "tls-rust"
-))]
-compile_error!("Both tls-native and tls-rust features can't be enabled at the same time.");
+macro_rules! fail_native_with_any {
+    ($($feature:literal),+) => {
+        $(
+            #[cfg(all(
+                not(xmpprs_doc_build),
+                not(doc),
+                feature = "native-tls",
+                feature = $feature,
+            ))]
+            compile_error!(
+                concat!(
+                    "native-tls cannot be mixed with the ",
+                    $feature,
+                    " feature. Pick one or the other."
+                )
+            );
+        )+
+    }
+}
+
+fail_native_with_any!("ring", "aws_lc_rs", "ktls", "rustls-any-backend");
 
 #[cfg(all(
     feature = "starttls",
-    not(feature = "tls-native"),
-    not(feature = "tls-rust")
+    not(feature = "native-tls"),
+    not(any(feature = "rustls-any-backend"))
 ))]
 compile_error!(
-    "when starttls feature enabled one of tls-native and tls-rust features must be enabled."
+    "When the starttls feature is enabled, either native-tls or any of the rustls (aws_lc_rs, ring, or rustls-any-backend) features must be enabled."
 );
 
 extern crate alloc;
@@ -51,7 +109,7 @@ extern crate alloc;
 pub use parsers::{jid, minidom};
 pub use xmpp_parsers as parsers;
 
-#[cfg(feature = "tls-rust")]
+#[cfg(any(feature = "ring", feature = "aws_lc_rs", feature = "ktls"))]
 pub use tokio_rustls::rustls;
 
 mod client;

@@ -3,6 +3,46 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//! # Cargo features
+//!
+//! ## TLS backends
+//!
+//! - `aws_lc_rs` (default) enables rustls with the `aws_lc_rs` backend.
+//! - `ring` enables rustls with the `ring` backend`.
+//! - `rustls-any-backend` enables rustls, but without enabling a backend. It
+//!   is the application's responsibility to ensure that a backend is enabled
+//!   and installed.
+//! - `ktls` enables the use of ktls.
+//!   **Important:** Currently, connections will fail if the `tls` kernel
+//!   module is not available. There is no fallback to non-ktls connections!
+//! - `native-tls` enables the system-native TLS library (commonly
+//!   libssl/OpenSSL).
+//!
+//! **Note:** It is not allowed to mix rustls-based TLS backends with
+//! `tls-native`. Attempting to do so will result in a compilation error.
+//!
+//! **Note:** The `ktls` feature requires at least one `rustls` backend to be
+//! enabled (`aws_lc_rs` or `ring`).
+//!
+//! **Note:** When enabling not exactly one rustls backend, it is the
+//! application's responsibility to make sure that a default crypto provider is
+//! installed in `rustls`. Otherwise, all TLS connections will fail.
+//!
+//! ## Certificate validation
+//!
+//! When using `native-tls`, the system's native certificate store is used.
+//! Otherwise, you need to pick one of the following to ensure that TLS
+//! connections will succeed:
+//!
+//! - `rustls-native-certs` (default): Uses [rustls-native-certs](https://crates.io/crates/rustls-native-certs).
+//! - `webpki-roots`: Uses [webpki-roots](https://crates.io/crates/webpki-roots).
+//!
+//! ## Other features
+//!
+//! - `starttls` (default): Enables support for `<starttls/>`. Required as per
+//!   RFC 6120.
+//! - `avatars` (default): Enables support for avatars.
+//! - `serde`: Enable the `serde` feature in `tokio-xmpp`.
 
 #![deny(bare_trait_objects)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
