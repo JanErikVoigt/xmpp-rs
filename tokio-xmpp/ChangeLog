@@ -28,6 +28,8 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
     * Added:
       - Support for sending IQ requests while tracking their responses in a
         Future.
+      - `rustls` is now re-exported if it is enabled, to allow applications to
+        set the default crypto provider if needed. (!581)
     * Changes:
       - On Linux, once the TLS session is established, we can delegate the
         actual encryption and decryption to the kernel, which in turn can

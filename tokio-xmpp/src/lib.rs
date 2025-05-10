@@ -51,6 +51,9 @@ extern crate alloc;
 pub use parsers::{jid, minidom};
 pub use xmpp_parsers as parsers;
 
+#[cfg(feature = "tls-rust")]
+pub use tokio_rustls::rustls;
+
 mod client;
 #[cfg(feature = "insecure-tcp")]
 mod component;
