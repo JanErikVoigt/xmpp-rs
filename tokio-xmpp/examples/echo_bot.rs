@@ -2,7 +2,7 @@ use futures::stream::StreamExt;
 use std::env::args;
 use std::process::exit;
 use std::str::FromStr;
-use tokio_xmpp::Client;
+use tokio_xmpp::{rustls, Client};
 use xmpp_parsers::jid::{BareJid, Jid};
 use xmpp_parsers::message::{Lang, Message, MessageType};
 use xmpp_parsers::presence::{Presence, Show as PresenceShow, Type as PresenceType};
@@ -10,6 +10,11 @@ use xmpp_parsers::presence::{Presence, Show as PresenceShow, Type as PresenceTyp
 #[tokio::main]
 async fn main() {
     env_logger::init();
+
+    #[cfg(feature = "tls-rust")]
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
 
     let args: Vec<String> = args().collect();
     if args.len() != 3 {

@@ -4,11 +4,17 @@ use tokio::{self, io, net::TcpSocket};
 use tokio_xmpp::{
     minidom::Element,
     parsers::stream_features::StreamFeatures,
+    rustls,
     xmlstream::{accept_stream, StreamHeader, Timeouts},
 };
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
+    #[cfg(feature = "tls-rust")]
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
+
     // TCP socket
     let address = "127.0.0.1:5222".parse().unwrap();
     let socket = TcpSocket::new_v4()?;

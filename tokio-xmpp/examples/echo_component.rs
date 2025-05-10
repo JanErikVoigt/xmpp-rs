@@ -6,11 +6,16 @@ use xmpp_parsers::jid::Jid;
 use xmpp_parsers::message::{Lang, Message, MessageType};
 use xmpp_parsers::presence::{Presence, Show as PresenceShow, Type as PresenceType};
 
-use tokio_xmpp::{connect::DnsConfig, Component};
+use tokio_xmpp::{connect::DnsConfig, rustls, Component};
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
+
+    #[cfg(feature = "tls-rust")]
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
 
     let args: Vec<String> = args().collect();
     if args.len() < 3 || args.len() > 4 {

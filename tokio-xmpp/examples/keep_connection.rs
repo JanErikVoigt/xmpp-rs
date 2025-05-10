@@ -26,6 +26,7 @@ use tokio_xmpp::{
         jid::{BareJid, Jid},
         ping,
     },
+    rustls,
     stanzastream::StanzaStream,
     xmlstream::Timeouts,
 };
@@ -33,6 +34,11 @@ use tokio_xmpp::{
 #[tokio::main]
 async fn main() {
     env_logger::init();
+
+    #[cfg(feature = "tls-rust")]
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
 
     let args: Vec<String> = args().collect();
     if args.len() != 3 {

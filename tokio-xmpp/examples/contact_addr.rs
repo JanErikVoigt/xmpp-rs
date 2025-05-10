@@ -2,7 +2,7 @@ use futures::stream::StreamExt;
 use std::env::args;
 use std::process::exit;
 use std::str::FromStr;
-use tokio_xmpp::{Client, IqRequest, IqResponse};
+use tokio_xmpp::{rustls, Client, IqRequest, IqResponse};
 use xmpp_parsers::{
     disco::{DiscoInfoQuery, DiscoInfoResult},
     jid::{BareJid, Jid},
@@ -13,6 +13,11 @@ use xmpp_parsers::{
 #[tokio::main]
 async fn main() {
     env_logger::init();
+
+    #[cfg(feature = "tls-rust")]
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
 
     let args: Vec<String> = args().collect();
     if args.len() != 4 {
