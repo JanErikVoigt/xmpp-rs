@@ -44,15 +44,15 @@ tokio-xmpp = { path = ".", default-features = false, features = ["rustls-native-
 
 [[example]]
 name = "contact_addr"
-required-features = ["starttls"]
+required-features = ["starttls", "aws_lc_rs"]
 
 [[example]]
 name = "download_avatars"
-required-features = ["starttls"]
+required-features = ["starttls", "aws_lc_rs"]
 
 [[example]]
 name = "echo_bot"
-required-features = ["starttls"]
+required-features = ["starttls", "aws_lc_rs"]
 
 [[example]]
 name = "echo_component"
@@ -60,7 +60,7 @@ required-features = ["starttls", "insecure-tcp"]
 
 [[example]]
 name = "echo_server"
-required-features = ["starttls"]
+required-features = ["starttls", "aws_lc_rs"]
 
 [[example]]
 name = "keep_connection"

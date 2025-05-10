@@ -4,7 +4,6 @@ use std::fs::{create_dir_all, File};
 use std::io::{self, Write};
 use std::process::exit;
 use std::str::FromStr;
-#[cfg(feature = "rustls-any-backend")]
 use tokio_xmpp::rustls;
 use tokio_xmpp::{Client, Stanza};
 use xmpp_parsers::{
@@ -24,23 +23,11 @@ use xmpp_parsers::{
     stanza_error::{DefinedCondition, ErrorType, StanzaError},
 };
 
-#[cfg(all(
-    feature = "rustls-any-backend",
-    not(any(feature = "aws_lc_rs", feature = "ring"))
-))]
-compile_error!("using rustls (e.g. via the ktls feature) needs an enabled rustls backend feature (either aws_lc_rs or ring).");
-
 #[tokio::main]
 async fn main() {
     env_logger::init();
 
-    #[cfg(all(feature = "aws_lc_rs", not(feature = "ring")))]
     rustls::crypto::aws_lc_rs::default_provider()
-        .install_default()
-        .expect("failed to install rustls crypto provider");
-
-    #[cfg(all(feature = "ring"))]
-    rustls::crypto::ring::default_provider()
         .install_default()
         .expect("failed to install rustls crypto provider");
 
