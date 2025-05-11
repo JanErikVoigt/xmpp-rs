@@ -1,6 +1,9 @@
 Version NEXT
 XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
     * Breaking:
+      - Agent::wait_for_events now return Vec<Event> and sets inner tokio_xmpp Client
+        auto-reconnect to true... It is still aware of Event::Disconnected but should
+        no longer have weird hanging state or panic (!436)
       - Agent::send_message now only sends normal messages to other users (!487)
       - Event::LeaveRoom, Event::LeaveAllRooms, and Event::JoinRooms have been removed.
         Agent now handles MUC connection states internally. (!481)
@@ -37,9 +40,6 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
         is meant to stay behind a feature.
     * Fixes:
       - Use tokio::sync::RwLock not std::sync::RwLock (!432)
-      - Agent::wait_for_events now return Vec<Event> and sets inner tokio_xmpp Client
-        auto-reconnect to true... It is still aware of Event::Disconnected but should
-        no longer have weird hanging state or panic (!436)
       - The default caps node has been shortened to https://xmpp.rs since we
         own that domain. Users should change it in their application though.
     * CI:
