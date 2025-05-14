@@ -245,7 +245,7 @@ pub struct StanzaError {
 
     /// Human-readable description of this error.
     #[xml(extract(n = .., namespace = ns::XMPP_STANZAS, name = "text", fields(
-        attribute(name = "xml:lang", type_ = Lang, default),
+        lang(type_ = Lang, default),
         text(type_ = String),
     )))]
     pub texts: BTreeMap<Lang, String>,

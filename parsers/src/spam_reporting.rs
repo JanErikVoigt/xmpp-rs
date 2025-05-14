@@ -37,7 +37,7 @@ pub struct Report {
 
     /// Some text explaining the reason for this report.
     #[xml(extract(n = .., name = "text", fields(
-        attribute(name = "xml:lang", type_ = Lang),
+        lang(type_ = Lang, default),
         text(type_ = String)
     )))]
     texts: BTreeMap<Lang, String>,

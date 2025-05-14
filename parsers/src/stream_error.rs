@@ -307,7 +307,10 @@ pub struct StreamError {
 
     /// Optional error text. The first part is the optional `xml:lang`
     /// language tag, the second part is the actual text content.
-    #[xml(extract(default, fields(attribute(name = "xml:lang", default, type_ = Option<String>), text(type_ = String))))]
+    #[xml(extract(default, fields(
+        lang(type_ = Option<String>, default),
+        text(type_ = String),
+    )))]
     pub text: Option<(Option<String>, String)>,
 
     /// Optional application-defined element which refines the specified

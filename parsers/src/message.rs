@@ -167,7 +167,7 @@ pub struct Message {
     /// A list of bodies, sorted per language.  Use
     /// [get_best_body()](#method.get_best_body) to access them on reception.
     #[xml(extract(n = .., name = "body", fields(
-        attribute(name = "xml:lang", type_ = Lang, default),
+        lang(type_ = Lang, default),
         text(type_ = String),
     )))]
     pub bodies: BTreeMap<Lang, String>,
@@ -176,7 +176,7 @@ pub struct Message {
     /// [get_best_subject()](#method.get_best_subject) to access them on
     /// reception.
     #[xml(extract(n = .., name = "subject", fields(
-        attribute(name = "xml:lang", type_ = Lang, default),
+        lang(type_ = Lang, default),
         text(type_ = String),
     )))]
     pub subjects: BTreeMap<Lang, String>,

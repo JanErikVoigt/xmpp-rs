@@ -157,7 +157,7 @@ pub struct Failure {
 
     /// A human-readable explanation for the failure.
     #[xml(extract(n = .., name = "text", fields(
-        attribute(type_ = String, name = "xml:lang", default),
+        lang(type_ = Lang, default),
         text(type_ = String),
     )))]
     pub texts: BTreeMap<Lang, String>,

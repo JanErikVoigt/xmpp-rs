@@ -58,7 +58,7 @@ pub struct File {
 
     /// The description of this file, possibly localised.
     #[xml(extract(n = .., name = "desc", fields(
-        attribute(name = "xml:lang", type_ = String),
+        lang(type_ = Lang, default),
         text(type_ = String)
     )))]
     pub descs: BTreeMap<Lang, String>,

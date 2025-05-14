@@ -163,7 +163,7 @@ pub struct Presence {
 
     /// A localised list of statuses defined in this presence.
     #[xml(extract(n = .., name = "status", fields(
-        attribute(type_ = Lang, name = "xml:lang", default),
+        lang(type_ = Lang, default),
         text(type_ = String),
     )))]
     pub statuses: BTreeMap<Lang, Status>,

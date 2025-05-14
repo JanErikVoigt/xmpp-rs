@@ -473,7 +473,7 @@ pub struct ReasonElement {
 
     /// A human-readable description of this reason.
     #[xml(extract(n = .., namespace = ns::JINGLE, name = "text", fields(
-        attribute(type_ = String, name = "xml:lang", default),
+        lang(type_ = Lang, default),
         text(type_ = String),
     )))]
     pub texts: BTreeMap<Lang, String>,
