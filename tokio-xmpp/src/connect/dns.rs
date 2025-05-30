@@ -11,7 +11,7 @@ use tokio::net::TcpStream;
 
 use crate::Error;
 
-/// StartTLS XMPP server connection configuration
+/// XMPP server connection configuration
 #[derive(Clone, Debug)]
 pub enum DnsConfig {
     /// Use SRV record to find server host
@@ -66,13 +66,23 @@ impl DnsConfig {
         }
     }
 
-    /// Constructor for the default SRV resolution strategy for clients
+    /// Constructor for the default SRV resolution strategy for clients (StartTLS)
     #[cfg(feature = "dns")]
     pub fn srv_default_client(host: &str) -> Self {
         Self::UseSrv {
             host: host.to_string(),
             srv: "_xmpp-client._tcp".to_string(),
             fallback_port: 5222,
+        }
+    }
+
+    /// Constructor for direct TLS connections using RFC 7590 _xmpps-client._tcp
+    #[cfg(feature = "dns")]
+    pub fn srv_xmpps(host: &str) -> Self {
+        Self::UseSrv {
+            host: host.to_string(),
+            srv: "_xmpps-client._tcp".to_string(),
+            fallback_port: 5223,
         }
     }
 

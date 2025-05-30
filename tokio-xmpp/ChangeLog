@@ -35,6 +35,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
 
         Please refer to the crate docs for details. (!581)
     * Added:
+      - Add new directTLS connection method to the `Client`. (Placeholder for PR number)
       - Support for sending IQ requests while tracking their responses in a
         Future.
       - `rustls` is now re-exported if it is enabled, to allow applications to

@@ -16,7 +16,9 @@ use crate::{
     Stanza,
 };
 
-#[cfg(any(feature = "starttls", feature = "insecure-tcp"))]
+#[cfg(feature = "direct-tls")]
+use crate::connect::DirectTlsServerConnector;
+#[cfg(any(feature = "direct-tls", feature = "starttls", feature = "insecure-tcp"))]
 use crate::connect::DnsConfig;
 #[cfg(feature = "starttls")]
 use crate::connect::StartTlsServerConnector;
@@ -130,6 +132,39 @@ impl Client {
     }
 }
 
+#[cfg(feature = "direct-tls")]
+impl Client {
+    /// Start a new XMPP client using DirectTLS transport and autoreconnect
+    ///
+    /// It use RFC 7590 _xmpps-client._tcp loopup for connector details.
+    pub fn new_direct_tls<J: Into<Jid>, P: Into<String>>(jid: J, password: P) -> Self {
+        let jid_ref = jid.into();
+        let dns_config = DnsConfig::srv_xmpps(jid_ref.domain().as_ref());
+        Self::new_with_connector(
+            jid_ref,
+            password,
+            DirectTlsServerConnector::from(dns_config),
+            Timeouts::default(),
+        )
+    }
+
+    /// Start a new XMPP client with direct TLS transport, useful for testing or
+    /// when one does not want to rely on dns lookups
+    pub fn new_direct_tls_with_config<J: Into<Jid>, P: Into<String>>(
+        jid: J,
+        password: P,
+        dns_config: DnsConfig,
+        timeouts: Timeouts,
+    ) -> Self {
+        Self::new_with_connector(
+            jid,
+            password,
+            DirectTlsServerConnector::from(dns_config),
+            timeouts,
+        )
+    }
+}
+
 #[cfg(feature = "starttls")]
 impl Client {
     /// Start a new XMPP client using StartTLS transport and autoreconnect
@@ -138,7 +173,7 @@ impl Client {
     /// and yield events.
     pub fn new<J: Into<Jid>, P: Into<String>>(jid: J, password: P) -> Self {
         let jid = jid.into();
-        let dns_config = DnsConfig::srv(jid.domain().as_ref(), "_xmpp-client._tcp", 5222);
+        let dns_config = DnsConfig::srv_default_client(jid.domain().as_ref());
         Self::new_starttls(jid, password, dns_config, Timeouts::default())
     }
 

@@ -67,8 +67,9 @@ name = "keep_connection"
 required-features = ["starttls"]
 
 [features]
-default = ["starttls", "aws_lc_rs", "rustls-native-certs"]
+default = ["direct-tls", "starttls", "aws_lc_rs", "rustls-native-certs"]
 starttls = ["dns"]
+direct-tls = ["dns"]
 
 aws_lc_rs = ["rustls-any-backend", "tokio-rustls/aws_lc_rs"]
 ring = ["rustls-any-backend", "tokio-rustls/ring"]

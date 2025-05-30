@@ -12,6 +12,11 @@ pub mod starttls;
 #[cfg(feature = "starttls")]
 pub use starttls::StartTlsServerConnector;
 
+#[cfg(feature = "direct-tls")]
+pub mod direct_tls;
+#[cfg(feature = "direct-tls")]
+pub use direct_tls::DirectTlsServerConnector;
+
 #[cfg(feature = "insecure-tcp")]
 pub mod tcp;
 #[cfg(feature = "insecure-tcp")]
