@@ -269,13 +269,7 @@ mod tests {
 
         let inline = auth.inline.unwrap();
         assert_eq!(inline.bind2.unwrap().inline_features.len(), 0);
-        assert_eq!(
-            inline.sm.unwrap(),
-            StreamManagement {
-                optional: false,
-                required: false
-            }
-        );
+        assert_eq!(inline.sm.unwrap(), StreamManagement { optional: false });
         assert_eq!(inline.payloads.len(), 0);
     }
 

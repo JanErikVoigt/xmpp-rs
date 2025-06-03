@@ -133,7 +133,7 @@ pub struct Resumed {
     pub previd: StreamId,
 }
 
-// TODO: Only allow either optional or required, not both.
+// TODO: add support for optional and required.
 /// Represents availability of Stream Management in `<stream:features/>`.
 #[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
 #[xml(namespace = ns::SM, name = "sm")]
@@ -141,10 +141,6 @@ pub struct StreamManagement {
     /// `<optional/>` flag.
     #[xml(flag)]
     pub optional: bool,
-
-    /// `<required/>` flag.
-    #[xml(flag)]
-    pub required: bool,
 }
 
 /// Application-specific error condition to use when the peer acknowledges
@@ -226,7 +222,7 @@ mod tests {
         assert_size!(R, 0);
         assert_size!(Resume, 16);
         assert_size!(Resumed, 16);
-        assert_size!(StreamManagement, 2);
+        assert_size!(StreamManagement, 1);
         assert_size!(HandledCountTooHigh, 8);
     }
 
@@ -241,7 +237,7 @@ mod tests {
         assert_size!(R, 0);
         assert_size!(Resume, 32);
         assert_size!(Resumed, 32);
-        assert_size!(StreamManagement, 2);
+        assert_size!(StreamManagement, 1);
         assert_size!(HandledCountTooHigh, 8);
     }
 
@@ -255,9 +251,7 @@ mod tests {
     #[test]
     fn stream_feature() {
         let elem: Element = "<sm xmlns='urn:xmpp:sm:3'/>".parse().unwrap();
-        let sm = StreamManagement::try_from(elem).unwrap();
-        assert_eq!(sm.optional, false);
-        assert_eq!(sm.required, false);
+        StreamManagement::try_from(elem).unwrap();
     }
 
     #[test]
