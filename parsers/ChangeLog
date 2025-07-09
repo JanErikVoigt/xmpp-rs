@@ -103,7 +103,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - SASL Channel-Binding Type Capability (XEP-0440)
       - Stream Limits Advertisement (XEP-0478)
       - Message Displayed Synchronization (XEP-0490)
-      - RFC 6120 stream errors
+      - RFC 6120 stream errors and starttls nonzas
       - XEP-0045 mediated invites
       - Push Notifications (XEP-0357) (!543)
       - JSON Containers (XEP-0335) (!546)
