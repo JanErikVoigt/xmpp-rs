@@ -18,6 +18,11 @@ pub struct Request;
 #[xml(namespace = ns::TLS, name = "proceed")]
 pub struct Proceed;
 
+/// Information that the peer cannot do TLS after all.
+#[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
+#[xml(namespace = ns::TLS, name = "failure")]
+pub struct Failure;
+
 /// Stream feature for StartTLS
 ///
 /// Used in [`crate::stream_features::StreamFeatures`].
@@ -40,6 +45,10 @@ pub enum Nonza {
     /// Information that TLS may now commence
     #[xml(transparent)]
     Proceed(Proceed),
+
+    /// Information that the peer cannot do TLS after all.
+    #[xml(transparent)]
+    Failure(Failure),
 }
 
 #[cfg(test)]
