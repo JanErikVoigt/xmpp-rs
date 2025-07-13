@@ -17,7 +17,7 @@ use crate::ns;
 ///
 ///    [RFC 6120]: https://datatracker.ietf.org/doc/html/rfc6120#section-4.9.3
 #[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
-#[xml(namespace = ns::STREAM)]
+#[xml(namespace = ns::XMPP_STREAMS)]
 pub enum DefinedCondition {
     /// The entity has sent XML that cannot be processed.
     ///
@@ -360,3 +360,22 @@ impl fmt::Display for SentStreamError {
 }
 
 impl Error for SentStreamError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_condition_from_prosody() {
+        let doc = "<undefined-condition xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>";
+        let err: DefinedCondition = xso::from_bytes(doc.as_bytes()).unwrap();
+        assert_eq!(err, DefinedCondition::UndefinedCondition);
+    }
+
+    #[test]
+    fn parses_stream_error_from_prosody() {
+        let doc = "<stream:error xmlns:stream='http://etherx.jabber.org/streams'><undefined-condition xmlns='urn:ietf:params:xml:ns:xmpp-streams'/><text xmlns='urn:ietf:params:xml:ns:xmpp-streams'>No stream features to proceed with</text></stream:error>";
+        let err: StreamError = xso::from_bytes(doc.as_bytes()).unwrap();
+        assert_eq!(err.condition, DefinedCondition::UndefinedCondition);
+    }
+}
