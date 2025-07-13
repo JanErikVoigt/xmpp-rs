@@ -6,9 +6,11 @@ use hickory_resolver::{
 use sasl::client::MechanismError as SaslMechanismError;
 use std::io;
 
+use xmpp_parsers::stream_error::ReceivedStreamError;
+
 use crate::{
     connect::ServerConnectorError, jid, minidom,
-    parsers::sasl::DefinedCondition as SaslDefinedCondition,
+    parsers::sasl::DefinedCondition as SaslDefinedCondition, xmlstream::RecvFeaturesError,
 };
 
 /// Top-level error type
@@ -44,6 +46,8 @@ pub enum Error {
     Idna,
     /// Invalid IP/Port address
     Addr(AddrParseError),
+    /// Received a stream error
+    StreamError(ReceivedStreamError),
 }
 
 impl fmt::Display for Error {
@@ -65,6 +69,7 @@ impl fmt::Display for Error {
             #[cfg(feature = "dns")]
             Error::Idna => write!(fmt, "IDNA error"),
             Error::Addr(e) => write!(fmt, "Wrong network address: {e}"),
+            Error::StreamError(e) => write!(fmt, "{e}"),
         }
     }
 }
@@ -137,6 +142,15 @@ impl From<DnsProtoError> for Error {
 impl From<AddrParseError> for Error {
     fn from(e: AddrParseError) -> Error {
         Error::Addr(e)
+    }
+}
+
+impl From<RecvFeaturesError> for Error {
+    fn from(e: RecvFeaturesError) -> Self {
+        match e {
+            RecvFeaturesError::Io(e) => e.into(),
+            RecvFeaturesError::StreamError(e) => Self::StreamError(e),
+        }
     }
 }
 

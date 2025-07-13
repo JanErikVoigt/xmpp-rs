@@ -8,7 +8,10 @@ use core::time::Duration;
 
 use futures::{SinkExt, StreamExt};
 
-use xmpp_parsers::stream_features::StreamFeatures;
+use xmpp_parsers::{
+    stream_error::{DefinedCondition, StreamError},
+    stream_features::StreamFeatures,
+};
 
 use super::*;
 
@@ -73,7 +76,7 @@ async fn test_exchange_stream_features() {
         )
         .await?;
         let (features, _) = stream.recv_features::<Data>().await?;
-        Ok::<_, io::Error>(features)
+        Ok::<_, RecvFeaturesError>(features)
     });
     let responder = tokio::spawn(async move {
         let stream = accept_stream(
@@ -91,6 +94,47 @@ async fn test_exchange_stream_features() {
     responder.await.unwrap().expect("responder failed");
     let features = initiator.await.unwrap().expect("initiator failed");
     assert_eq!(features, StreamFeatures::default());
+}
+
+#[tokio::test]
+async fn test_handle_early_stream_error() {
+    let (lhs, rhs) = tokio::io::duplex(65536);
+    let err = StreamError {
+        condition: DefinedCondition::InternalServerError,
+        text: None,
+        application_specific: Vec::new(),
+    };
+    let initiator = tokio::spawn(async move {
+        let stream = initiate_stream(
+            tokio::io::BufStream::new(lhs),
+            "jabber:client",
+            StreamHeader::default(),
+            Timeouts::tight(),
+        )
+        .await?;
+        match stream.recv_features::<Data>().await {
+            Ok((v, ..)) => panic!("test expected stream error, got features {v:?}"),
+            Err(RecvFeaturesError::Io(e)) => Err(e),
+            Err(RecvFeaturesError::StreamError(e)) => Ok(e),
+        }
+    });
+    let responder = {
+        let err = err.clone();
+        tokio::spawn(async move {
+            let stream = accept_stream(
+                tokio::io::BufStream::new(rhs),
+                "jabber:client",
+                Timeouts::tight(),
+            )
+            .await?;
+            let stream = stream.send_header(StreamHeader::default()).await?;
+            stream.send_error(&err).await?;
+            Ok::<_, io::Error>(())
+        })
+    };
+    responder.await.unwrap().expect("responder failed");
+    let received = initiator.await.unwrap().expect("initiator failed");
+    assert_eq!(received.0, err);
 }
 
 #[tokio::test]
@@ -115,7 +159,7 @@ async fn test_exchange_data() {
             Some(Ok(Data { contents })) => assert_eq!(contents, "world!"),
             other => panic!("unexpected stream message: {:?}", other),
         }
-        Ok::<_, io::Error>(())
+        Ok::<_, RecvFeaturesError>(())
     });
 
     let responder = tokio::spawn(async move {
@@ -163,7 +207,7 @@ async fn test_clean_shutdown() {
             Some(Err(ReadError::StreamFooterReceived)) => (),
             other => panic!("unexpected stream message: {:?}", other),
         }
-        Ok::<_, io::Error>(())
+        Ok::<_, RecvFeaturesError>(())
     });
 
     let responder = tokio::spawn(async move {
@@ -238,7 +282,7 @@ async fn test_exchange_data_stream_reset_and_shutdown() {
             Some(Err(ReadError::StreamFooterReceived)) => (),
             other => panic!("unexpected stream message: {:?}", other),
         }
-        Ok::<_, io::Error>(())
+        Ok::<_, RecvFeaturesError>(())
     });
 
     let responder = tokio::spawn(async move {
@@ -355,7 +399,7 @@ async fn test_emits_soft_timeout_after_silence() {
             Some(Err(ReadError::HardError(e))) if e.kind() == io::ErrorKind::TimedOut => (),
             other => panic!("unexpected stream message: {:?}", other),
         }
-        Ok::<_, io::Error>(())
+        Ok::<_, RecvFeaturesError>(())
     });
 
     let responder = tokio::spawn(async move {
@@ -428,7 +472,7 @@ async fn test_can_receive_after_shutdown() {
             })
             .await?;
         <XmlStream<_, _> as SinkExt<&Data>>::close(&mut stream).await?;
-        Ok::<_, io::Error>(())
+        Ok::<_, RecvFeaturesError>(())
     });
 
     let responder = tokio::spawn(async move {

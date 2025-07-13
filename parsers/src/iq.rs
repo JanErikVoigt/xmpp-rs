@@ -39,6 +39,15 @@ impl IqHeader {
     }
 }
 
+/// Payload of an IQ request stanza.
+pub enum IqRequestPayload {
+    /// Payload of a type='get' stanza.
+    Get(Element),
+
+    /// Payload of a type='set' stanza.
+    Set(Element),
+}
+
 /// Payload of an IQ stanza, by type.
 pub enum IqPayload {
     /// Payload of a type='get' stanza.

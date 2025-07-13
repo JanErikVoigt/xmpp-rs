@@ -12,7 +12,7 @@ use futures::SinkExt;
 
 use tokio::io::{AsyncBufRead, AsyncWrite};
 
-use xmpp_parsers::stream_features::StreamFeatures;
+use xmpp_parsers::{stream_error::StreamError, stream_features::StreamFeatures};
 
 use xso::{AsXml, FromXml};
 
@@ -87,5 +87,18 @@ impl<Io: AsyncBufRead + AsyncWrite + Unpin> PendingFeaturesSend<Io> {
         stream.flush().await?;
 
         Ok(XmlStream::wrap(stream))
+    }
+
+    /// Send a stream error and shut the stream down.
+    ///
+    /// Sends the given stream error to the peer and cleanly closes the stream
+    /// by sending a stream footer.
+    pub async fn send_error(self, error: &'_ StreamError) -> io::Result<()> {
+        let Self { mut stream } = self;
+        Pin::new(&mut stream).start_send_xso(error)?;
+        stream.send(xso::Item::ElementFoot).await?;
+        stream.close().await?;
+
+        Ok(())
     }
 }
