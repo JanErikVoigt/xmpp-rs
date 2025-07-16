@@ -22,6 +22,9 @@ pub mod tcp;
 #[cfg(feature = "insecure-tcp")]
 pub use tcp::TcpServerConnector;
 
+#[cfg(any(feature = "direct-tls", feature = "starttls"))]
+pub mod tls_common;
+
 mod dns;
 pub use dns::DnsConfig;
 
