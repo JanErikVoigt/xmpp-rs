@@ -159,17 +159,15 @@ pub struct HandledCountTooHigh {
 
 impl From<HandledCountTooHigh> for crate::stream_error::StreamError {
     fn from(other: HandledCountTooHigh) -> Self {
-        Self {
-            condition: crate::stream_error::DefinedCondition::UndefinedCondition,
-            text: Some((
-                None,
-                format!(
-                    "You acknowledged {} stanza(s), while I only sent {} so far.",
-                    other.h, other.send_count
-                ),
-            )),
-            application_specific: vec![other.into()],
-        }
+        Self::new(
+            crate::stream_error::DefinedCondition::UndefinedCondition,
+            "en",
+            format!(
+                "You acknowledged {} stanza(s), while I only sent {} so far.",
+                other.h, other.send_count
+            ),
+        )
+        .with_application_specific(vec![other.into()])
     }
 }
 

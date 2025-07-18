@@ -4,12 +4,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use alloc::collections::BTreeMap;
 use core::{error::Error, fmt};
 
 use minidom::Element;
 use xso::{AsXml, FromXml};
 
-use crate::ns;
+use crate::{message::Lang, ns};
 
 /// Enumeration of all stream error conditions as defined in [RFC 6120].
 ///
@@ -305,13 +306,12 @@ pub struct StreamError {
     #[xml(child)]
     pub condition: DefinedCondition,
 
-    /// Optional error text. The first part is the optional `xml:lang`
-    /// language tag, the second part is the actual text content.
-    #[xml(extract(default, fields(
-        lang(type_ = Option<String>, default),
+    /// Optional error text
+    #[xml(extract(n = .., name = "text", namespace = ns::XMPP_STREAMS, fields(
+        lang(type_ = Lang, default),
         text(type_ = String),
     )))]
-    pub text: Option<(Option<String>, String)>,
+    pub texts: BTreeMap<Lang, String>,
 
     /// Optional application-defined element which refines the specified
     /// [`Self::condition`].
@@ -323,13 +323,94 @@ pub struct StreamError {
 impl fmt::Display for StreamError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         <DefinedCondition as fmt::Display>::fmt(&self.condition, f)?;
-        if let Some((_, ref text)) = self.text {
+        if let Some((_, text)) = self.get_best_text(vec!["en"]) {
             write!(f, " ({:?})", text)?
         }
         if let Some(cond) = self.application_specific.first() {
             f.write_str(&String::from(cond))?;
         }
         Ok(())
+    }
+}
+
+impl StreamError {
+    /// Create a new StreamError with condition, text, and language
+    pub fn new<S: Into<String>, L: Into<Lang>>(
+        condition: DefinedCondition,
+        lang: L,
+        text: S,
+    ) -> Self {
+        let mut texts = BTreeMap::new();
+        texts.insert(lang.into(), text.into());
+        Self {
+            condition,
+            texts,
+            application_specific: Vec::new(),
+        }
+    }
+
+    /// Add a text element with the specified language
+    pub fn add_text<L: Into<Lang>, S: Into<String>>(mut self, lang: L, text: S) -> Self {
+        self.texts.insert(lang.into(), text.into());
+        self
+    }
+
+    /// Append application specific element(s)
+    pub fn with_application_specific(mut self, application_specific: Vec<Element>) -> Self {
+        self.application_specific = application_specific;
+        self
+    }
+
+    /// Get the best matching text from a list of preferred languages.
+    ///
+    /// This follows the same logic as Message::get_best_body:
+    /// 1. First tries to find a match from the preferred languages list
+    /// 2. Falls back to empty language ("") if available
+    /// 3. Returns the first entry if no matches found
+    ///
+    /// Returns None if no text elements exist.
+    pub fn get_best_text(&self, preferred_langs: Vec<&str>) -> Option<(Lang, &String)> {
+        Self::get_best(&self.texts, preferred_langs)
+    }
+
+    /// Cloned variant of [`StreamError::get_best_text`]
+    pub fn get_best_text_cloned(&self, preferred_langs: Vec<&str>) -> Option<(Lang, String)> {
+        Self::get_best_cloned(&self.texts, preferred_langs)
+    }
+
+    // Private helper methods matching Message's pattern
+    fn get_best<'a, T>(
+        map: &'a BTreeMap<Lang, T>,
+        preferred_langs: Vec<&str>,
+    ) -> Option<(Lang, &'a T)> {
+        if map.is_empty() {
+            return None;
+        }
+        for lang in preferred_langs {
+            if let Some(value) = map.get(lang) {
+                return Some((Lang::from(lang), value));
+            }
+        }
+        if let Some(value) = map.get("") {
+            return Some((Lang::new(), value));
+        }
+        map.iter().map(|(lang, value)| (lang.clone(), value)).next()
+    }
+
+    fn get_best_cloned<T: ToOwned<Owned = T>>(
+        map: &BTreeMap<Lang, T>,
+        preferred_langs: Vec<&str>,
+    ) -> Option<(Lang, T)> {
+        if let Some((lang, item)) = Self::get_best::<T>(map, preferred_langs) {
+            Some((lang, item.to_owned()))
+        } else {
+            None
+        }
+    }
+
+    /// Check if the error has any text elements
+    pub fn has_text(&self) -> bool {
+        !self.texts.is_empty()
     }
 }
 
@@ -377,5 +458,59 @@ mod tests {
         let doc = "<stream:error xmlns:stream='http://etherx.jabber.org/streams'><undefined-condition xmlns='urn:ietf:params:xml:ns:xmpp-streams'/><text xmlns='urn:ietf:params:xml:ns:xmpp-streams'>No stream features to proceed with</text></stream:error>";
         let err: StreamError = xso::from_bytes(doc.as_bytes()).unwrap();
         assert_eq!(err.condition, DefinedCondition::UndefinedCondition);
+    }
+
+    #[test]
+    fn test_stream_error_with_text() {
+        let doc = br#"<stream:error xmlns:stream='http://etherx.jabber.org/streams'>
+            <system-shutdown xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>
+            <text xmlns='urn:ietf:params:xml:ns:xmpp-streams'>Server is shutting down for maintenance.</text>
+        </stream:error>"#;
+
+        let err: StreamError = xso::from_bytes(doc).unwrap();
+        assert_eq!(err.condition, DefinedCondition::SystemShutdown);
+        assert!(err.has_text());
+
+        let (lang, text) = err.get_best_text(vec![]).unwrap();
+        assert_eq!(text, "Server is shutting down for maintenance.");
+        assert_eq!(lang, "");
+    }
+
+    #[test]
+    fn test_stream_error_with_multiple_languages() {
+        let doc = br#"<stream:error xmlns:stream='http://etherx.jabber.org/streams'>
+            <policy-violation xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>
+            <text xmlns='urn:ietf:params:xml:ns:xmpp-streams' xml:lang='en'>Message too large</text>
+            <text xmlns='urn:ietf:params:xml:ns:xmpp-streams' xml:lang='de'>Nachricht zu lang</text>
+        </stream:error>"#;
+
+        let err: StreamError = xso::from_bytes(doc).unwrap();
+        assert_eq!(err.condition, DefinedCondition::PolicyViolation);
+
+        // Test German preference
+        let (lang, text) = err.get_best_text(vec!["de"]).unwrap();
+        assert_eq!(lang, "de");
+        assert_eq!(text, "Nachricht zu lang");
+
+        // Test English preference
+        let (lang, text) = err.get_best_text(vec!["en"]).unwrap();
+        assert_eq!(lang, "en");
+        assert_eq!(text, "Message too large");
+
+        // Test cloned variant
+        let (lang, text) = err.get_best_text_cloned(vec!["en"]).unwrap();
+        assert_eq!(lang, "en");
+        assert_eq!(text, "Message too large");
+    }
+
+    #[test]
+    fn test_stream_error_constructors() {
+        let err = StreamError::new(DefinedCondition::Reset, "en", "Connection reset");
+        let (lang, text) = err.get_best_text(vec!["en"]).unwrap();
+        assert_eq!(lang, "en");
+        assert_eq!(text, "Connection reset");
+
+        let err = err.add_text("de", "Verbindung zurückgesetzt");
+        assert_eq!(err.texts.len(), 2);
     }
 }

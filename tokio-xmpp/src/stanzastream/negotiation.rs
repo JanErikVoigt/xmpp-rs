@@ -232,11 +232,12 @@ impl NegotiationState {
                             };
                             log::warn!("Received IQ matching the bind request, but parsing failed ({error})! Emitting stream error.");
                             Poll::Ready(Break(NegotiationResult::StreamError {
-                                error: StreamError {
-                                    condition: DefinedCondition::UndefinedCondition,
-                                    text: Some((None, error)),
-                                    application_specific: vec![super::error::ParseError.into()],
-                                },
+                                error: StreamError::new(
+                                    DefinedCondition::UndefinedCondition,
+                                    "en",
+                                    error,
+                                )
+                                .with_application_specific(vec![super::error::ParseError.into()]),
                             }))
                         }
                         st => {
@@ -258,11 +259,11 @@ impl NegotiationState {
                     Ok(other) => {
                         log::warn!("Received unsupported stream element during bind: {other:?}. Emitting stream error.");
                         Poll::Ready(Break(NegotiationResult::StreamError {
-                            error: StreamError {
-                                condition: DefinedCondition::UnsupportedStanzaType,
-                                text: None,
-                                application_specific: vec![],
-                            },
+                            error: StreamError::new(
+                                DefinedCondition::UnsupportedStanzaType,
+                                "en",
+                                format!("Unsupported stream element during bind: {other:?}"),
+                            ),
                         }))
                     }
 
@@ -483,11 +484,11 @@ impl NegotiationState {
                     Ok(other) => {
                         log::warn!("Received unsupported stream element during negotiation: {other:?}. Emitting stream error.");
                         Poll::Ready(Break(NegotiationResult::StreamError {
-                            error: StreamError {
-                                condition: DefinedCondition::UnsupportedStanzaType,
-                                text: None,
-                                application_specific: vec![],
-                            },
+                            error: StreamError::new(
+                                DefinedCondition::UnsupportedStanzaType,
+                                "en",
+                                format!("Unsupported stream element during negotiation: {other:?}"),
+                            ),
                         }))
                     }
 

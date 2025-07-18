@@ -9,6 +9,7 @@ use core::time::Duration;
 use futures::{SinkExt, StreamExt};
 
 use xmpp_parsers::{
+    ns,
     stream_error::{DefinedCondition, StreamError},
     stream_features::StreamFeatures,
 };
@@ -28,7 +29,7 @@ async fn test_initiate_accept_stream() {
     let initiator = tokio::spawn(async move {
         let mut stream = initiate_stream(
             tokio::io::BufStream::new(lhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             StreamHeader {
                 from: Some("client".into()),
                 to: Some("server".into()),
@@ -42,7 +43,7 @@ async fn test_initiate_accept_stream() {
     let responder = tokio::spawn(async move {
         let stream = accept_stream(
             tokio::io::BufStream::new(rhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             Timeouts::tight(),
         )
         .await?;
@@ -70,7 +71,7 @@ async fn test_exchange_stream_features() {
     let initiator = tokio::spawn(async move {
         let stream = initiate_stream(
             tokio::io::BufStream::new(lhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             StreamHeader::default(),
             Timeouts::tight(),
         )
@@ -81,7 +82,7 @@ async fn test_exchange_stream_features() {
     let responder = tokio::spawn(async move {
         let stream = accept_stream(
             tokio::io::BufStream::new(rhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             Timeouts::tight(),
         )
         .await?;
@@ -99,15 +100,11 @@ async fn test_exchange_stream_features() {
 #[tokio::test]
 async fn test_handle_early_stream_error() {
     let (lhs, rhs) = tokio::io::duplex(65536);
-    let err = StreamError {
-        condition: DefinedCondition::InternalServerError,
-        text: None,
-        application_specific: Vec::new(),
-    };
+    let err = StreamError::new(DefinedCondition::InternalServerError, "en", "Test error");
     let initiator = tokio::spawn(async move {
         let stream = initiate_stream(
             tokio::io::BufStream::new(lhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             StreamHeader::default(),
             Timeouts::tight(),
         )
@@ -123,7 +120,7 @@ async fn test_handle_early_stream_error() {
         tokio::spawn(async move {
             let stream = accept_stream(
                 tokio::io::BufStream::new(rhs),
-                "jabber:client",
+                ns::JABBER_CLIENT,
                 Timeouts::tight(),
             )
             .await?;
@@ -144,7 +141,7 @@ async fn test_exchange_data() {
     let initiator = tokio::spawn(async move {
         let stream = initiate_stream(
             tokio::io::BufStream::new(lhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             StreamHeader::default(),
             Timeouts::tight(),
         )
@@ -165,7 +162,7 @@ async fn test_exchange_data() {
     let responder = tokio::spawn(async move {
         let stream = accept_stream(
             tokio::io::BufStream::new(rhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             Timeouts::tight(),
         )
         .await?;
@@ -196,7 +193,7 @@ async fn test_clean_shutdown() {
     let initiator = tokio::spawn(async move {
         let stream = initiate_stream(
             tokio::io::BufStream::new(lhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             StreamHeader::default(),
             Timeouts::tight(),
         )
@@ -213,7 +210,7 @@ async fn test_clean_shutdown() {
     let responder = tokio::spawn(async move {
         let stream = accept_stream(
             tokio::io::BufStream::new(rhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             Timeouts::tight(),
         )
         .await?;
@@ -240,7 +237,7 @@ async fn test_exchange_data_stream_reset_and_shutdown() {
     let initiator = tokio::spawn(async move {
         let stream = initiate_stream(
             tokio::io::BufStream::new(lhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             StreamHeader::default(),
             Timeouts::tight(),
         )
@@ -288,7 +285,7 @@ async fn test_exchange_data_stream_reset_and_shutdown() {
     let responder = tokio::spawn(async move {
         let stream = accept_stream(
             tokio::io::BufStream::new(rhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             Timeouts::tight(),
         )
         .await?;
@@ -358,7 +355,7 @@ async fn test_emits_soft_timeout_after_silence() {
     let initiator = tokio::spawn(async move {
         let stream = initiate_stream(
             tokio::io::BufStream::new(lhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             StreamHeader::default(),
             client_timeouts,
         )
@@ -405,7 +402,7 @@ async fn test_emits_soft_timeout_after_silence() {
     let responder = tokio::spawn(async move {
         let stream = accept_stream(
             tokio::io::BufStream::new(rhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             server_timeouts,
         )
         .await?;
@@ -447,7 +444,7 @@ async fn test_can_receive_after_shutdown() {
     let initiator = tokio::spawn(async move {
         let stream = initiate_stream(
             tokio::io::BufStream::new(lhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             StreamHeader::default(),
             Timeouts::tight(),
         )
@@ -478,7 +475,7 @@ async fn test_can_receive_after_shutdown() {
     let responder = tokio::spawn(async move {
         let stream = accept_stream(
             tokio::io::BufStream::new(rhs),
-            "jabber:client",
+            ns::JABBER_CLIENT,
             Timeouts::tight(),
         )
         .await?;

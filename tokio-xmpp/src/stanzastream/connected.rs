@@ -572,15 +572,11 @@ impl ConnectedState {
                             }
                         } else {
                             log::warn!("Got an <sm:r/> from the peer, but we don't have any stream management state. Terminating stream with an error.");
-                            self.to_stream_error_state(StreamError {
-                                condition: DefinedCondition::UnsupportedStanzaType,
-                                text: Some((
-                                    None,
-                                    "received <sm:r/>, but stream management is not enabled"
-                                        .to_owned(),
-                                )),
-                                application_specific: vec![],
-                            });
+                            self.to_stream_error_state(StreamError::new(
+                                DefinedCondition::UnsupportedStanzaType,
+                                "en",
+                                "received <sm:r/>, but stream management is not enabled".to_owned(),
+                            ));
                         }
                         // No matter whether we "enqueued" an ACK for send or
                         // whether we just successfully read something from
@@ -593,13 +589,13 @@ impl ConnectedState {
                         log::warn!(
                             "Received unsupported stream element: {other:?}. Emitting stream error.",
                         );
-                        self.to_stream_error_state(StreamError {
-                            condition: DefinedCondition::UnsupportedStanzaType,
-                            // TODO: figure out a good way to provide the
-                            // sender with more information.
-                            text: None,
-                            application_specific: vec![],
-                        });
+                        // TODO: figure out a good way to provide the sender
+                        // with more information.
+                        self.to_stream_error_state(StreamError::new(
+                            DefinedCondition::UnsupportedStanzaType,
+                            "en",
+                            format!("Unsupported stream element: {other:?}"),
+                        ));
                         Poll::Ready(None)
                     }
 

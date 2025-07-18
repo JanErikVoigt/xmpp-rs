@@ -401,11 +401,7 @@ pub(super) fn parse_error_to_stream_error(e: xso::error::Error) -> StreamError {
         Error::TextParseError(_) | Error::Other(_) => DefinedCondition::InvalidXml,
         Error::TypeMismatch => DefinedCondition::UnsupportedStanzaType,
     };
-    StreamError {
-        condition,
-        text: Some((None, e.to_string())),
-        application_specific: vec![],
-    }
+    StreamError::new(condition, "en", e.to_string())
 }
 
 /// Worker system for a [`StanzaStream`].
