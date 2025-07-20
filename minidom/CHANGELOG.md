@@ -2,6 +2,8 @@ Version NEXT:
   * Changes
     * Almost make the whole crate `no_std`, only `std::io` is still remaining.
     * Update rxml dependency to 0.13.
+  * Fixes
+    * Remove warnings for elided lifetimes (rustc 1.90)
 
 Version 0.16, released 2024-07-23:
   * Breaking

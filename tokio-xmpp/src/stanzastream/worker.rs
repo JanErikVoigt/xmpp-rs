@@ -334,7 +334,7 @@ impl WorkerStream {
         }
     }
 
-    fn close(&mut self) -> Close {
+    fn close(&mut self) -> Close<'_> {
         Close {
             stream: Pin::new(self),
         }

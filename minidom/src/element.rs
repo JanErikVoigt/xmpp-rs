@@ -74,7 +74,7 @@ pub type ItemWriter<W> = CustomItemWriter<W, rxml::writer::SimpleNamespaces>;
 /// xml special characters (<, >, &, ', ") with their corresponding
 /// xml escaped value.
 #[must_use]
-pub fn escape(raw: &[u8]) -> Cow<[u8]> {
+pub fn escape(raw: &[u8]) -> Cow<'_, [u8]> {
     fn to_escape(b: u8) -> bool {
         matches!(b, b'<' | b'>' | b'\'' | b'&' | b'"')
     }
@@ -264,7 +264,7 @@ impl Element {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[must_use]
-    pub fn attrs(&self) -> Attrs {
+    pub fn attrs(&self) -> Attrs<'_> {
         Attrs {
             iter: self.attributes.iter(),
         }
@@ -273,7 +273,7 @@ impl Element {
     /// Returns an iterator over the attributes of this element, with the value being a mutable
     /// reference.
     #[must_use]
-    pub fn attrs_mut(&mut self) -> AttrsMut {
+    pub fn attrs_mut(&mut self) -> AttrsMut<'_> {
         AttrsMut {
             iter: self.attributes.iter_mut(),
         }
@@ -457,13 +457,13 @@ impl Element {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
-    pub fn nodes(&self) -> Nodes {
+    pub fn nodes(&self) -> Nodes<'_> {
         self.children.iter()
     }
 
     /// Returns an iterator over mutable references to every child node of this element.
     #[inline]
-    pub fn nodes_mut(&mut self) -> NodesMut {
+    pub fn nodes_mut(&mut self) -> NodesMut<'_> {
         self.children.iter_mut()
     }
 
@@ -484,7 +484,7 @@ impl Element {
     /// ```
     #[inline]
     #[must_use]
-    pub fn children(&self) -> Children {
+    pub fn children(&self) -> Children<'_> {
         Children {
             iter: self.children.iter(),
         }
@@ -493,7 +493,7 @@ impl Element {
     /// Returns an iterator over mutable references to every child element of this element.
     #[inline]
     #[must_use]
-    pub fn children_mut(&mut self) -> ChildrenMut {
+    pub fn children_mut(&mut self) -> ChildrenMut<'_> {
         ChildrenMut {
             iter: self.children.iter_mut(),
         }
@@ -509,7 +509,7 @@ impl Element {
     /// remove text nodes.
     #[inline]
     #[doc(hidden)]
-    pub fn take_contents_as_children(&mut self) -> ContentsAsChildren {
+    pub fn take_contents_as_children(&mut self) -> ContentsAsChildren<'_> {
         ContentsAsChildren {
             iter: self.children.drain(..),
         }
@@ -531,7 +531,7 @@ impl Element {
     /// ```
     #[inline]
     #[must_use]
-    pub fn texts(&self) -> Texts {
+    pub fn texts(&self) -> Texts<'_> {
         Texts {
             iter: self.children.iter(),
         }
@@ -540,7 +540,7 @@ impl Element {
     /// Returns an iterator over mutable references to every text node of this element.
     #[inline]
     #[must_use]
-    pub fn texts_mut(&mut self) -> TextsMut {
+    pub fn texts_mut(&mut self) -> TextsMut<'_> {
         TextsMut {
             iter: self.children.iter_mut(),
         }

@@ -47,6 +47,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
         on the `tls-rust-ktls` feature. (!458, !490)
       - Building with insecure-tcp and no other feature got fixed.
       - Update rxml dependency to 0.13.
+      - Remove warnings for elided lifetimes (rustc 1.90)
 
 Version 4.0.0:
 2024-07-26 Maxime “pep” Buquet <pep@bouah.net>
