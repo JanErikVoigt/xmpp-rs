@@ -29,7 +29,7 @@ xmpp-parsers = { version = "0.21", path = "../parsers", features = [ "log" ] }
 xso = { version = "0.1", path = "../xso" }
 
 # these are only needed for starttls ServerConnector support
-hickory-resolver = { version = "0.24", optional = true}
+hickory-resolver = { version = "0.25", optional = true}
 idna = { version = "1.0", optional = true}
 native-tls = { version = "0.2", optional = true }
 tokio-native-tls = { version = "0.3", optional = true }

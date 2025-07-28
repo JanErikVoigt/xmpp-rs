@@ -1,8 +1,6 @@
 use core::{error::Error as StdError, fmt, net::AddrParseError, str::Utf8Error};
 #[cfg(feature = "dns")]
-use hickory_resolver::{
-    error::ResolveError as DnsResolveError, proto::error::ProtoError as DnsProtoError,
-};
+use hickory_resolver::{proto::ProtoError as DnsProtoError, ResolveError as DnsResolveError};
 use sasl::client::MechanismError as SaslMechanismError;
 use std::io;
 

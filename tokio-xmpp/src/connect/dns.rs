@@ -2,9 +2,7 @@ use core::{fmt, net::SocketAddr};
 #[cfg(feature = "dns")]
 use futures::{future::select_ok, FutureExt};
 #[cfg(feature = "dns")]
-use hickory_resolver::{
-    config::LookupIpStrategy, name_server::TokioConnectionProvider, IntoName, TokioAsyncResolver,
-};
+use hickory_resolver::{config::LookupIpStrategy, IntoName, TokioResolver};
 #[cfg(feature = "dns")]
 use log::debug;
 use tokio::net::TcpStream;
@@ -130,7 +128,10 @@ impl DnsConfig {
             return Ok(TcpStream::connect(&SocketAddr::new(ip, fallback_port)).await?);
         }
 
-        let resolver = TokioAsyncResolver::tokio_from_system_conf()?;
+        let (_config, options) = hickory_resolver::system_conf::read_system_conf()?;
+        let resolver = TokioResolver::builder_tokio()?
+            .with_options(options)
+            .build();
 
         let srv_domain = format!("{}.{}.", srv, ascii_domain).into_name()?;
         let srv_records = resolver.srv_lookup(srv_domain.clone()).await.ok();
@@ -164,9 +165,11 @@ impl DnsConfig {
             return Ok(TcpStream::connect(&SocketAddr::new(ip, port)).await?);
         }
 
-        let (config, mut options) = hickory_resolver::system_conf::read_system_conf()?;
+        let (_config, mut options) = hickory_resolver::system_conf::read_system_conf()?;
         options.ip_strategy = LookupIpStrategy::Ipv4AndIpv6;
-        let resolver = TokioAsyncResolver::new(config, options, TokioConnectionProvider::default());
+        let resolver = TokioResolver::builder_tokio()?
+            .with_options(options)
+            .build();
 
         let ips = resolver.lookup_ip(ascii_domain).await?;
 
