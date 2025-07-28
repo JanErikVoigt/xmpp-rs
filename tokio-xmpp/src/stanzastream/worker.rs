@@ -10,8 +10,6 @@ use core::task::{Context, Poll};
 use core::time::Duration;
 use std::io;
 
-use rand::{thread_rng, Rng};
-
 use futures::{ready, SinkExt, StreamExt};
 
 use tokio::{
@@ -472,7 +470,7 @@ impl StanzaStreamWorker {
         // from RFC 6120.
         // NOTE: we use a random starting value here to avoid clashes with
         // other application code.
-        let mut ping_probe_ctr: u64 = thread_rng().gen();
+        let mut ping_probe_ctr: u64 = rand::random();
 
         // We use mpsc::Sender permits (check the docs on
         // [`tokio::sync::mpsc::Sender::reserve`]) as a way to avoid blocking

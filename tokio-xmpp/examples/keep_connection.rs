@@ -15,8 +15,6 @@ use core::time::Duration;
 use std::env::args;
 use std::process::exit;
 
-use rand::{thread_rng, Rng};
-
 use futures::StreamExt;
 
 #[cfg(feature = "rustls-any-backend")]
@@ -76,7 +74,7 @@ async fn main() {
     );
     let domain: Jid = jid.domain().to_owned().into();
     let mut ping_timer = tokio::time::interval(Duration::new(5, 0));
-    let mut ping_ctr: u64 = thread_rng().gen();
+    let mut ping_ctr: u64 = rand::random();
     let signal = tokio::signal::ctrl_c();
     tokio::pin!(signal);
     loop {

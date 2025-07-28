@@ -4,7 +4,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use rand::{thread_rng, Rng};
 use xmpp_parsers::{
     iq::Iq,
     jid::Jid,
@@ -17,7 +16,7 @@ use crate::xmlstream::XmppStreamElement;
 use crate::Error;
 
 pub(crate) fn make_id() -> String {
-    let id: u64 = thread_rng().gen();
+    let id: u64 = rand::random();
     format!("{}", id)
 }
 
