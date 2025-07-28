@@ -128,7 +128,7 @@ where
 
     #[cfg(feature = "rustls-native-certs")]
     {
-        root_store.add_parsable_certificates(rustls_native_certs::load_native_certs()?);
+        root_store.add_parsable_certificates(rustls_native_certs::load_native_certs().certs);
     }
 
     #[allow(unused_mut, reason = "This config is mutable when using ktls")]
