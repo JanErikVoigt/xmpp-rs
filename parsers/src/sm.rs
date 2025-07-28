@@ -133,15 +133,10 @@ pub struct Resumed {
     pub previd: StreamId,
 }
 
-// TODO: add support for optional and required.
 /// Represents availability of Stream Management in `<stream:features/>`.
 #[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
 #[xml(namespace = ns::SM, name = "sm")]
-pub struct StreamManagement {
-    /// `<optional/>` flag.
-    #[xml(flag)]
-    pub optional: bool,
-}
+pub struct StreamManagement;
 
 /// Application-specific error condition to use when the peer acknowledges
 /// more stanzas than the local side has sent.
@@ -220,7 +215,7 @@ mod tests {
         assert_size!(R, 0);
         assert_size!(Resume, 16);
         assert_size!(Resumed, 16);
-        assert_size!(StreamManagement, 1);
+        assert_size!(StreamManagement, 0);
         assert_size!(HandledCountTooHigh, 8);
     }
 
@@ -235,7 +230,7 @@ mod tests {
         assert_size!(R, 0);
         assert_size!(Resume, 32);
         assert_size!(Resumed, 32);
-        assert_size!(StreamManagement, 1);
+        assert_size!(StreamManagement, 0);
         assert_size!(HandledCountTooHigh, 8);
     }
 
