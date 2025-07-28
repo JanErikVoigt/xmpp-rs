@@ -3,8 +3,6 @@ use crate::server::{Mechanism, MechanismError, Response};
 use alloc::format;
 use alloc::vec::Vec;
 
-use getrandom::getrandom;
-
 pub struct Anonymous;
 
 impl Anonymous {
@@ -24,7 +22,7 @@ impl Mechanism for Anonymous {
             return Err(MechanismError::FailedToDecodeMessage);
         }
         let mut rand = [0u8; 16];
-        getrandom(&mut rand)?;
+        getrandom::fill(&mut rand)?;
         let username = format!("{:02x?}", rand);
         let ident = Identity::Username(username);
         Ok(Response::Success(ident, Vec::new()))

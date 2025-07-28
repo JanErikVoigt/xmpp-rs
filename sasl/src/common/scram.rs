@@ -2,7 +2,6 @@ use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
-use getrandom::{getrandom, Error as RngError};
 use hmac::{digest::InvalidLength, Hmac, Mac};
 use pbkdf2::pbkdf2;
 use sha1::{Digest, Sha1 as Sha1_hash};
@@ -15,9 +14,9 @@ use crate::secret;
 use base64::{engine::general_purpose::STANDARD as Base64, Engine};
 
 /// Generate a nonce for SCRAM authentication.
-pub fn generate_nonce() -> Result<String, RngError> {
+pub fn generate_nonce() -> Result<String, getrandom::Error> {
     let mut data = [0u8; 32];
-    getrandom(&mut data)?;
+    getrandom::fill(&mut data)?;
     Ok(Base64.encode(data))
 }
 
