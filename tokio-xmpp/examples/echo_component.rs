@@ -6,7 +6,7 @@ use xmpp_parsers::jid::Jid;
 use xmpp_parsers::message::{Lang, Message, MessageType};
 use xmpp_parsers::presence::{Presence, Show as PresenceShow, Type as PresenceType};
 
-use tokio_xmpp::{connect::DnsConfig, Component};
+use tokio_xmpp::{connect::DnsConfig, xmlstream::Timeouts, Component};
 
 #[tokio::main]
 async fn main() {
@@ -31,7 +31,9 @@ async fn main() {
 
     // If you don't need a custom server but default localhost:5347, you can use
     // Component::new() directly
-    let mut component = Component::new(jid, password).await.unwrap();
+    let mut component = Component::new_plaintext(jid, password, server, Timeouts::tight())
+        .await
+        .unwrap();
 
     // Make the two interfaces for sending and receiving independent
     // of each other so we can move one into a closure.
