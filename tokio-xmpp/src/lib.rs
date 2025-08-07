@@ -122,6 +122,8 @@ mod event;
 pub mod stanzastream;
 pub mod xmlstream;
 
+pub use xso::{asxml::PrintRawXml, error::FromElementError};
+
 #[doc(inline)]
 /// Generic tokio_xmpp Error
 pub use crate::error::Error;
@@ -142,6 +144,3 @@ mod tests {
         use crate::parsers;
     }
 }
-
-// Re-export for debug purposes
-pub use xso::asxml::PrintRawXml;
