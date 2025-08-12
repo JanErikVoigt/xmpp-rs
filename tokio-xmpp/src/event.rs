@@ -21,7 +21,7 @@ pub(crate) fn make_id() -> String {
 }
 
 /// A stanza sent/received over the stream.
-#[derive(FromXml, AsXml, Debug)]
+#[derive(FromXml, AsXml, Debug, PartialEq)]
 #[xml()]
 pub enum Stanza {
     /// IQ stanza
