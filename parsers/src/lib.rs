@@ -35,8 +35,8 @@ pub use sha3;
 
 // We normally only reexport entire crates, but xso is a special case since it uses proc macros
 // which require it to be directly imported as a crate.  The only useful symbol we have to reexport
-// is its error type, which we expose in all of our return types.
-pub use xso::error::Error;
+// are its error types, which we expose in our return types.
+pub use xso::error::{Error, FromElementError};
 
 /// XML namespace definitions used through XMPP.
 pub mod ns;
