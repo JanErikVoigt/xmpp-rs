@@ -112,4 +112,6 @@ pub enum Event {
     ServiceMessage(Option<MessageId>, BareJid, String, StanzaTimeInfo),
     /// A file has been uploaded over HTTP; contains the URL of the file.
     HttpUploadedFile(String),
+    #[cfg(feature = "escape-hatch")]
+    TokioXmppEvent(TokioXmppEvent),
 }

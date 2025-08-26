@@ -17,6 +17,9 @@ pub async fn wait_for_events(agent: &mut Agent) -> Vec<Event> {
     if let Some(event) = agent.client.next().await {
         let mut events = Vec::new();
 
+        #[cfg(feature = "escape-hatch")]
+        events.push(Event::TokioXmppEvent(event.clone()));
+
         match event {
             TokioXmppEvent::Online { resumed: false, .. } => {
                 let presence =
