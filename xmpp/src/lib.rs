@@ -43,6 +43,7 @@
 //!   RFC 6120.
 //! - `avatars` (default): Enables support for avatars.
 //! - `serde`: Enable the `serde` feature in `tokio-xmpp`.
+//! - `escape-hatch`: Allow access to low-level API to bypass shortcomings of the current API.
 
 #![deny(bare_trait_objects)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
