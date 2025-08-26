@@ -6,7 +6,7 @@
 
 use tokio_xmpp::{
     jid::Jid,
-    parsers::{message::Message, message_correct::Replace, muc::user::MucUser},
+    parsers::{confirm::Confirm, message::Message, message_correct::Replace, muc::user::MucUser},
 };
 
 use crate::{delay::StanzaTimeInfo, Agent, Event, RoomNick};
@@ -27,6 +27,7 @@ pub async fn handle_message_chat(
 
     let is_muc_pm = message.extract_valid_payload::<MucUser>().is_some();
     let correction = message.extract_valid_payload::<Replace>();
+    let confirm = message.extract_valid_payload::<Confirm>();
 
     if is_muc_pm {
         if from.resource().is_none() {
@@ -57,9 +58,24 @@ pub async fn handle_message_chat(
         let event = if let Some(correction) = correction {
             // TODO: Check that correction is valid (only for last N minutes or last N messages)
             Event::ChatMessageCorrection(correction.id, from.to_bare(), body.clone(), time_info)
+        } else if let Some(confirm) = confirm {
+            Event::AuthConfirm(from.to_bare(), confirm, time_info)
         } else {
             Event::ChatMessage(message.id.clone(), from.to_bare(), body, time_info)
         };
         events.push(event);
+    }
+}
+
+pub async fn handle_message_error(
+    _agent: &mut Agent,
+    events: &mut Vec<Event>,
+    from: Jid,
+    message: &mut Message,
+    time_info: StanzaTimeInfo,
+) {
+    let confirm = message.extract_valid_payload::<Confirm>();
+    if let Some(confirm) = confirm {
+        events.push(Event::AuthReject(from.to_bare(), confirm, time_info));
     }
 }

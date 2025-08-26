@@ -9,6 +9,7 @@ use tokio_xmpp::jid::BareJid;
 use tokio_xmpp::jid::Jid;
 use tokio_xmpp::parsers::roster::Item as RosterItem;
 
+use crate::parsers::confirm::Confirm;
 use crate::{delay::StanzaTimeInfo, Error, MessageId, RoomNick};
 
 /// An Event notifying the client something has happened that may require attention.
@@ -56,6 +57,16 @@ pub enum Event {
     /// - The [`String`] is the new body of the message, to replace the old one.
     /// - The [`StanzaTimeInfo`] is the time the message correction was sent/received
     ChatMessageCorrection(MessageId, BareJid, String, StanzaTimeInfo),
+    /// A XEP-0070 authentication request or confirmation was received.
+    /// - The [`BareJid`] is the sender's JID.
+    /// - The [`Confirm`] is the info about the authentication request.
+    /// - The [`StanzaTimeInfo`] about when message was received, and when the message was claimed sent.
+    AuthConfirm(BareJid, Confirm, StanzaTimeInfo),
+    /// A XEP-0070 authentication rejection was received.
+    /// - The [`BareJid`] is the sender's JID.
+    /// - The [`Confirm`] is the info about the authentication request that was rejected.
+    /// - The [`StanzaTimeInfo`] about when message was received, and when the message was claimed sent.
+    AuthReject(BareJid, Confirm, StanzaTimeInfo),
     /// Room joined; client may receive and send messages from/to this BareJid.
     RoomJoined(BareJid),
     /// Room left; client may not receive and send messages from/to this BareJid

@@ -34,6 +34,10 @@ pub async fn handle_message(agent: &mut Agent, mut message: Message) -> Vec<Even
             chat::handle_message_chat(agent, &mut events, from.clone(), &mut message, time_info)
                 .await;
         }
+        MessageType::Error => {
+            chat::handle_message_error(agent, &mut events, from.clone(), &mut message, time_info)
+                .await;
+        }
         _ => {}
     }
 

@@ -32,6 +32,8 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
       - Event::ChatMessageCorrection, Event::RoomMessageCorrection, and
         Event::RoomPrivateMessageCorrection signal XEP-0308 message corrections; they're
         not checked how old the corrected entry is, which has security concerns (!496)
+      - Event::AuthConfirm and Event::AuthReject signal XEP-0070 authentication requests and
+        responses.
       - Agent::new helper method.
       - Handle SIGINT, SIGTERM and SIGKILL in hello_bot example to avoid leaving
         hibernating resources around.
