@@ -68,6 +68,9 @@ pub const PUBSUB_CONFIGURE: &str = "http://jabber.org/protocol/pubsub#node_confi
 /// XEP-0066: Out of Band Data
 pub const OOB: &str = "jabber:x:oob";
 
+/// XEP-0070: Verifying HTTP Requests via XMPP
+pub const HTTP_AUTH: &str = "http://jabber.org/protocol/http-auth";
+
 /// XEP-0071: XHTML-IM
 pub const XHTML_IM: &str = "http://jabber.org/protocol/xhtml-im";
 /// XEP-0071: XHTML-IM

@@ -101,6 +101,9 @@ pub mod pubsub;
 /// XEP-0066: OOB
 pub mod oob;
 
+/// XEP-0070: Verifying HTTP Requests via XMPP
+pub mod confirm;
+
 /// XEP-0071: XHTML-IM
 pub mod xhtml;
 

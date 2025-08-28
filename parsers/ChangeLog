@@ -107,6 +107,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - XEP-0045 mediated invites
       - Push Notifications (XEP-0357) (!543)
       - JSON Containers (XEP-0335) (!546)
+      - Verifying HTTP Requests via XMPP (XEP-0070)
     * Improvements:
       - Add support application-specific error conditions in XEP-0198
       - Keep unsupported vCard elements as `minidom::Element`, so that they
