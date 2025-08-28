@@ -59,7 +59,7 @@ pub enum IqPayload {
     /// Payload of a type='result' stanza.
     Result(Option<Element>),
 
-    /// The error carride in a type='error' stanza.
+    /// The error carried in a type='error' stanza.
     Error(StanzaError),
 }
 
