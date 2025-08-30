@@ -1,3 +1,10 @@
+Version NEXT:
+  * Changes:
+    - The 'quote' feature now uses `jid::Jid` instead of `::jid::Jid` to
+      stop requiring importing the module as a dependency of the project. The
+      `jid` module just needs to be made available, for example: `use
+      foo::jid;`
+
 Version 0.12.0, release 2025-01-25:
   * Breaking:
     - domainparts are now checked much more in-depth, using the idna crate for

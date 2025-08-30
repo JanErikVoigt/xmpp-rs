@@ -688,7 +688,7 @@ impl ToTokens for Jid {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let s = &self.normalized;
         tokens.extend(quote! {
-            ::jid::Jid::new(#s).unwrap()
+            jid::Jid::new(#s).unwrap()
         });
     }
 }
@@ -698,7 +698,7 @@ impl ToTokens for FullJid {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let s = &self.inner.normalized;
         tokens.extend(quote! {
-            ::jid::FullJid::new(#s).unwrap()
+            jid::FullJid::new(#s).unwrap()
         });
     }
 }
@@ -708,7 +708,7 @@ impl ToTokens for BareJid {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let s = &self.inner.normalized;
         tokens.extend(quote! {
-            ::jid::BareJid::new(#s).unwrap()
+            jid::BareJid::new(#s).unwrap()
         });
     }
 }
