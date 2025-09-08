@@ -1,8 +1,6 @@
-xmpp-rs
-=======
+# xmpp-rs
 
-What's this?
-------------
+## What's this?
 
 A set of rust XMPP libraries with the goals of being type-safe and well-tested.
 
@@ -15,15 +13,11 @@ A set of rust XMPP libraries with the goals of being type-safe and well-tested.
 - `sasl` handles the SASL protocol.
 - `xso` and `xso-proc` provide the procedural macros powering `xmpp-parsers`.
 
-Contact
--------
+## Community
 
 There is an XMPP MUC for the discussion of these libraries, feel free to join! :)
 
 [chat@xmpp.rs](xmpp:chat@xmpp.rs?join)
-
-Community
----------
 
 A Code of Conduct is available as
 [CODE\_OF\_CONDUCT.md](https://gitlab.com/xmpp-rs/xmpp-rs/-/raw/main/CODE_OF_CONDUCT.md)
@@ -31,13 +25,18 @@ in the repository for the well-being of the community. Please refer to it in
 case of a possible conflict in any of the xmpp-rs venues (channel, forge,
 etc.).
 
-License
--------
+### Contributing
+
+Thank you for your interest in the project!
+
+Contributing rules are available as
+[CONTRIBUTING.md](https://gitlab.com/xmpp-rs/xmpp-rs/-/raw/main/CONTRIBUTING.md) in the repository.
+
+## License
 
 Mozilla Public License 2 (MPL2). See the LICENSE file.
 
-Building
---------
+## Building
 
 Dependencies should be provided by crates if you use the default features. If
 you use tokio-xmpp's `tls-native` feature you will need an ssl library
@@ -48,11 +47,3 @@ cargo build
 ```
 
 The various features available should be explained in the crates themselves.
-
-Contributing
-------------
-
-Thank you for your interest in the project!
-
-Contributing rules are available as
-[CONTRIBUTING.md](https://gitlab.com/xmpp-rs/xmpp-rs/-/raw/main/CONTRIBUTING.md) in the repository.
