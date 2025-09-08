@@ -24,7 +24,7 @@ mod tests {
     #[cfg(target_pointer_width = "32")]
     #[test]
     fn test_size() {
-        assert_size!(JsonContainer, 16);
+        assert_size!(JsonContainer, 24);
     }
 
     #[cfg(target_pointer_width = "64")]

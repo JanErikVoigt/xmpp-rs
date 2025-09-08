@@ -21,15 +21,14 @@ pub struct RtcpMux;
 #[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
 #[xml(namespace = ns::JINGLE_RTP, name = "description")]
 pub struct Description {
-    /// Namespace of the encryption scheme used.
+    /// Specifies the media type, such as "audio" or "video", where the media type SHOULD be as
+    /// registered at IANA MIME Media Types Registry.
     #[xml(attribute)]
     pub media: String,
 
-    /// User-friendly name for the encryption scheme, should be `None` for OTR,
-    /// legacy OpenPGP and OX.
-    // XXX: is this a String or an u32?!  Refer to RFC 3550.
+    /// 32-bit synchronization source for this media stream, as defined in RFC 3550.
     #[xml(attribute(default))]
-    pub ssrc: Option<String>,
+    pub ssrc: Option<u32>,
 
     /// List of encodings that can be used for this RTP stream.
     #[xml(child(n = ..))]
@@ -169,7 +168,7 @@ mod tests {
     #[cfg(target_pointer_width = "32")]
     #[test]
     fn test_size() {
-        assert_size!(Description, 76);
+        assert_size!(Description, 72);
         assert_size!(Channels, 1);
         assert_size!(PayloadType, 64);
         assert_size!(Parameter, 24);
@@ -178,7 +177,7 @@ mod tests {
     #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_size() {
-        assert_size!(Description, 152);
+        assert_size!(Description, 136);
         assert_size!(Channels, 1);
         assert_size!(PayloadType, 104);
         assert_size!(Parameter, 48);

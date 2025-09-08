@@ -594,7 +594,7 @@ mod tests {
         assert_size!(Senders, 1);
         assert_size!(Disposition, 1);
         assert_size!(ContentId, 12);
-        assert_size!(Content, 156);
+        assert_size!(Content, 152);
         assert_size!(Reason, 12);
         assert_size!(ReasonElement, 24);
         assert_size!(SessionId, 12);
@@ -609,7 +609,7 @@ mod tests {
         assert_size!(Senders, 1);
         assert_size!(Disposition, 1);
         assert_size!(ContentId, 24);
-        assert_size!(Content, 312);
+        assert_size!(Content, 296);
         assert_size!(Reason, 24);
         assert_size!(ReasonElement, 48);
         assert_size!(SessionId, 24);
