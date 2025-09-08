@@ -136,7 +136,13 @@ pub struct Resumed {
 /// Represents availability of Stream Management in `<stream:features/>`.
 #[derive(FromXml, AsXml, PartialEq, Debug, Clone)]
 #[xml(namespace = ns::SM, name = "sm")]
-pub struct StreamManagement;
+pub struct StreamManagement {
+    /// Undocumented `<optional/>` flag.
+    // TODO: Remove this flag once servers in the wild have been updated to not send it, as it is
+    // completely undocumented in XEP-0198, only appearing in the XML Schema before 1.6.3.
+    #[xml(flag)]
+    pub optional: bool,
+}
 
 /// Application-specific error condition to use when the peer acknowledges
 /// more stanzas than the local side has sent.
@@ -215,7 +221,7 @@ mod tests {
         assert_size!(R, 0);
         assert_size!(Resume, 16);
         assert_size!(Resumed, 16);
-        assert_size!(StreamManagement, 0);
+        assert_size!(StreamManagement, 1);
         assert_size!(HandledCountTooHigh, 8);
     }
 
@@ -230,7 +236,7 @@ mod tests {
         assert_size!(R, 0);
         assert_size!(Resume, 32);
         assert_size!(Resumed, 32);
-        assert_size!(StreamManagement, 0);
+        assert_size!(StreamManagement, 1);
         assert_size!(HandledCountTooHigh, 8);
     }
 
