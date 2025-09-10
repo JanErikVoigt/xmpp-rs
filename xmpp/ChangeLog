@@ -40,7 +40,7 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
       - New 'escape-hatch' feature: Allow sending tokio_xmpp::Stanza directly
         instead of having to go through xmpp-rs' API when it's lacking. This
         is meant to stay behind a feature. Also allows directly receiving
-        TokioXmppEvent.
+        stanzas.
       - Added documentation on `Event` enum.
     * Fixes:
       - Use tokio::sync::RwLock not std::sync::RwLock (!432)

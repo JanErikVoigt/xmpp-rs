@@ -17,9 +17,6 @@ pub async fn wait_for_events(agent: &mut Agent) -> Vec<Event> {
     if let Some(event) = agent.client.next().await {
         let mut events = Vec::new();
 
-        #[cfg(feature = "escape-hatch")]
-        events.push(Event::TokioXmppEvent(event.clone()));
-
         match event {
             TokioXmppEvent::Online { resumed: false, .. } => {
                 let presence =
@@ -47,14 +44,23 @@ pub async fn wait_for_events(agent: &mut Agent) -> Vec<Event> {
                 events.push(Event::Disconnected(e));
             }
             TokioXmppEvent::Stanza(Stanza::Iq(iq)) => {
+                #[cfg(feature = "escape-hatch")]
+                events.push(Event::Iq(iq.clone()));
+
                 let new_events = iq::handle_iq(agent, iq).await;
                 events.extend(new_events);
             }
             TokioXmppEvent::Stanza(Stanza::Message(message)) => {
+                #[cfg(feature = "escape-hatch")]
+                events.push(Event::Message(message.clone()));
+
                 let new_events = message::receive::handle_message(agent, message).await;
                 events.extend(new_events);
             }
             TokioXmppEvent::Stanza(Stanza::Presence(presence)) => {
+                #[cfg(feature = "escape-hatch")]
+                events.push(Event::Presence(presence.clone()));
+
                 let new_events = presence::receive::handle_presence(agent, presence).await;
                 events.extend(new_events);
             }

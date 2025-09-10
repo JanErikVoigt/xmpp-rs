@@ -8,6 +8,8 @@ use tokio_xmpp::jid::BareJid;
 #[cfg(feature = "avatars")]
 use tokio_xmpp::jid::Jid;
 use tokio_xmpp::parsers::roster::Item as RosterItem;
+#[cfg(feature = "escape-hatch")]
+use tokio_xmpp::parsers::{iq::Iq, message::Message, presence::Presence};
 
 use crate::parsers::confirm::Confirm;
 use crate::{delay::StanzaTimeInfo, Error, MessageId, RoomNick};
@@ -113,5 +115,15 @@ pub enum Event {
     /// A file has been uploaded over HTTP; contains the URL of the file.
     HttpUploadedFile(String),
     #[cfg(feature = "escape-hatch")]
-    TokioXmppEvent(TokioXmppEvent),
+    /// Variant only available when the "escape-hatch" feature is enabled. Proxies an Iq received
+    /// as a tokio-xmpp event.
+    Iq(Iq),
+    #[cfg(feature = "escape-hatch")]
+    /// Variant only available when the "escape-hatch" feature is enabled. Proxies a Message
+    /// received as a tokio-xmpp event.
+    Message(Message),
+    #[cfg(feature = "escape-hatch")]
+    /// Variant only available when the "escape-hatch" feature is enabled. Proxies a Presence
+    /// received as a tokio-xmpp event.
+    Presence(Presence),
 }
