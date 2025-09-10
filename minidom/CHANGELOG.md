@@ -4,6 +4,8 @@ Version NEXT:
     * Update rxml dependency to 0.13.
   * Fixes
     * Remove warnings for elided lifetimes (rustc 1.90)
+    * Fixes serialization and ensure prefixes are set on Element when using
+      `Element::from_reader_with_prefixes`.
 
 Version 0.16, released 2024-07-23:
   * Breaking

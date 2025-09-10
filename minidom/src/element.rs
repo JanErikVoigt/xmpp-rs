@@ -1078,6 +1078,22 @@ mod tests {
     }
 
     #[test]
+    fn test_from_reader_with_prefixes_serialization() {
+        let prefixes: BTreeMap<Option<String>, String> = {
+            let mut tmp = BTreeMap::new();
+            tmp.insert(None, String::from("foo"));
+            tmp.insert(Some(String::from("test")), String::from("bar"));
+            tmp
+        };
+
+        let input = r#"<foo test:attr="true"><bar/></foo>"#;
+        let output = r#"<foo xmlns='foo' xmlns:test='bar' test:attr='true'><bar/></foo>"#;
+
+        let elem = Element::from_reader_with_prefixes(input.as_ref(), prefixes).unwrap();
+        assert_eq!(String::from(&elem), output);
+    }
+
+    #[test]
     fn failure_with_duplicate_namespace() {
         let _: Element = r###"<?xml version="1.0" encoding="UTF-8"?>
             <wsdl:definitions

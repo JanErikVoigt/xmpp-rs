@@ -113,10 +113,18 @@ impl TreeBuilder {
             RawEvent::XmlDeclaration(_, _) => {}
 
             RawEvent::ElementHeadOpen(_, (prefix, name)) => {
+                // If self.prefixes_stack has been set via with_prefixes_stack before processing,
+                // ensure these are set on the root element.
+                let prefixes = if self.stack.is_empty() && self.prefixes_stack.len() == 1 {
+                    self.prefixes_stack.pop().unwrap()
+                } else {
+                    Prefixes::default()
+                };
+
                 self.next_tag = Some((
                     prefix.map(|prefix| prefix.as_str().to_owned()),
                     name.as_str().to_owned(),
-                    Prefixes::default(),
+                    prefixes,
                     BTreeMap::new(),
                 ));
             }
