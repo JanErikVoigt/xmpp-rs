@@ -20,14 +20,26 @@ pub async fn handle_message_chat(
 ) {
     let langs: Vec<&str> = agent.lang.iter().map(String::as_str).collect();
 
+    let confirm = message.extract_valid_payload::<Confirm>();
+    let is_muc_pm = message.extract_valid_payload::<MucUser>().is_some();
+
+    // First process events that do not require the message body
+    if !is_muc_pm && confirm.is_some() {
+        events.push(Event::AuthConfirm(
+            from.to_bare(),
+            confirm.unwrap(),
+            time_info,
+        ));
+        return;
+    }
+
+    // For other events, a message body is required, so stop here if there isn't one
     let Some((_lang, body)) = message.get_best_body_cloned(langs) else {
         debug!("Received normal/chat message without body:\n{:#?}", message);
         return;
     };
 
-    let is_muc_pm = message.extract_valid_payload::<MucUser>().is_some();
     let correction = message.extract_valid_payload::<Replace>();
-    let confirm = message.extract_valid_payload::<Confirm>();
 
     if is_muc_pm {
         if from.resource().is_none() {
@@ -58,8 +70,6 @@ pub async fn handle_message_chat(
         let event = if let Some(correction) = correction {
             // TODO: Check that correction is valid (only for last N minutes or last N messages)
             Event::ChatMessageCorrection(correction.id, from.to_bare(), body.clone(), time_info)
-        } else if let Some(confirm) = confirm {
-            Event::AuthConfirm(from.to_bare(), confirm, time_info)
         } else {
             Event::ChatMessage(message.id.clone(), from.to_bare(), body, time_info)
         };
