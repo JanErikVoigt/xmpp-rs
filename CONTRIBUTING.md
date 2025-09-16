@@ -19,6 +19,11 @@ The earlier we catch bugs and fix them, the less chances they have to confuse
 users of our library, or make end-users give up on software developed using
 this library. This also helps improving other software in the ecosystem.
 
+We will not accept changes (code or otherwise) created with the aid of "AI"
+tooling. "AI" models are trained at the expense of underpaid workers filtering
+inputs of abhorrent content, and does not respect the owners of input content.
+Ethically, it sucks.
+
 ## Keep commits short and meaningful
 
 To help with reviews, to facilitate reverts, reading and grepping through
