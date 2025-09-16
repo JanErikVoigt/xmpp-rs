@@ -24,6 +24,9 @@ tooling. "AI" models are trained at the expense of underpaid workers filtering
 inputs of abhorrent content, and does not respect the owners of input content.
 Ethically, it sucks.
 
+Nor will we accept changes (code or otherwise) that move xmpp-rs crates toward
+enterprise / surveillance / other toxic capitalist pursuits.
+
 ## Keep commits short and meaningful
 
 To help with reviews, to facilitate reverts, reading and grepping through
