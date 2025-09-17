@@ -44,7 +44,7 @@ variables:
     - RUSTDOCFLAGS="--cfg docsrs -D warnings" RUSTFLAGS="--cfg xmpprs_doc_build" cargo +nightly doc --no-deps -Zrustdoc-map --all-features
     - apt install -y rsync openssh-client
     - mkdir -p $HOME/.ssh
-    - echo -e "Host docs\n\tHostname docs.xmpp.rs\n\tPort 1312\n\tUser xmpp-rs\n\tStrictHostKeyChecking no" > $HOME/.ssh/config
+    - echo -e "Host docs\n\tHostname ssh.docsxmpprs.sotecware.net\n\tPort 22\n\tUser docs\n\tStrictHostKeyChecking no" > $HOME/.ssh/config
     - echo "$SECRET_DOCS_SSH_PRIVATE" > $HOME/.ssh/id_ed25519
     - chmod 400 $HOME/.ssh/id_ed25519
     - rsync -av target/doc/ docs:$CI_DOC_TARGET
