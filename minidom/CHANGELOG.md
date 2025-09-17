@@ -1,4 +1,6 @@
 Version NEXT:
+
+Version 0.17, released 2025-09-17:
   * Changes
     * Almost make the whole crate `no_std`, only `std::io` is still remaining.
     * Update rxml dependency to 0.13.

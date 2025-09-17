@@ -12,7 +12,7 @@ license = "MPL-2.0"
 [dependencies]
 bytes = { version = "1" }
 rxml = { version = "0.13.1", default-features = false }
-minidom = { version = "0.16", path = "../minidom" }
+minidom = { version = "0.17", path = "../minidom" }
 xso_proc = { version = "0.1", path = "../xso-proc", optional = true }
 
 # optional dependencies to provide text conversion to/from types from/using
