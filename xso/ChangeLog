@@ -1,4 +1,6 @@
 Version NEXT:
+
+Version 0.2.0, released 2025-09-17:
 0000-00-00 Jonas Schäfer <jonas@zombofant.net>
     * Breaking
       - The methods of `TextCodec<T>` now have `&self` receivers. This also
