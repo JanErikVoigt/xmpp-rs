@@ -339,9 +339,10 @@ impl Element {
         namespace.into().compare(self.namespace.as_ref())
     }
 
-    /// Parse a document from a `io::BufRead`.
-    pub fn from_reader<R: io::BufRead>(reader: R) -> Result<Element> {
-        let mut tree_builder = TreeBuilder::new();
+    fn from_reader_inner<R: io::BufRead>(
+        mut tree_builder: TreeBuilder,
+        reader: R,
+    ) -> Result<Element> {
         let mut driver = RawReader::new(reader);
         while let Some(event) = driver.read()? {
             tree_builder.process_event(event)?;
@@ -353,6 +354,11 @@ impl Element {
         Err(Error::EndOfDocument)
     }
 
+    /// Parse a document from a `io::BufRead`.
+    pub fn from_reader<R: io::BufRead>(reader: R) -> Result<Element> {
+        Element::from_reader_inner(TreeBuilder::new(), reader)
+    }
+
     /// Parse a document from a `io::BufRead`, allowing Prefixes to be specified. Useful to provide
     /// knowledge of namespaces that would have been declared on parent elements not present in the
     /// reader.
@@ -360,16 +366,8 @@ impl Element {
         reader: R,
         prefixes: P,
     ) -> Result<Element> {
-        let mut tree_builder = TreeBuilder::new().with_prefixes_stack([prefixes.into()].into());
-        let mut driver = RawReader::new(reader);
-        while let Some(event) = driver.read()? {
-            tree_builder.process_event(event)?;
-
-            if let Some(root) = tree_builder.root.take() {
-                return Ok(root);
-            }
-        }
-        Err(Error::EndOfDocument)
+        let tree_builder = TreeBuilder::new().with_prefixes_stack([prefixes.into()].into());
+        Element::from_reader_inner(tree_builder, reader)
     }
 
     /// Output a document to a `io::Writer`.
