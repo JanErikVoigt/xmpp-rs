@@ -2,6 +2,12 @@ Version NEXT:
   * Breaking:
     * Removed 'std' feature for now because it makes build fail on
       no-default-features.
+    * Add `Element::attr_ns` that requires the attribute namespace in addition
+      to `Element::attr` (which defaults to `rxml::Namespace::none()`. Similar
+      changes on `ElementBuilder` methods.
+      `Element` now uses `AttrMap` to store attributes, and this also implies
+      some more changes in the Element interface such as iterators on
+      attributes.
   * Changes
     * Use thiserror for the error type. (!616)
 

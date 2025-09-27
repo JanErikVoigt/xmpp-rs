@@ -15,11 +15,7 @@ use core::marker::PhantomData;
 
 use minidom::{Element, Node};
 
-use rxml::{
-    parser::EventMetrics,
-    writer::{SimpleNamespaces, TrackNamespace},
-    AttrMap, Event, Name, NameStr, Namespace, NcName, NcNameStr,
-};
+use rxml::{parser::EventMetrics, AttrMap, Event, Namespace, NcName, NcNameStr};
 
 use crate::{
     error::{Error, FromEventsError},
@@ -74,26 +70,8 @@ pub fn make_start_ev_parts(el: &Element) -> Result<(rxml::QName, AttrMap), Error
     let namespace = Namespace::from(el.ns());
 
     let mut attrs = AttrMap::new();
-    for (name, value) in el.attrs() {
-        let name = Name::try_from(name)?;
-        let (prefix, name) = name.split_name()?;
-        let namespace = if let Some(prefix) = prefix {
-            if prefix == "xml" {
-                Namespace::XML
-            } else {
-                let ns = match el.prefixes.get(&Some(prefix.into())) {
-                    Some(v) => v,
-                    None => {
-                        panic!("undeclared xml namespace prefix in minidom::Element")
-                    }
-                };
-                Namespace::from(ns.to_owned())
-            }
-        } else {
-            Namespace::NONE
-        };
-
-        attrs.insert(namespace, name, value.to_owned());
+    for ((namespace, name), value) in el.attrs() {
+        attrs.insert(namespace.clone(), name.clone(), value.to_owned());
     }
 
     Ok(((namespace, name), attrs))
@@ -178,7 +156,7 @@ enum AsXmlState<'a> {
         element: &'a Element,
 
         /// Attribute iterator.
-        attributes: minidom::element::Attrs<'a>,
+        attributes: rxml::xml_map::Iter<'a, std::string::String>,
     },
 
     /// Content: The contents of the element are streamed as events.
@@ -218,7 +196,7 @@ impl<'a> Iterator for ElementAsXml<'a> {
                 );
                 self.0 = Some(AsXmlState::Attributes {
                     element,
-                    attributes: element.attrs(),
+                    attributes: element.attrs().iter(),
                 });
                 Some(Ok(item))
             }
@@ -226,38 +204,9 @@ impl<'a> Iterator for ElementAsXml<'a> {
                 ref mut attributes,
                 element,
             }) => {
-                if let Some((name, value)) = attributes.next() {
-                    let name = match <&NameStr>::try_from(name) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            self.0 = None;
-                            return Some(Err(e.into()));
-                        }
-                    };
-                    let (prefix, name) = match name.split_name() {
-                        Ok(v) => v,
-                        Err(e) => {
-                            self.0 = None;
-                            return Some(Err(e.into()));
-                        }
-                    };
-                    let namespace = if let Some(prefix) = prefix {
-                        if prefix == "xml" {
-                            Namespace::XML
-                        } else {
-                            let ns = match element.prefixes.get(&Some(prefix.as_str().to_owned())) {
-                                Some(v) => v,
-                                None => {
-                                    panic!("undeclared xml namespace prefix in minidom::Element")
-                                }
-                            };
-                            Namespace::from(ns.to_owned())
-                        }
-                    } else {
-                        Namespace::NONE
-                    };
+                if let Some(((namespace, name), value)) = attributes.next() {
                     Some(Ok(Item::Attribute(
-                        namespace,
+                        namespace.clone(),
                         Cow::Borrowed(name),
                         Cow::Borrowed(value),
                     )))
@@ -330,24 +279,9 @@ impl ElementFromEvents {
     /// [`minidom::Element`], this is contractually infallible. Using this may
     /// thus save you an `unwrap()` call.
     pub fn new(qname: rxml::QName, attrs: rxml::AttrMap) -> Self {
-        let mut prefixes = SimpleNamespaces::new();
         let mut builder = Element::builder(qname.1, qname.0);
         for ((namespace, name), value) in attrs.into_iter() {
-            if namespace.is_none() {
-                builder = builder.attr(name, value);
-            } else {
-                let (is_new, prefix) = prefixes.declare_with_auto_prefix(namespace.clone());
-                let name = prefix.with_suffix(&name);
-                if is_new {
-                    builder = builder
-                        .prefix(
-                            Some(prefix.as_str().to_owned()),
-                            namespace.as_str().to_owned(),
-                        )
-                        .unwrap();
-                }
-                builder = builder.attr(name, value);
-            }
+            builder = builder.attr_ns(namespace, name, value);
         }
 
         let element = builder.build();

@@ -35,6 +35,7 @@ mod tests {
     use crate::ns;
     use minidom::Element;
     use xso::error::{Error, FromElementError};
+    use xso::exports::rxml;
 
     #[cfg(target_pointer_width = "32")]
     #[test]
@@ -80,13 +81,13 @@ mod tests {
         let receipt = Request;
         let elem: Element = receipt.into();
         assert!(elem.is("request", ns::RECEIPTS));
-        assert_eq!(elem.attrs().count(), 0);
+        assert_eq!(elem.attrs().into_iter().count(), 0);
 
         let receipt = Received {
             id: String::from("coucou"),
         };
         let elem: Element = receipt.into();
         assert!(elem.is("received", ns::RECEIPTS));
-        assert_eq!(elem.attr("id"), Some("coucou"));
+        assert_eq!(elem.attr(rxml::xml_ncname!("id")), Some("coucou"));
     }
 }

@@ -1126,19 +1126,35 @@ mod tests {
     #[test]
     fn minidom() {
         let elem: minidom::Element = "<message xmlns='ns1' from='a@b/c'/>".parse().unwrap();
-        let to: Jid = elem.attr("from").unwrap().parse().unwrap();
+        let to: Jid = elem
+            .attr("from".try_into().unwrap())
+            .unwrap()
+            .parse()
+            .unwrap();
         assert_eq!(to, Jid::from(FullJid::new("a@b/c").unwrap()));
 
         let elem: minidom::Element = "<message xmlns='ns1' from='a@b'/>".parse().unwrap();
-        let to: Jid = elem.attr("from").unwrap().parse().unwrap();
+        let to: Jid = elem
+            .attr("from".try_into().unwrap())
+            .unwrap()
+            .parse()
+            .unwrap();
         assert_eq!(to, Jid::from(BareJid::new("a@b").unwrap()));
 
         let elem: minidom::Element = "<message xmlns='ns1' from='a@b/c'/>".parse().unwrap();
-        let to: FullJid = elem.attr("from").unwrap().parse().unwrap();
+        let to: FullJid = elem
+            .attr("from".try_into().unwrap())
+            .unwrap()
+            .parse()
+            .unwrap();
         assert_eq!(to, FullJid::new("a@b/c").unwrap());
 
         let elem: minidom::Element = "<message xmlns='ns1' from='a@b'/>".parse().unwrap();
-        let to: BareJid = elem.attr("from").unwrap().parse().unwrap();
+        let to: BareJid = elem
+            .attr("from".try_into().unwrap())
+            .unwrap()
+            .parse()
+            .unwrap();
         assert_eq!(to, BareJid::new("a@b").unwrap());
     }
 
@@ -1147,21 +1163,30 @@ mod tests {
     fn minidom_into_attr() {
         let full = FullJid::new("a@b/c").unwrap();
         let elem = minidom::Element::builder("message", "jabber:client")
-            .attr("from", full.clone())
+            .attr("from".try_into().unwrap(), full.clone())
             .build();
-        assert_eq!(elem.attr("from"), Some(full.to_string().as_str()));
+        assert_eq!(
+            elem.attr("from".try_into().unwrap()),
+            Some(full.to_string().as_str())
+        );
 
         let bare = BareJid::new("a@b").unwrap();
         let elem = minidom::Element::builder("message", "jabber:client")
-            .attr("from", bare.clone())
+            .attr("from".try_into().unwrap(), bare.clone())
             .build();
-        assert_eq!(elem.attr("from"), Some(bare.to_string().as_str()));
+        assert_eq!(
+            elem.attr("from".try_into().unwrap()),
+            Some(bare.to_string().as_str())
+        );
 
         let jid = Jid::from(bare.clone());
         let _elem = minidom::Element::builder("message", "jabber:client")
-            .attr("from", jid)
+            .attr("from".try_into().unwrap(), jid)
             .build();
-        assert_eq!(elem.attr("from"), Some(bare.to_string().as_str()));
+        assert_eq!(
+            elem.attr("from".try_into().unwrap()),
+            Some(bare.to_string().as_str())
+        );
     }
 
     #[test]

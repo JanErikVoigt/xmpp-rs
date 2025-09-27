@@ -293,6 +293,7 @@ mod tests {
     use super::*;
     use jid::{BareJid, FullJid};
     use xso::error::FromElementError;
+    use xso::exports::rxml;
 
     #[cfg(target_pointer_width = "32")]
     #[test]
@@ -602,25 +603,31 @@ mod tests {
     fn presence_with_to() {
         let presence = Presence::new(Type::None);
         let elem: Element = presence.into();
-        assert_eq!(elem.attr("to"), None);
+        assert_eq!(elem.attr(rxml::xml_ncname!("to")), None);
 
         let presence = Presence::new(Type::None).with_to(Jid::new("localhost").unwrap());
         let elem: Element = presence.into();
-        assert_eq!(elem.attr("to"), Some("localhost"));
+        assert_eq!(elem.attr(rxml::xml_ncname!("to")), Some("localhost"));
 
         let presence = Presence::new(Type::None).with_to(BareJid::new("localhost").unwrap());
         let elem: Element = presence.into();
-        assert_eq!(elem.attr("to"), Some("localhost"));
+        assert_eq!(elem.attr(rxml::xml_ncname!("to")), Some("localhost"));
 
         let presence =
             Presence::new(Type::None).with_to(Jid::new("test@localhost/coucou").unwrap());
         let elem: Element = presence.into();
-        assert_eq!(elem.attr("to"), Some("test@localhost/coucou"));
+        assert_eq!(
+            elem.attr(rxml::xml_ncname!("to")),
+            Some("test@localhost/coucou")
+        );
 
         let presence =
             Presence::new(Type::None).with_to(FullJid::new("test@localhost/coucou").unwrap());
         let elem: Element = presence.into();
-        assert_eq!(elem.attr("to"), Some("test@localhost/coucou"));
+        assert_eq!(
+            elem.attr(rxml::xml_ncname!("to")),
+            Some("test@localhost/coucou")
+        );
     }
 
     #[test]

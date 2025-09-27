@@ -16,19 +16,23 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use rxml::{xml_ncname, Namespace as RxmlNamespace};
+
 const TEST_STRING: &'static [u8] = br#"<root xmlns='root_ns' a='b' xml:lang='en'>meow<child c='d'/><child xmlns='child_ns' d='e' xml:lang='fr'/>nya</root>"#;
 
 fn build_test_tree() -> Element {
     let mut root = Element::builder("root", "root_ns")
-        .attr("xml:lang", "en")
-        .attr("a", "b")
+        .attr_ns(RxmlNamespace::XML, xml_ncname!("lang").to_owned(), "en")
+        .attr(xml_ncname!("a").to_owned(), "b")
         .build();
     root.append_text_node("meow");
-    let child = Element::builder("child", "root_ns").attr("c", "d").build();
+    let child = Element::builder("child", "root_ns")
+        .attr(xml_ncname!("c").to_owned(), "d")
+        .build();
     root.append_child(child);
     let other_child = Element::builder("child", "child_ns")
-        .attr("d", "e")
-        .attr("xml:lang", "fr")
+        .attr(xml_ncname!("d").to_owned(), "e")
+        .attr_ns(RxmlNamespace::XML, xml_ncname!("lang").to_owned(), "fr")
         .build();
     root.append_child(other_child);
     root.append_text_node("nya");
@@ -243,7 +247,7 @@ fn writer_with_prefix_deduplicate() {
 #[test]
 fn writer_escapes_attributes() {
     let root = Element::builder("root", "ns1")
-        .attr("a", "\"Air\" quotes")
+        .attr(xml_ncname!("a").to_owned(), "\"Air\" quotes")
         .build();
     let mut writer = Vec::new();
     {
@@ -271,14 +275,14 @@ fn writer_escapes_text() {
 #[test]
 fn builder_works() {
     let elem = Element::builder("a", "b")
-        .attr("c", "d")
+        .attr(xml_ncname!("c").to_owned(), "d")
         .append(Element::builder("child", "b"))
         .append("e")
         .build();
     assert_eq!(elem.name(), "a");
     assert_eq!(elem.ns(), "b".to_owned());
-    assert_eq!(elem.attr("c"), Some("d"));
-    assert_eq!(elem.attr("x"), None);
+    assert_eq!(elem.attr(xml_ncname!("c")), Some("d"));
+    assert_eq!(elem.attr(xml_ncname!("x")), None);
     assert_eq!(elem.text(), "e");
     assert!(elem.has_child("child", "b"));
     assert!(elem.is("a", "b"));
@@ -307,11 +311,15 @@ fn get_child_works() {
         .unwrap()
         .is("child", "child_ns"));
     assert_eq!(
-        root.get_child("child", "root_ns").unwrap().attr("c"),
+        root.get_child("child", "root_ns")
+            .unwrap()
+            .attr(xml_ncname!("c")),
         Some("d")
     );
     assert_eq!(
-        root.get_child("child", "child_ns").unwrap().attr("d"),
+        root.get_child("child", "child_ns")
+            .unwrap()
+            .attr(xml_ncname!("d")),
         Some("e")
     );
 }
@@ -349,12 +357,15 @@ fn two_elements_with_same_arguments_different_order_are_equal() {
 #[test]
 fn namespace_attributes_works() {
     let root = Element::from_reader(TEST_STRING).unwrap();
-    assert_eq!("en", root.attr("xml:lang").unwrap());
+    assert_eq!(
+        Some("en"),
+        root.attr_ns(RxmlNamespace::xml(), xml_ncname!("lang"))
+    );
     assert_eq!(
         "fr",
         root.get_child("child", "child_ns")
             .unwrap()
-            .attr("xml:lang")
+            .attr_ns(RxmlNamespace::xml(), xml_ncname!("lang"))
             .unwrap()
     );
 }

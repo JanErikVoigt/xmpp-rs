@@ -8,7 +8,11 @@ use crate::message::MessagePayload;
 use crate::ns;
 use alloc::collections::BTreeMap;
 use minidom::{Element, Node};
-use xso::error::{Error, FromElementError};
+use xso::exports::rxml;
+use xso::{
+    error::{Error, FromElementError},
+    exports::rxml::Namespace,
+};
 
 // TODO: Use a proper lang type.
 type Lang = String;
@@ -72,7 +76,10 @@ impl TryFrom<Element> for XhtmlIm {
         for child in elem.children() {
             if child.is("body", ns::XHTML) {
                 let child = child.clone();
-                let lang = child.attr("xml:lang").unwrap_or("").to_string();
+                let lang = child
+                    .attr_ns(rxml::Namespace::xml(), rxml::xml_ncname!("lang").into())
+                    .unwrap_or("")
+                    .to_string();
                 let body = Body::try_from(child)?;
                 match bodies.insert(lang, body) {
                     None => (),
@@ -161,8 +168,13 @@ impl TryFrom<Element> for Body {
         }
 
         Ok(Body {
-            style: parse_css(elem.attr("style")),
-            xml_lang: elem.attr("xml:lang").map(|xml_lang| xml_lang.to_string()),
+            style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+            xml_lang: elem
+                .attr_ns(
+                    &Into::<Namespace>::into(String::from("xml")),
+                    rxml::xml_ncname!("lang").into(),
+                )
+                .map(|xml_lang| xml_lang.to_string()),
             children,
         })
     }
@@ -171,8 +183,15 @@ impl TryFrom<Element> for Body {
 impl From<Body> for Element {
     fn from(body: Body) -> Element {
         Element::builder("body", ns::XHTML)
-            .attr("style", get_style_string(body.style))
-            .attr("xml:lang", body.xml_lang)
+            .attr(
+                rxml::xml_ncname!("style").into(),
+                get_style_string(body.style),
+            )
+            .attr_ns(
+                Into::<Namespace>::into(String::from("xml")),
+                rxml::xml_ncname!("lang").into(),
+                body.xml_lang,
+            )
             .append_all(children_to_nodes(body.children))
             .build()
     }
@@ -309,44 +328,52 @@ impl TryFrom<Element> for Tag {
 
         Ok(match elem.name() {
             "a" => Tag::A {
-                href: elem.attr("href").map(|href| href.to_string()),
-                style: parse_css(elem.attr("style")),
-                type_: elem.attr("type").map(|type_| type_.to_string()),
+                href: elem
+                    .attr(rxml::xml_ncname!("href"))
+                    .map(|href| href.to_string()),
+                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+                type_: elem
+                    .attr(rxml::xml_ncname!("type"))
+                    .map(|type_| type_.to_string()),
                 children,
             },
             "blockquote" => Tag::Blockquote {
-                style: parse_css(elem.attr("style")),
+                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
                 children,
             },
             "br" => Tag::Br,
             "cite" => Tag::Cite {
-                style: parse_css(elem.attr("style")),
+                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
                 children,
             },
             "em" => Tag::Em { children },
             "img" => Tag::Img {
-                src: elem.attr("src").map(|src| src.to_string()),
-                alt: elem.attr("alt").map(|alt| alt.to_string()),
+                src: elem
+                    .attr(rxml::xml_ncname!("src"))
+                    .map(|src| src.to_string()),
+                alt: elem
+                    .attr(rxml::xml_ncname!("alt"))
+                    .map(|alt| alt.to_string()),
             },
             "li" => Tag::Li {
-                style: parse_css(elem.attr("style")),
+                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
                 children,
             },
             "ol" => Tag::Ol {
-                style: parse_css(elem.attr("style")),
+                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
                 children,
             },
             "p" => Tag::P {
-                style: parse_css(elem.attr("style")),
+                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
                 children,
             },
             "span" => Tag::Span {
-                style: parse_css(elem.attr("style")),
+                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
                 children,
             },
             "strong" => Tag::Strong { children },
             "ul" => Tag::Ul {
-                style: parse_css(elem.attr("style")),
+                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
                 children,
             },
             _ => Tag::Unknown(children),
@@ -367,13 +394,13 @@ impl From<Tag> for Element {
                 {
                     let mut attrs = vec![];
                     if let Some(href) = href {
-                        attrs.push(("href", href));
+                        attrs.push((rxml::xml_ncname!("href"), href));
                     }
                     if let Some(style) = get_style_string(style) {
-                        attrs.push(("style", style));
+                        attrs.push((rxml::xml_ncname!("style"), style));
                     }
                     if let Some(type_) = type_ {
-                        attrs.push(("type", type_));
+                        attrs.push((rxml::xml_ncname!("type"), type_));
                     }
                     attrs
                 },
@@ -382,7 +409,7 @@ impl From<Tag> for Element {
             Tag::Blockquote { style, children } => (
                 "blockquote",
                 match get_style_string(style) {
-                    Some(style) => vec![("style", style)],
+                    Some(style) => vec![(rxml::xml_ncname!("style"), style)],
                     None => vec![],
                 },
                 children,
@@ -391,7 +418,7 @@ impl From<Tag> for Element {
             Tag::Cite { style, children } => (
                 "cite",
                 match get_style_string(style) {
-                    Some(style) => vec![("style", style)],
+                    Some(style) => vec![(rxml::xml_ncname!("style"), style)],
                     None => vec![],
                 },
                 children,
@@ -400,17 +427,17 @@ impl From<Tag> for Element {
             Tag::Img { src, alt } => {
                 let mut attrs = vec![];
                 if let Some(src) = src {
-                    attrs.push(("src", src));
+                    attrs.push((rxml::xml_ncname!("src"), src));
                 }
                 if let Some(alt) = alt {
-                    attrs.push(("alt", alt));
+                    attrs.push((rxml::xml_ncname!("alt"), alt));
                 }
                 ("img", attrs, vec![])
             }
             Tag::Li { style, children } => (
                 "li",
                 match get_style_string(style) {
-                    Some(style) => vec![("style", style)],
+                    Some(style) => vec![(rxml::xml_ncname!("style"), style)],
                     None => vec![],
                 },
                 children,
@@ -418,7 +445,7 @@ impl From<Tag> for Element {
             Tag::Ol { style, children } => (
                 "ol",
                 match get_style_string(style) {
-                    Some(style) => vec![("style", style)],
+                    Some(style) => vec![(rxml::xml_ncname!("style"), style)],
                     None => vec![],
                 },
                 children,
@@ -426,7 +453,7 @@ impl From<Tag> for Element {
             Tag::P { style, children } => (
                 "p",
                 match get_style_string(style) {
-                    Some(style) => vec![("style", style)],
+                    Some(style) => vec![(rxml::xml_ncname!("style"), style)],
                     None => vec![],
                 },
                 children,
@@ -434,7 +461,7 @@ impl From<Tag> for Element {
             Tag::Span { style, children } => (
                 "span",
                 match get_style_string(style) {
-                    Some(style) => vec![("style", style)],
+                    Some(style) => vec![(rxml::xml_ncname!("style"), style)],
                     None => vec![],
                 },
                 children,
@@ -443,7 +470,7 @@ impl From<Tag> for Element {
             Tag::Ul { style, children } => (
                 "ul",
                 match get_style_string(style) {
-                    Some(style) => vec![("style", style)],
+                    Some(style) => vec![(rxml::xml_ncname!("style"), style)],
                     None => vec![],
                 },
                 children,
@@ -454,7 +481,7 @@ impl From<Tag> for Element {
         };
         let mut builder = Element::builder(name, ns::XHTML).append_all(children_to_nodes(children));
         for (key, value) in attrs {
-            builder = builder.attr(key, value);
+            builder = builder.attr(key.into(), value);
         }
         builder.build()
     }

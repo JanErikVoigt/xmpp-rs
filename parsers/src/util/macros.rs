@@ -15,13 +15,13 @@ macro_rules! get_attr {
         )
     };
     ($elem:ident, $attr:tt, Option, $value:ident, $func:expr) => {
-        match $elem.attr($attr) {
+        match $elem.attr(::xso::exports::rxml::xml_ncname!($attr).into()) {
             Some($value) => Some($func),
             None => None,
         }
     };
     ($elem:ident, $attr:tt, Required, $value:ident, $func:expr) => {
-        match $elem.attr($attr) {
+        match $elem.attr(::xso::exports::rxml::xml_ncname!($attr).into()) {
             Some($value) => $func,
             None => {
                 return Err(xso::error::Error::Other(
@@ -32,7 +32,7 @@ macro_rules! get_attr {
         }
     };
     ($elem:ident, $attr:tt, Default, $value:ident, $func:expr) => {
-        match $elem.attr($attr) {
+        match $elem.attr(::xso::exports::rxml::xml_ncname!($attr).into()) {
             Some($value) => $func,
             None => ::core::default::Default::default(),
         }
@@ -277,7 +277,7 @@ macro_rules! generate_attribute_enum {
         impl From<$elem> for minidom::Element {
             fn from(elem: $elem) -> minidom::Element {
                 minidom::Element::builder($name, crate::ns::$ns)
-                    .attr($attr, match elem {
+                    .attr(::xso::exports::rxml::xml_ncname!($attr).into(), match elem {
                          $($elem::$enum => $enum_name,)+
                      })
                      .build()
@@ -343,9 +343,9 @@ macro_rules! check_no_attributes {
 macro_rules! check_no_unknown_attributes {
     ($elem:ident, $name:tt, [$($attr:tt),*]) => (
         #[cfg(not(feature = "disable-validation"))]
-        for (_attr, _) in $elem.attrs() {
+        for ((ns, attr), _) in $elem.attrs() {
             $(
-                if _attr == $attr {
+                if *ns == ::xso::exports::rxml::Namespace::NONE && attr == $attr {
                     continue;
                 }
             )*

@@ -46,6 +46,7 @@ mod helpers {
 
 use self::helpers::{parse_str, roundtrip_full};
 
+use xso::exports::rxml;
 use xso::{AsXml, FromXml, PrintRawXml};
 
 // these are adverserial local names in order to trigger any issues with
@@ -1790,9 +1791,9 @@ fn element_catch_one_and_many_parse_in_order() {
         "<parent xmlns='urn:example:ns1'><child num='0'/><child num='1'/></parent>",
     ) {
         Ok(ElementCatchOneAndMany { child, children }) => {
-            assert_eq!(child.attr("num"), Some("0"));
+            assert_eq!(child.attr(rxml::xml_ncname!("num")), Some("0"));
             assert_eq!(children.len(), 1);
-            assert_eq!(children[0].attr("num"), Some("1"));
+            assert_eq!(children[0].attr(rxml::xml_ncname!("num")), Some("1"));
         }
         other => panic!("unexpected result: {:?}", other),
     }

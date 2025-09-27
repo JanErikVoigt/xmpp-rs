@@ -1,4 +1,5 @@
 // Copyright (c) 2022 Astro <astro@spaceboyz.net>
+// Copyright (c) 2025 pep <pep@bouah.net>
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,19 +9,18 @@
 
 use crate::prefixes::{Prefix, Prefixes};
 use crate::{Element, Error};
-use alloc::collections::BTreeMap;
-use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
-use rxml::RawEvent;
+use rxml::{AttrMap, Namespace, RawEvent};
 
 /// Tree-building parser state
 pub struct TreeBuilder {
-    next_tag: Option<(Prefix, String, Prefixes, BTreeMap<String, String>)>,
+    next_tag: Option<(Prefix, String, Prefixes, AttrMap)>,
     /// Parsing stack
     stack: Vec<Element>,
     /// Namespace set stack by prefix
     prefixes_stack: Vec<Prefixes>,
+    attrs_stack: Vec<(String, String, String)>,
     /// Document root element if finished
     pub root: Option<Element>,
 }
@@ -39,6 +39,7 @@ impl TreeBuilder {
             next_tag: None,
             stack: Vec::new(),
             prefixes_stack: Vec::new(),
+            attrs_stack: Vec::new(),
             root: None,
         }
     }
@@ -83,8 +84,11 @@ impl TreeBuilder {
 
     /// Lookup XML namespace declaration for given prefix (or no prefix)
     #[must_use]
-    fn lookup_prefix(&self, prefix: &Option<String>) -> Option<&str> {
-        for nss in self.prefixes_stack.iter().rev() {
+    fn lookup_prefix<'a>(
+        prefixes_stack: &'a Vec<Prefixes>,
+        prefix: &'a Option<String>,
+    ) -> Option<&'a str> {
+        for nss in prefixes_stack.iter().rev() {
             if let Some(ns) = nss.get(prefix) {
                 return Some(ns);
             }
@@ -129,7 +133,7 @@ impl TreeBuilder {
                     prefix.map(|prefix| prefix.as_str().to_owned()),
                     name.as_str().to_owned(),
                     prefixes,
-                    BTreeMap::new(),
+                    AttrMap::new(),
                 ));
             }
 
@@ -141,23 +145,47 @@ impl TreeBuilder {
                             prefixes.insert(Some(prefix.as_str().to_owned()), value);
                         }
                         (Some(prefix), name) => {
-                            attrs.insert(format!("{prefix}:{name}"), value.as_str().to_owned());
+                            self.attrs_stack
+                                .push((prefix.to_string(), name.to_string(), value));
                         }
                         (None, name) => {
-                            attrs.insert(name.as_str().to_owned(), value.as_str().to_owned());
+                            attrs.insert(
+                                Namespace::NONE,
+                                name.try_into().unwrap(),
+                                value.as_str().to_owned(),
+                            );
                         }
                     }
                 }
             }
 
             RawEvent::ElementHeadClose(_) => {
-                if let Some((prefix, name, prefixes, attrs)) = self.next_tag.take() {
+                if let Some((prefix, name, prefixes, mut attrs)) = self.next_tag.take() {
                     self.prefixes_stack.push(prefixes.clone());
 
-                    let namespace = self
-                        .lookup_prefix(&prefix.map(|prefix| prefix.as_str().to_owned()))
-                        .ok_or(Error::MissingNamespace)?
-                        .to_owned();
+                    let namespace = TreeBuilder::lookup_prefix(
+                        &self.prefixes_stack,
+                        &prefix.map(|prefix| prefix.as_str().to_owned()),
+                    )
+                    .ok_or(Error::MissingNamespace)?
+                    .to_owned();
+
+                    for (prefix, attr, value) in self.attrs_stack.drain(..) {
+                        let ns = if prefix == "xml" {
+                            rxml::Namespace::xml()
+                        } else {
+                            &TreeBuilder::lookup_prefix(
+                                &self.prefixes_stack,
+                                &Some(prefix.to_string()),
+                            )
+                            .map(String::from)
+                            .map(|s| TryInto::<Namespace>::try_into(s).unwrap())
+                            .ok_or(Error::MissingNamespace)?
+                            .to_owned()
+                        };
+                        attrs.insert(ns.clone(), attr.try_into().unwrap(), value.to_string());
+                    }
+
                     let el = Element::new(name.to_owned(), namespace, prefixes, attrs, Vec::new());
                     self.stack.push(el);
                 }

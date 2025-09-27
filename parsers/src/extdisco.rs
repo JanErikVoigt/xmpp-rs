@@ -193,7 +193,7 @@ mod tests {
         let query = ServicesQuery { type_: None };
         let elem = Element::from(query);
         assert!(elem.is("services", ns::EXT_DISCO));
-        assert_eq!(elem.attrs().next(), None);
+        assert_eq!(elem.attrs().into_iter().next(), None);
         assert_eq!(elem.nodes().next(), None);
     }
 

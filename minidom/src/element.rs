@@ -20,7 +20,6 @@ use crate::prefixes::{Namespace, Prefix, Prefixes};
 use crate::tree_builder::TreeBuilder;
 
 use alloc::borrow::Cow;
-use alloc::collections::btree_map::{self, BTreeMap};
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -30,7 +29,7 @@ use core::str::FromStr;
 use std::io;
 
 use rxml::writer::{Encoder, Item, TrackNamespace};
-use rxml::{Namespace as RxmlNamespace, RawReader, XmlVersion};
+use rxml::{AttrMap, Namespace as RxmlNamespace, NcName, NcNameStr, RawReader, XmlVersion};
 
 fn encode_and_write<W: io::Write, T: rxml::writer::TrackNamespace>(
     item: Item<'_>,
@@ -121,7 +120,7 @@ pub struct Element {
     namespace: String,
     /// Namespace declarations
     pub prefixes: Prefixes,
-    attributes: BTreeMap<String, String>,
+    attributes: AttrMap,
     children: Vec<Node>,
 }
 
@@ -162,7 +161,7 @@ impl Element {
         name: String,
         namespace: String,
         prefixes: P,
-        attributes: BTreeMap<String, String>,
+        attributes: AttrMap,
         children: Vec<Node>,
     ) -> Element {
         Element {
@@ -180,16 +179,17 @@ impl Element {
     ///
     /// ```rust
     /// use minidom::Element;
+    /// use rxml::{Namespace, xml_ncname};
     ///
     /// let elem = Element::builder("name", "namespace")
-    ///                    .attr("name", "value")
+    ///                    .attr(xml_ncname!("name").to_owned(), "value")
     ///                    .append("inner")
     ///                    .build();
     ///
     /// assert_eq!(elem.name(), "name");
     /// assert_eq!(elem.ns(), "namespace".to_owned());
-    /// assert_eq!(elem.attr("name"), Some("value"));
-    /// assert_eq!(elem.attr("inexistent"), None);
+    /// assert_eq!(elem.attr(xml_ncname!("name")), Some("value"));
+    /// assert_eq!(elem.attr(xml_ncname!("inexistent")), None);
     /// assert_eq!(elem.text(), "inner");
     /// ```
     pub fn builder<S: AsRef<str>, NS: Into<String>>(name: S, namespace: NS) -> ElementBuilder {
@@ -198,7 +198,7 @@ impl Element {
                 name.as_ref().to_string(),
                 namespace.into(),
                 None,
-                BTreeMap::new(),
+                AttrMap::new(),
                 Vec::new(),
             ),
         }
@@ -210,12 +210,13 @@ impl Element {
     ///
     /// ```rust
     /// use minidom::Element;
+    /// use rxml::{Namespace, xml_ncname};
     ///
     /// let bare = Element::bare("name", "namespace");
     ///
     /// assert_eq!(bare.name(), "name");
     /// assert_eq!(bare.ns(), "namespace");
-    /// assert_eq!(bare.attr("name"), None);
+    /// assert_eq!(bare.attr(xml_ncname!("name")), None);
     /// assert_eq!(bare.text(), "");
     /// ```
     pub fn bare<S: Into<String>, NS: Into<String>>(name: S, namespace: NS) -> Element {
@@ -223,7 +224,7 @@ impl Element {
             name.into(),
             namespace.into(),
             None,
-            BTreeMap::new(),
+            AttrMap::new(),
             Vec::new(),
         )
     }
@@ -242,8 +243,17 @@ impl Element {
 
     /// Returns a reference to the value of the given attribute, if it exists, else `None`.
     #[must_use]
-    pub fn attr(&self, name: &str) -> Option<&str> {
-        if let Some(value) = self.attributes.get(name) {
+    pub fn attr<'a>(&'a self, name: &'a NcNameStr) -> Option<&'a str> {
+        if let Some(value) = self.attributes.get(&RxmlNamespace::NONE, name) {
+            return Some(value);
+        }
+        None
+    }
+
+    /// Returns a reference to the value of the given namespaced attribute, if it exists, else `None`.
+    #[must_use]
+    pub fn attr_ns<'a>(&'a self, ns: &'a RxmlNamespace, name: &'a NcNameStr) -> Option<&'a str> {
+        if let Some(value) = self.attributes.get(ns, name) {
             return Some(value);
         }
         None
@@ -255,43 +265,39 @@ impl Element {
     ///
     /// ```rust
     /// use minidom::Element;
+    /// use rxml::{Namespace, xml_ncname};
     ///
     /// let elm: Element = "<elem xmlns=\"ns1\" a=\"b\" />".parse().unwrap();
     ///
-    /// let mut iter = elm.attrs();
+    /// let mut iter = elm.attrs().iter();
     ///
-    /// assert_eq!(iter.next().unwrap(), ("a", "b"));
+    /// assert_eq!(iter.next().unwrap(), ((&Namespace::NONE, &xml_ncname!("a").to_owned()), &String::from("b")));
     /// assert_eq!(iter.next(), None);
     /// ```
     #[must_use]
-    pub fn attrs(&self) -> Attrs<'_> {
-        Attrs {
-            iter: self.attributes.iter(),
-        }
+    pub fn attrs(&self) -> &AttrMap {
+        &self.attributes
     }
 
     /// Returns an iterator over the attributes of this element, with the value being a mutable
     /// reference.
     #[must_use]
-    pub fn attrs_mut(&mut self) -> AttrsMut<'_> {
-        AttrsMut {
-            iter: self.attributes.iter_mut(),
-        }
+    pub fn attrs_mut(&mut self) -> &mut AttrMap {
+        &mut self.attributes
     }
 
     /// Modifies the value of an attribute.
-    pub fn set_attr<S: Into<String>, V: IntoAttributeValue>(&mut self, name: S, val: V) {
-        let name = name.into();
+    pub fn set_attr<V: IntoAttributeValue>(&mut self, ns: RxmlNamespace, name: NcName, val: V) {
         let val = val.into_attribute_value();
 
-        if let Some(value) = self.attributes.get_mut(&name) {
+        if let Some(value) = self.attributes.get_mut(&ns, &name) {
             *value = val
                 .expect("removing existing value via set_attr, this is not yet supported (TODO)"); // TODO
             return;
         }
 
         if let Some(val) = val {
-            self.attributes.insert(name, val);
+            self.attributes.insert(ns.clone(), name, val);
         }
     }
 
@@ -405,19 +411,8 @@ impl Element {
         let namespace: RxmlNamespace = self.namespace.clone().into();
         writer.write(Item::ElementHeadStart(&namespace, (*self.name).try_into()?))?;
 
-        for (key, value) in &self.attributes {
-            let (prefix, name) = <&rxml::NameStr>::try_from(&**key)
-                .unwrap()
-                .split_name()
-                .unwrap();
-            let namespace = match prefix {
-                Some(prefix) => match writer.encoder.ns_tracker().lookup_prefix(Some(prefix)) {
-                    Ok(v) => v,
-                    Err(rxml::writer::PrefixError::Undeclared) => return Err(Error::InvalidPrefix),
-                },
-                None => RxmlNamespace::NONE,
-            };
-            writer.write(Item::Attribute(&namespace, name, value))?;
+        for ((ns, key), value) in &self.attributes {
+            writer.write(Item::Attribute(&ns, key, value))?;
         }
 
         if !self.children.is_empty() {
@@ -870,32 +865,6 @@ pub type Nodes<'a> = slice::Iter<'a, Node>;
 /// An iterator over mutable references to all child nodes of an `Element`.
 pub type NodesMut<'a> = slice::IterMut<'a, Node>;
 
-/// An iterator over the attributes of an `Element`.
-pub struct Attrs<'a> {
-    iter: btree_map::Iter<'a, String, String>,
-}
-
-impl<'a> Iterator for Attrs<'a> {
-    type Item = (&'a str, &'a str);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(x, y)| (x.as_ref(), y.as_ref()))
-    }
-}
-
-/// An iterator over the attributes of an `Element`, with the values mutable.
-pub struct AttrsMut<'a> {
-    iter: btree_map::IterMut<'a, String, String>,
-}
-
-impl<'a> Iterator for AttrsMut<'a> {
-    type Item = (&'a str, &'a mut String);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(x, y)| (x.as_ref(), y))
-    }
-}
-
 /// A builder for `Element`s.
 pub struct ElementBuilder {
     root: Element,
@@ -917,12 +886,20 @@ impl ElementBuilder {
 
     /// Sets an attribute.
     #[must_use]
-    pub fn attr<S: Into<String>, V: IntoAttributeValue>(
+    pub fn attr<V: IntoAttributeValue>(mut self, name: NcName, value: V) -> ElementBuilder {
+        self.root.set_attr(RxmlNamespace::NONE, name, value);
+        self
+    }
+
+    /// Sets an attribute.
+    #[must_use]
+    pub fn attr_ns<V: IntoAttributeValue>(
         mut self,
-        name: S,
+        ns: RxmlNamespace,
+        name: NcName,
         value: V,
     ) -> ElementBuilder {
-        self.root.set_attr(name, value);
+        self.root.set_attr(ns, name, value);
         self
     }
 
@@ -955,21 +932,32 @@ impl ElementBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rxml::xml_ncname;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_element_new() {
+        let mut attrs = AttrMap::new();
+        attrs.insert(
+            String::from("namespace").into(),
+            xml_ncname!("name").to_owned(),
+            "value".to_string(),
+        );
         let elem = Element::new(
             "name".to_owned(),
             "namespace".to_owned(),
             (None, "namespace".to_owned()),
-            BTreeMap::from_iter([("name".to_string(), "value".to_string())].into_iter()),
+            attrs,
             Vec::new(),
         );
 
         assert_eq!(elem.name(), "name");
         assert_eq!(elem.ns(), "namespace".to_owned());
-        assert_eq!(elem.attr("name"), Some("value"));
-        assert_eq!(elem.attr("inexistent"), None);
+        assert_eq!(
+            elem.attr_ns(&String::from("namespace").into(), xml_ncname!("name")),
+            Some("value")
+        );
+        assert_eq!(elem.attr(xml_ncname!("inexistent")), None);
     }
 
     #[test]
@@ -987,7 +975,9 @@ mod tests {
         let xml = b"<foo xmlns='ns1'><bar xmlns='ns1' baz='qxx' /></foo>";
         let elem = Element::from_reader(&xml[..]);
 
-        let nested = Element::builder("bar", "ns1").attr("baz", "qxx").build();
+        let nested = Element::builder("bar", "ns1")
+            .attr(xml_ncname!("baz").to_owned(), "qxx")
+            .build();
         let elem2 = Element::builder("foo", "ns1").append(nested).build();
 
         assert_eq!(elem.unwrap(), elem2);
@@ -998,7 +988,9 @@ mod tests {
         let xml = b"<foo xmlns='ns1'><prefix:bar xmlns:prefix='ns1' baz='qxx' /></foo>";
         let elem = Element::from_reader(&xml[..]);
 
-        let nested = Element::builder("bar", "ns1").attr("baz", "qxx").build();
+        let nested = Element::builder("bar", "ns1")
+            .attr(xml_ncname!("baz").to_owned(), "qxx")
+            .build();
         let elem2 = Element::builder("foo", "ns1").append(nested).build();
 
         assert_eq!(elem.unwrap(), elem2);

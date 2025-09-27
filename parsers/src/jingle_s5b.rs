@@ -4,6 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use xso::exports::rxml;
 use xso::{
     error::{Error, FromElementError},
     AsXml, FromXml,
@@ -254,9 +255,9 @@ impl TryFrom<Element> for Transport {
 impl From<Transport> for Element {
     fn from(transport: Transport) -> Element {
         Element::builder("transport", ns::JINGLE_S5B)
-            .attr("sid", transport.sid)
-            .attr("dstaddr", transport.dstaddr)
-            .attr("mode", transport.mode)
+            .attr(rxml::xml_ncname!("sid").into(), transport.sid)
+            .attr(rxml::xml_ncname!("dstaddr").into(), transport.dstaddr)
+            .attr(rxml::xml_ncname!("mode").into(), transport.mode)
             .append_all(match transport.payload {
                 TransportPayload::Candidates(candidates) => candidates
                     .into_iter()
@@ -264,7 +265,7 @@ impl From<Transport> for Element {
                     .collect::<Vec<_>>(),
                 TransportPayload::Activated(cid) => {
                     vec![Element::builder("activated", ns::JINGLE_S5B)
-                        .attr("cid", cid)
+                        .attr(rxml::xml_ncname!("cid").into(), cid)
                         .build()]
                 }
                 TransportPayload::CandidateError => {
@@ -272,7 +273,7 @@ impl From<Transport> for Element {
                 }
                 TransportPayload::CandidateUsed(cid) => {
                     vec![Element::builder("candidate-used", ns::JINGLE_S5B)
-                        .attr("cid", cid)
+                        .attr(rxml::xml_ncname!("cid").into(), cid)
                         .build()]
                 }
                 TransportPayload::ProxyError => {
