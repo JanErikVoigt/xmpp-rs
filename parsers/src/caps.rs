@@ -194,6 +194,7 @@ mod tests {
     use super::*;
     use crate::caps;
     use minidom::Element;
+    #[cfg(not(feature = "disable-validation"))]
     use xso::error::{Error, FromElementError};
 
     #[cfg(target_pointer_width = "32")]
