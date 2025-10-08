@@ -71,7 +71,8 @@
 //! You can find more information on our website [xmpp.rs](https://xmpp.rs/) or by joining our chatroom [chat@xmpp.rs](xmpp:chat@xmpp.rs?join).
 
 #![deny(unsafe_code, missing_docs, bare_trait_objects)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, doc(auto_cfg))]
 
 macro_rules! fail_native_with_any {
     ($($feature:literal),+) => {

@@ -46,7 +46,8 @@
 //! - `escape-hatch`: Allow access to low-level API to bypass shortcomings of the current API.
 
 #![deny(bare_trait_objects)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, doc(auto_cfg))]
 
 extern crate alloc;
 

@@ -1,5 +1,5 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, doc(auto_cfg))]
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 /*!

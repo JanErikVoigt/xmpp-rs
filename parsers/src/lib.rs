@@ -22,7 +22,8 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #![warn(missing_docs)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, doc(auto_cfg))]
 
 extern crate alloc;
 
