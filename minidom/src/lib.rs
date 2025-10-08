@@ -95,3 +95,4 @@ pub use element::{Children, ChildrenMut, Element, ElementBuilder};
 pub use error::{Error, Result};
 pub use namespaces::NSChoice;
 pub use node::Node;
+pub use rxml;
