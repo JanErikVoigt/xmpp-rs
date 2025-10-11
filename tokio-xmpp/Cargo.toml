@@ -23,6 +23,7 @@ rxml = { version = "0.13.1", features = ["compact_str"] }
 rand = "0.9"
 syntect = { version = "5", optional = true }
 pin-project-lite = { version = "0.2" }
+thiserror = "2.0"
 # same repository dependencies
 sasl = { version = "0.5", path = "../sasl" }
 xmpp-parsers = { version = "0.21", path = "../parsers", features = [ "log" ] }

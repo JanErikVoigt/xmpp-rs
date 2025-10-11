@@ -13,13 +13,14 @@
 
 use std::io;
 
-use core::{error::Error as StdError, fmt};
+use thiserror::Error;
 
 /// Our main error type.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
     /// Error from rxml parsing or writing
-    XmlError(rxml::Error),
+    #[error("XML error: {0}")]
+    XmlError(#[from] rxml::Error),
 
     /// I/O error from accessing the source or destination.
     ///
@@ -27,33 +28,25 @@ pub enum Error {
     /// [`io::Error`] when using it with [`BufRead`][`io::BufRead`],
     /// any rxml errors will still be reported through the
     /// [`XmlError`][`Self::XmlError`] variant.
+    #[error("I/O error: {0}")]
     Io(io::Error),
 
     /// An error which is returned when the end of the document was reached prematurely.
+    #[error("the end of the document has been reached prematurely")]
     EndOfDocument,
 
     /// An error which is returned when an element being serialized doesn't contain a prefix
     /// (be it None or Some(_)).
+    #[error("the prefix is invalid")]
     InvalidPrefix,
 
     /// An error which is returned when an element doesn't contain a namespace
+    #[error("the XML element is missing a namespace")]
     MissingNamespace,
 
     /// An error which is returned when a prefixed is defined twice
+    #[error("the prefix is already defined")]
     DuplicatePrefix,
-}
-
-impl StdError for Error {
-    fn cause(&self) -> Option<&dyn StdError> {
-        match self {
-            Error::XmlError(e) => Some(e),
-            Error::Io(e) => Some(e),
-            Error::EndOfDocument
-            | Error::InvalidPrefix
-            | Error::MissingNamespace
-            | Error::DuplicatePrefix => None,
-        }
-    }
 }
 
 impl From<io::Error> for Error {
@@ -62,27 +55,6 @@ impl From<io::Error> for Error {
             Ok(e) => Self::XmlError(e),
             Err(e) => Self::Io(e),
         }
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::XmlError(e) => write!(fmt, "XML error: {e}"),
-            Error::Io(e) => write!(fmt, "I/O error: {e}"),
-            Error::EndOfDocument => {
-                write!(fmt, "the end of the document has been reached prematurely")
-            }
-            Error::InvalidPrefix => write!(fmt, "the prefix is invalid"),
-            Error::MissingNamespace => write!(fmt, "the XML element is missing a namespace",),
-            Error::DuplicatePrefix => write!(fmt, "the prefix is already defined"),
-        }
-    }
-}
-
-impl From<rxml::Error> for Error {
-    fn from(err: rxml::Error) -> Error {
-        Error::XmlError(err)
     }
 }
 
