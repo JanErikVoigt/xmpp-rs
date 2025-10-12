@@ -1,4 +1,6 @@
 Version NEXT:
+  * Changes
+    * Use thiserror for the error type. (!616)
 
 Version 0.17, released 2025-09-17:
   * Changes
