@@ -26,10 +26,12 @@ use alloc::vec::Vec;
 use core::slice;
 use core::str::FromStr;
 
+use std::borrow::Borrow;
+use std::hash::Hash;
 use std::io;
 
 use rxml::writer::{Encoder, Item, TrackNamespace};
-use rxml::{AttrMap, Namespace as RxmlNamespace, NcName, NcNameStr, RawReader, XmlVersion};
+use rxml::{AttrMap, Namespace as RxmlNamespace, NcName, RawReader, XmlVersion};
 
 fn encode_and_write<W: io::Write, T: rxml::writer::TrackNamespace>(
     item: Item<'_>,
@@ -188,8 +190,8 @@ impl Element {
     ///
     /// assert_eq!(elem.name(), "name");
     /// assert_eq!(elem.ns(), "namespace".to_owned());
-    /// assert_eq!(elem.attr(xml_ncname!("name")), Some("value"));
-    /// assert_eq!(elem.attr(xml_ncname!("inexistent")), None);
+    /// assert_eq!(elem.attr("name"), Some("value"));
+    /// assert_eq!(elem.attr("inexistent"), None);
     /// assert_eq!(elem.text(), "inner");
     /// ```
     pub fn builder<S: AsRef<str>, NS: Into<String>>(name: S, namespace: NS) -> ElementBuilder {
@@ -210,13 +212,13 @@ impl Element {
     ///
     /// ```rust
     /// use minidom::Element;
-    /// use rxml::{Namespace, xml_ncname};
+    /// use rxml::Namespace;
     ///
     /// let bare = Element::bare("name", "namespace");
     ///
     /// assert_eq!(bare.name(), "name");
     /// assert_eq!(bare.ns(), "namespace");
-    /// assert_eq!(bare.attr(xml_ncname!("name")), None);
+    /// assert_eq!(bare.attr("name"), None);
     /// assert_eq!(bare.text(), "");
     /// ```
     pub fn bare<S: Into<String>, NS: Into<String>>(name: S, namespace: NS) -> Element {
@@ -243,7 +245,10 @@ impl Element {
 
     /// Returns a reference to the value of the given attribute, if it exists, else `None`.
     #[must_use]
-    pub fn attr<'a>(&'a self, name: &'a NcNameStr) -> Option<&'a str> {
+    pub fn attr<'a, N: Ord + Hash + Eq + ?Sized>(&'a self, name: &'a N) -> Option<&'a str>
+    where
+        NcName: Borrow<N>,
+    {
         if let Some(value) = self.attributes.get(&RxmlNamespace::NONE, name) {
             return Some(value);
         }
@@ -252,7 +257,15 @@ impl Element {
 
     /// Returns a reference to the value of the given namespaced attribute, if it exists, else `None`.
     #[must_use]
-    pub fn attr_ns<'a>(&'a self, ns: &'a RxmlNamespace, name: &'a NcNameStr) -> Option<&'a str> {
+    pub fn attr_ns<'a, NS: Ord + Hash + Eq + ?Sized, N: Ord + Hash + Eq + ?Sized>(
+        &'a self,
+        ns: &'a NS,
+        name: &'a N,
+    ) -> Option<&'a str>
+    where
+        RxmlNamespace: Borrow<NS>,
+        NcName: Borrow<N>,
+    {
         if let Some(value) = self.attributes.get(ns, name) {
             return Some(value);
         }
@@ -953,11 +966,8 @@ mod tests {
 
         assert_eq!(elem.name(), "name");
         assert_eq!(elem.ns(), "namespace".to_owned());
-        assert_eq!(
-            elem.attr_ns(&String::from("namespace").into(), xml_ncname!("name")),
-            Some("value")
-        );
-        assert_eq!(elem.attr(xml_ncname!("inexistent")), None);
+        assert_eq!(elem.attr_ns("namespace", "name"), Some("value"));
+        assert_eq!(elem.attr("inexistent"), None);
     }
 
     #[test]

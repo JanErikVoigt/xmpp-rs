@@ -77,7 +77,7 @@ impl TryFrom<Element> for XhtmlIm {
             if child.is("body", ns::XHTML) {
                 let child = child.clone();
                 let lang = child
-                    .attr_ns(rxml::Namespace::xml(), rxml::xml_ncname!("lang").into())
+                    .attr_ns(rxml::Namespace::xml(), "lang")
                     .unwrap_or("")
                     .to_string();
                 let body = Body::try_from(child)?;
@@ -168,12 +168,9 @@ impl TryFrom<Element> for Body {
         }
 
         Ok(Body {
-            style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+            style: parse_css(elem.attr("style")),
             xml_lang: elem
-                .attr_ns(
-                    &Into::<Namespace>::into(String::from("xml")),
-                    rxml::xml_ncname!("lang").into(),
-                )
+                .attr_ns("xml", "lang")
                 .map(|xml_lang| xml_lang.to_string()),
             children,
         })
@@ -328,52 +325,44 @@ impl TryFrom<Element> for Tag {
 
         Ok(match elem.name() {
             "a" => Tag::A {
-                href: elem
-                    .attr(rxml::xml_ncname!("href"))
-                    .map(|href| href.to_string()),
+                href: elem.attr("href").map(|href| href.to_string()),
                 style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
-                type_: elem
-                    .attr(rxml::xml_ncname!("type"))
-                    .map(|type_| type_.to_string()),
+                type_: elem.attr("type").map(|type_| type_.to_string()),
                 children,
             },
             "blockquote" => Tag::Blockquote {
-                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+                style: parse_css(elem.attr("style")),
                 children,
             },
             "br" => Tag::Br,
             "cite" => Tag::Cite {
-                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+                style: parse_css(elem.attr("style")),
                 children,
             },
             "em" => Tag::Em { children },
             "img" => Tag::Img {
-                src: elem
-                    .attr(rxml::xml_ncname!("src"))
-                    .map(|src| src.to_string()),
-                alt: elem
-                    .attr(rxml::xml_ncname!("alt"))
-                    .map(|alt| alt.to_string()),
+                src: elem.attr("src").map(|src| src.to_string()),
+                alt: elem.attr("alt").map(|alt| alt.to_string()),
             },
             "li" => Tag::Li {
-                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+                style: parse_css(elem.attr("style")),
                 children,
             },
             "ol" => Tag::Ol {
-                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+                style: parse_css(elem.attr("style")),
                 children,
             },
             "p" => Tag::P {
-                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+                style: parse_css(elem.attr("style")),
                 children,
             },
             "span" => Tag::Span {
-                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+                style: parse_css(elem.attr("style")),
                 children,
             },
             "strong" => Tag::Strong { children },
             "ul" => Tag::Ul {
-                style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
+                style: parse_css(elem.attr("style")),
                 children,
             },
             _ => Tag::Unknown(children),

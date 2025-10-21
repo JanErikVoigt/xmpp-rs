@@ -281,8 +281,8 @@ fn builder_works() {
         .build();
     assert_eq!(elem.name(), "a");
     assert_eq!(elem.ns(), "b".to_owned());
-    assert_eq!(elem.attr(xml_ncname!("c")), Some("d"));
-    assert_eq!(elem.attr(xml_ncname!("x")), None);
+    assert_eq!(elem.attr("c"), Some("d"));
+    assert_eq!(elem.attr("x"), None);
     assert_eq!(elem.text(), "e");
     assert!(elem.has_child("child", "b"));
     assert!(elem.is("a", "b"));
@@ -311,15 +311,11 @@ fn get_child_works() {
         .unwrap()
         .is("child", "child_ns"));
     assert_eq!(
-        root.get_child("child", "root_ns")
-            .unwrap()
-            .attr(xml_ncname!("c")),
+        root.get_child("child", "root_ns").unwrap().attr("c"),
         Some("d")
     );
     assert_eq!(
-        root.get_child("child", "child_ns")
-            .unwrap()
-            .attr(xml_ncname!("d")),
+        root.get_child("child", "child_ns").unwrap().attr("d"),
         Some("e")
     );
 }
@@ -357,15 +353,12 @@ fn two_elements_with_same_arguments_different_order_are_equal() {
 #[test]
 fn namespace_attributes_works() {
     let root = Element::from_reader(TEST_STRING).unwrap();
-    assert_eq!(
-        Some("en"),
-        root.attr_ns(RxmlNamespace::xml(), xml_ncname!("lang"))
-    );
+    assert_eq!(Some("en"), root.attr_ns(RxmlNamespace::xml(), "lang"));
     assert_eq!(
         "fr",
         root.get_child("child", "child_ns")
             .unwrap()
-            .attr_ns(RxmlNamespace::xml(), xml_ncname!("lang"))
+            .attr_ns(RxmlNamespace::xml(), "lang")
             .unwrap()
     );
 }

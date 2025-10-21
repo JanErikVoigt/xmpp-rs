@@ -15,13 +15,13 @@ macro_rules! get_attr {
         )
     };
     ($elem:ident, $attr:tt, Option, $value:ident, $func:expr) => {
-        match $elem.attr(::xso::exports::rxml::xml_ncname!($attr).into()) {
+        match $elem.attr($attr) {
             Some($value) => Some($func),
             None => None,
         }
     };
     ($elem:ident, $attr:tt, Required, $value:ident, $func:expr) => {
-        match $elem.attr(::xso::exports::rxml::xml_ncname!($attr).into()) {
+        match $elem.attr($attr) {
             Some($value) => $func,
             None => {
                 return Err(xso::error::Error::Other(
@@ -32,7 +32,7 @@ macro_rules! get_attr {
         }
     };
     ($elem:ident, $attr:tt, Default, $value:ident, $func:expr) => {
-        match $elem.attr(::xso::exports::rxml::xml_ncname!($attr).into()) {
+        match $elem.attr($attr) {
             Some($value) => $func,
             None => ::core::default::Default::default(),
         }
