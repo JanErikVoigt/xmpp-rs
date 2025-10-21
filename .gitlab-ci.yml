@@ -11,6 +11,7 @@ variables:
   RUST_BACKTRACE: "full"
   RUSTFLAGS: " -D warnings"
   RUSTDOCFLAGS: " -D warnings"
+  CARGO_TERM_COLOR: "always"
 
 .show-version:
   before_script:

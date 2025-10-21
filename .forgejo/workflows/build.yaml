@@ -7,6 +7,7 @@ on:
 env:
   FEATURES: ""
   RUST_BACKTRACE: "full"
+  CARGO_TERM_COLOR: "always"
 
 jobs:
   lint:
