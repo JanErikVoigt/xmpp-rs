@@ -50,6 +50,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - Update rxml dependency to 0.13.
       - Remove warnings for elided lifetimes (rustc 1.90)
       - Use thiserror for the error types. (!616)
+      - Remove warning when 'rustls-any-backend' feature isn't enabled
 
 Version 4.0.0:
 2024-07-26 Maxime “pep” Buquet <pep@bouah.net>

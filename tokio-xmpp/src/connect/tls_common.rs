@@ -7,6 +7,7 @@
 //! Common TLS functionality shared between direct_tls and starttls modules
 
 use core::{error::Error as StdError, fmt};
+#[cfg(all(feature = "rustls-any-backend", not(feature = "native-tls")))]
 use std::os::fd::AsRawFd;
 use tokio::io::{AsyncRead, AsyncWrite};
 
