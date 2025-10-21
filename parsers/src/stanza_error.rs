@@ -375,7 +375,15 @@ mod tests {
 
     #[test]
     fn test_error_code() {
+        #[cfg(not(feature = "component"))]
         let elem: Element = r#"<error code="501" type="cancel" xmlns='jabber:client'>
+    <feature-not-implemented xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+    <text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>The feature requested is not implemented by the recipient or server and therefore cannot be processed.</text>
+</error>"#
+            .parse()
+            .unwrap();
+        #[cfg(feature = "component")]
+        let elem: Element = r#"<error code="501" type="cancel" xmlns='jabber:component:accept'>
     <feature-not-implemented xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
     <text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>The feature requested is not implemented by the recipient or server and therefore cannot be processed.</text>
 </error>"#
@@ -387,7 +395,16 @@ mod tests {
 
     #[test]
     fn test_error_multiple_text() {
+        #[cfg(not(feature = "component"))]
         let elem: Element = r#"<error type="cancel" xmlns='jabber:client'>
+    <item-not-found xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+    <text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' xml:lang="fr">Nœud non trouvé</text>
+    <text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' xml:lang="en">Node not found</text>
+</error>"#
+            .parse()
+            .unwrap();
+        #[cfg(feature = "component")]
+        let elem: Element = r#"<error type="cancel" xmlns='jabber:component:accept'>
     <item-not-found xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
     <text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' xml:lang="fr">Nœud non trouvé</text>
     <text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' xml:lang="en">Node not found</text>

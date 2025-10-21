@@ -122,6 +122,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - Fix compatibility to uuid 1.12
       - Implement Default for Tune
       - Re-export xso::error::FromElementError.
+      - Fix a few tests behind 'component' feature
 
 Version 0.21.0:
 2024-07-25 Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>
