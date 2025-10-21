@@ -36,6 +36,7 @@ use {
 pub use tokio_rustls::client::TlsStream;
 
 #[cfg(all(feature = "ktls", not(feature = "native-tls")))]
+/// Tls Stream type based on Ktls
 pub type TlsStream<S> = ktls::KtlsStream<S>;
 
 #[cfg(feature = "native-tls")]
