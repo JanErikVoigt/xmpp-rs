@@ -1,4 +1,7 @@
 Version NEXT:
+  * Breaking:
+    * Removed 'std' feature for now because it makes build fail on
+      no-default-features.
   * Changes
     * Use thiserror for the error type. (!616)
 
