@@ -494,7 +494,7 @@ mod tests {
         #[cfg(not(feature = "component"))]
         let elem: Element = "<message xmlns='jabber:client' to='coucou@example.org' type='chat'><body xml:lang='de'>Hallo Welt!</body><body xml:lang='fr'>Salut le monde !</body><body>Hello world!</body></message>".parse().unwrap();
         #[cfg(feature = "component")]
-        let elem: Element = "<message xmlns='jabber:component:accept' to='coucou@example.org' type='chat'><body>Hello world!</body></message>".parse().unwrap();
+        let elem: Element = "<message xmlns='jabber:component:accept' to='coucou@example.org' type='chat'><body xml:lang='de'>Hallo Welt!</body><body xml:lang='fr'>Salut le monde !</body><body>Hello world!</body></message>".parse().unwrap();
         let message = Message::try_from(elem).unwrap();
 
         // Tests basic feature.
