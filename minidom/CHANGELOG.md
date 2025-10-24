@@ -1,6 +1,8 @@
 Version NEXT:
+
+Version 0.18, released 2025-10-28:
   * Breaking:
-    * Removed 'std' feature for now because it makes build fail on
+    * Remove 'std' feature for now because it makes build fail on
       no-default-features.
     * Add `Element::attr_ns` that requires the attribute namespace in addition
       to `Element::attr` (which defaults to `rxml::Namespace::none()`. Similar
