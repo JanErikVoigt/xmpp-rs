@@ -1,6 +1,6 @@
 [package]
 name = "xso"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "XML Streamed Objects: similar to serde, but XML-native."
 homepage = "https://xmpp.rs"

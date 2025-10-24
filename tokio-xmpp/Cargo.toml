@@ -27,7 +27,7 @@ thiserror = "2.0"
 # same repository dependencies
 sasl = { version = "0.5", path = "../sasl" }
 xmpp-parsers = { version = "0.21", path = "../parsers", features = [ "log" ] }
-xso = { version = "0.2", path = "../xso" }
+xso = { version = "0.3", path = "../xso" }
 
 # these are only needed for starttls ServerConnector support
 hickory-resolver = { version = "0.25", optional = true}
