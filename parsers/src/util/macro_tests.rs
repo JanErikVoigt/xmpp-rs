@@ -4,15 +4,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#![deny(
-    non_camel_case_types,
-    non_snake_case,
-    unsafe_code,
-    unused_variables,
-    unused_mut,
-    dead_code
-)]
-
 mod helpers {
     // we isolate the helpers into a module, because we do not want to have
     // them in scope below.

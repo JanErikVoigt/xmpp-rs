@@ -22,6 +22,14 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #![warn(missing_docs)]
+#![deny(
+    non_camel_case_types,
+    non_snake_case,
+    unsafe_code,
+    unused_variables,
+    unused_mut,
+    dead_code
+)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(docsrs, doc(auto_cfg))]
 
