@@ -1,30 +1,45 @@
 Version NEXT:
-XXXX-YY-ZZ RELEASER <admin@example.com>
+0000-00-00 RELEASER <releaser@domain>
+
+Version 5.0.0:
+2025-10-28 pep <pep@bouah.net>
     * Breaking:
-      - Remove `tokio_xmpp::ParseError` and `tokio_xmpp::starttls::ParseError` which were never used
-      - Removed StreamFeatures from this crate, replaced with xmpp_parsers::stream_features::StreamFeatures (!400)
-      - `starttls::error::ConnectorError` variants have been merged with `starttls::error::Error`, except `ConnectorError::AllFailed`
-        which was not used and has been completely removed (!418)
-      - `ProtocolError` and `AuthError` are no longer exported in crate root;
-        access them from `error` module (!423)
-      - `connect::ServerConnector` no longer has `Error` associated type, the methods return tokio_xmpp::Error directly,
-        where Connection variant contains any error type that implements connect::ServerConnectorError (!421)
-      - `starttls::Error` no longer has `TokioXMPP` variant ; only tokio_xmpp::Error can contain starttls::Error,
-        not the other way around (!421)
+      - Remove `tokio_xmpp::ParseError` and `tokio_xmpp::starttls::ParseError`
+        which were never used
+      - Remove StreamFeatures from this crate, replaced with
+        `xmpp_parsers::stream_features::StreamFeatures` (!400)
+      - `starttls::error::ConnectorError` variants have been merged with
+        `starttls::error::Error`, except `ConnectorError::AllFailed` which was
+        not used and has been completely removed (!418)
+      - Remove `ProtocolError` and `AuthError` from crate root; access them
+        from `error` module (!423)
+      - Remove `connect::ServerConnector`'s `Error` associated type, the
+        methods return tokio_xmpp::Error directly, where Connection variant
+        contains any error type that implements connect::ServerConnectorError
+        (!421)
+      - Remove `starttls::Error`'s `TokioXMPP` variant ; only
+        tokio_xmpp::Error can contain starttls::Error, not the other way around
+        (!421)
       - `AsyncClient::new` automatically reconnects by default (!436)
-      - `AsyncClient::poll_next` properly closes stream with `Poll::Ready(None)` when disconnecting without auto reconnect (!436)
-      - remove `tokio_xmpp::SimpleClient` because it was not widely used, and not well documented ; if you need it,
-        please let us know and it will be reintegrated (!428)
-      - `Component::new` and `Client::new only require jid/password argument (!428)
-      - `ServerConfig` and `Client::new_with_config` have been removed (!428)
-      - ``Client` now has `new_plaintext`, `new_starttls` and `new_with_connector` method (!428)
-        `new_plaintext` and `new_starttls` take a DnsConfig struct for SRV/DNS resolution strategy, while `new_with_connector` takes
-        anything that implements ServerConnector
-      - `Component` now has `new_plaintext` and `new_with_connector` constructors, just like `Client` but without StartTLS (!428)
-      - `tokio_xmpp::AsyncClient` has been renamed `tokio_xmpp::Client` (!428)
-      - `Component` is now gated behind `insecure-tcp` feature flag
-      - `XMPPStream` and `XmppCodec` were removed in favour of the newly
-        implemented `tokio_xmpp::xmlstream module.
+      - `AsyncClient::poll_next` properly closes stream with
+        `Poll::Ready(None)` when disconnecting without auto reconnect (!436)
+      - Remove `tokio_xmpp::SimpleClient` because it was not widely used, and
+        not well documented ; if you need it, please let us know and it will be
+        reintegrated (!428)
+      - Change `Component::new` and `Client::new` interface ; only require
+        jid/password argument (!428)
+      - Remove `ServerConfig` and `Client::new_with_config` (!428)
+      - Add `new_plaintext`, `new_starttls` and `new_with_connector` method to
+        `Client` (!428)
+        `new_plaintext` and `new_starttls` take a DnsConfig struct for SRV/DNS
+        resolution strategy, while `new_with_connector` takes anything that
+        implements ServerConnector
+      - Add `new_plaintext` and `new_with_connector` constructors to
+        `Component`, just like `Client` but without StartTLS (!428)
+      - Rename `tokio_xmpp::AsyncClient` to `tokio_xmpp::Client` (!428)
+      - Gate `Component` behind `insecure-tcp` feature flag
+      - Remove `XMPPStream` and `XmppCodec` in favour of the newly implemented
+        `tokio_xmpp::xmlstream module.
       - The TLS-related feature flags have been completely reworked to make
         them easier to use. The `tls-rust-*`, `tls-native` and `starttls-*`
         feature flags have been removed in favour of more concise flag names
@@ -36,21 +51,19 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
         Please refer to the crate docs for details. (!581)
     * Added:
       - Add new `direct-tls` connection method to the `Client`. (!585)
-      - Support for sending IQ requests while tracking their responses in a
-        Future.
+      - Support sending IQ requests while tracking their responses in a Future.
       - `rustls` is now re-exported if it is enabled, to allow applications to
         set the default crypto provider if needed. (!581)
       - Derive Debug on Client and associated structs
-      - Document TlsStream behind 'ktls' feature
+      - Add ktls support. On Linux, once the TLS session is established, we
+        can delegate the actual encryption and decryption to the kernel, which
+        in turn can delegate it to a hardware implementations if available.
+        This depends on the `tls-rust-ktls` feature. (!458, !490)
     * Changes:
-      - On Linux, once the TLS session is established, we can delegate the
-        actual encryption and decryption to the kernel, which in turn can
-        delegate it to a hardware implementations if available.  This depends
-        on the `tls-rust-ktls` feature. (!458, !490)
-      - Building with insecure-tcp and no other feature got fixed.
       - Update rxml dependency to 0.13.
       - Remove warnings for elided lifetimes (rustc 1.90)
       - Use thiserror for the error types. (!616)
+      - Fix building with 'insecure-tcp' only.
       - Remove warning when 'rustls-any-backend' feature isn't enabled
 
 Version 4.0.0:
