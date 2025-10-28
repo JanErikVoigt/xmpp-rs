@@ -1,5 +1,5 @@
-Version NEXT:
-XXXX-YY-ZZ RELEASER <admin@example.com>
+Version 0.22.0:
+2025-10-28 pep <pep@bouah.net>
     * Breaking
       - MIX (XEP-0369) has been removed, it has failed to gain any traction in
         the XMPP ecosystem and is actively being replaced with better
@@ -34,58 +34,59 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
         `Option<Extensions>` instead of a `Vec<Element>`, to distinguish
         between it being absent or empty (!472).
       - Replace all boolean attributes with the `bool` type, so that we can
-        use them just like normal booleans. The following structs are deprecated:
-        pubsub::pubsub::Notify, bookmarks2::Autojoin, extdisco::Restricted,
-        fast::Tls0Rtt, legacy_omemo::IsPreKey, mam::Complete, sm::ResumeAttr (!476)
-      - bookmarks::Conference and bookmarks2::Conference use ResourcePart to store
+        use them just like normal booleans. The following structs are removed:
+        `pubsub::pubsub::Notify`, `bookmarks2::Autojoin`, `extdisco::Restricted`,
+        `fast::Tls0Rtt`, `legacy_omemo::IsPreKey`, `mam::Complete`,
+        `sm::ResumeAttr` (!476)
+      - `cert_management::Append::no_cert_management`,
+        `cert_management::Item::no_cert_management`,
+        `ssm::StreamManagement::optional` and `starttls::StartTls::required` are
+        now proper bools, instead of `Option<ZeroSizedType>` (!518)
+      - `bookmarks::Conference` and `bookmarks2::Conference` use ResourcePart to store
         the optional nickname instead of a String (!485)
       - pubsub Item and pubsub#event Item are now distinct structs (!503)
-      - message::Message id field is now Option<message::Id> instead of
-        Option<String> (!504)
-      - message_correction::Replace id field is now Id instead of String (!504)
+      - `message::Message` id field is now `Option<message::Id>` instead of
+        `Option<String>` (!504)
+      - `message_correction::Replace` id field is now Id instead of String (!504)
       - `Caps::hash` has been split into `Caps::hash` (the algo) and
         `Caps::ver` (the actual hash), to reflect the attributes (!517)
-      - muc::MucUser now has an `invite` field
-      - cert_management::Append::no_cert_management,
-        cert_management::Item::no_cert_management,
-        ssm::StreamManagement::optional and starttls::StartTls::required are
-        now proper bools, instead of Option<ZeroSizedType> (!518)
+      - `muc::MucUser` now has an `invite` field
       - vCard-temp queries have been split into vcard::VCardQuery (!522)
       - http_upload’s Header type has been split into HeaderName, an enum
         containing only the name of the header, and the Header struct with
-        both a name and a value(!530)
-      - pubsub::Event is now the wrapper for the pubsub::event::Payload enum,
+        both a name and a value (!530)
+      - `pubsub::Event` is now the wrapper for the `pubsub::event::Payload` enum,
         and the PublishedItems and RetractedItems have been merged into the
         Items sub-struct.  These replace the previous PubSubEvent enum (!531)
-      - Handshake::from_password_and_stream_id() became
-        Handshake::from_stream_id_and_password(), with the two parameters
+      - `Handshake::from_password_and_stream_id()` became
+        `Handshake::from_stream_id_and_password()`, with the two parameters
         having been exchanged, and the stream_id is now a String instead of
         &str.
-      - pubsub::Owner is now a wrapper for the pubsub::owner::Paylolad enum,
+      - `pubsub::Owner` is now a wrapper for the `pubsub::owner::Paylolad` enum,
         and all its direct children have been merged into this enum (!532)
-      - time::TimeResult has been ported to use xso. Use From/Into to convert
-        it to/from chrono::DateTime values. The numbered member `0` does not
+      - `time::TimeResult` has been ported to use xso. Use From/Into to convert
+        it to/from `chrono::DateTime` values. The numbered member `0` does not
         exist anymore (!551).
-      - stanza_error::StanzaError has been ported to use xso (!552).
+      - `stanza_error::StanzaError` has been ported to use xso (!552).
       - data_forms has been ported to use xso. This introduces a couple subtle
-        breaking changes for data_forms::DataForm, in particular:
+        breaking changes for `data_forms::DataForm`, in particular:
 
           - the `from_type` member was replaced by a pair of functions.
           - if the form contains a FORM_TYPE field, it will be part of the
             `fields` member (unlike before, where that field was removed).
-      - message::Message has been ported to use xso (!560). This causes several
+      - `message::Message` has been ported to use xso (!560). This causes several
         breaking changes:
 
-        1. the message::Body and message::Subject newtypes have been removed
+        1. the `message::Body` and `message::Subject` newtypes have been removed
            and replaced by bare Strings
-        2. a message::Lang newtype has been introduced for the language of
+        2. a `message::Lang` newtype has been introduced for the language of
            message parts.
-        3. the message::Thread type was converted from a single-element
+        3. the `message::Thread` type was converted from a single-element
            tuple-like struct to a struct with named fields to support the
            optional `parent` attribute.
-      - presence::Presence has been ported to use xso (!477). It also uses the
-        message::Lang newtype since !561.
-      - iq::Iq has been ported to use xso (!572). That entails a couple
+      - `presence::Presence` has been ported to use xso (!477). It also uses the
+        `message::Lang` newtype since !561.
+      - `iq::Iq` has been ported to use xso (!572). That entails a couple
         breaking changes:
 
         - The IqType type has been removed and loosely replaced by the
@@ -115,13 +116,13 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - Keep unsupported vCard elements as `minidom::Element`, so that they
         get serialized back instead of being dropped.  We now also test for
         the size of these elements (!472).
-      - Add Message::extract_valid_payload method to warn in case of failure
-        and return simply Option<T> instead of Result<Option<T>> (!497)
-      - Add Message::get_best_body_cloned and Message::get_best_subject_cloned
+      - Add `Message::extract_valid_payload` method to warn in case of failure
+        and return simply `Option<T>` instead of `Result<Option<T>>` (!497)
+      - Add `Message::get_best_body_cloned` and `Message::get_best_subject_cloned`
         to clone automatically when performance is not an issue (!497)
       - Fix compatibility to uuid 1.12
       - Implement Default for Tune
-      - Re-export xso::error::FromElementError.
+      - Re-export `xso::error::FromElementError`.
       - Fix a few tests behind 'component' feature
       - Fix some Clippy warnings
 

@@ -519,7 +519,7 @@
             <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0335.html"/>
             <xmpp:status>complete</xmpp:status>
             <xmpp:version>0.1.1</xmpp:version>
-            <xmpp:since>NEXT</xmpp:since>
+            <xmpp:since>0.22.0</xmpp:since>
         </xmpp:SupportedXep>
     </implements>
     <implements>
@@ -559,7 +559,7 @@
             <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0357.html"/>
             <xmpp:status>complete</xmpp:status>
             <xmpp:version>0.4.1</xmpp:version>
-            <xmpp:since>NEXT</xmpp:since>
+            <xmpp:since>0.22.0</xmpp:since>
         </xmpp:SupportedXep>
     </implements>
     <implements>
@@ -599,7 +599,7 @@
             <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0377.html"/>
             <xmpp:status>complete</xmpp:status>
             <xmpp:version>0.3.1</xmpp:version>
-            <xmpp:since>NEXT</xmpp:since>
+            <xmpp:since>0.22.0</xmpp:since>
         </xmpp:SupportedXep>
     </implements>
     <implements>
@@ -631,7 +631,7 @@
             <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0388.html"/>
             <xmpp:status>complete</xmpp:status>
             <xmpp:version>1.0.1</xmpp:version>
-            <xmpp:since>NEXT</xmpp:since>
+            <xmpp:since>0.22.0</xmpp:since>
         </xmpp:SupportedXep>
     </implements>
     <implements>
@@ -663,7 +663,7 @@
             <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0440.html"/>
             <xmpp:status>complete</xmpp:status>
             <xmpp:version>0.4.2</xmpp:version>
-            <xmpp:since>NEXT</xmpp:since>
+            <xmpp:since>0.22.0</xmpp:since>
         </xmpp:SupportedXep>
     </implements>
     <implements>
@@ -687,7 +687,7 @@
             <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0478.html"/>
             <xmpp:status>complete</xmpp:status>
             <xmpp:version>0.2.0</xmpp:version>
-            <xmpp:since>NEXT</xmpp:since>
+            <xmpp:since>0.22.0</xmpp:since>
         </xmpp:SupportedXep>
     </implements>
     <implements>
@@ -703,7 +703,7 @@
             <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0490.html"/>
             <xmpp:status>complete</xmpp:status>
             <xmpp:version>1.0.1</xmpp:version>
-            <xmpp:since>NEXT</xmpp:since>
+            <xmpp:since>0.22.0</xmpp:since>
         </xmpp:SupportedXep>
     </implements>
 
