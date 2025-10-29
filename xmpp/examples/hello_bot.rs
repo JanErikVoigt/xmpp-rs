@@ -79,12 +79,12 @@ async fn main() -> Result<(), Option<()>> {
         tokio::select! {
             events = client.wait_for_events() => {
                 for event in events {
-                    let _ = handle_events(&mut client, event, &rooms).await;
+                    handle_events(&mut client, event, &rooms).await
                 }
             },
             _ = ctrl_c() => {
                 log::info!("Disconnecting...");
-                let _ = client.disconnect().await;
+                let _: Result<_, _> = client.disconnect().await;
                 break;
             },
         }
