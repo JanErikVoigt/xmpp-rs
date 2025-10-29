@@ -84,7 +84,7 @@ async fn main() -> Result<(), Option<()>> {
             },
             _ = ctrl_c() => {
                 log::info!("Disconnecting...");
-                let _: Result<_, _> = client.disconnect().await;
+                client.disconnect().await.unwrap();
                 break;
             },
         }
