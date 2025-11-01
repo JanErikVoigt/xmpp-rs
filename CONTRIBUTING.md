@@ -56,3 +56,30 @@ of each of your commits.
 More thorough tests can be done locally with `act` or `forgejo-runner
 exec`, which is also what is run in the CI. We require docker to be setup for
 this to work.
+
+# Making a release
+
+We are using the [semver](https://semver.org/) versioning system.
+
+For each crate you are releasing:
+- Ensure there aren't urgent changes in the buffer waiting to be released too.
+  Even though increasing a number is cheap, the process to get there isn't
+  doing itself
+- Have a run of cargo clippy if it hasn't been done (TODO: Add to CI)
+- Ensure tests, docstrings and examples pass (TODO: Add `--all-features` to
+  CI.)
+- Ensure dependencies are up-to-date.
+- Update the `version` attribute in the `Cargo.toml` file.
+- Update the ChangeLog file with the version number, the release date etc.
+- Rework the ChangeLog if necessary. Add missing entries, merge duplicates,
+  unify wording, make sure everything is where it should be, add meta
+  information such as merge requests, etc.
+- Send all of this as a merge request.
+- If the change is significant enough, prepare a blog article about it.
+
+## For the person with commit access
+
+- `git tag -s` releases
+- `cargo publish`
+- Publish blog article
+- Promote on social media
