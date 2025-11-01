@@ -70,11 +70,11 @@ generate_attribute!(
 
 fn validate_field(field: &mut Field) -> Result<(), Error> {
     if field.type_ != FieldType::Fixed && field.var.is_none() {
-        return Err(Error::Other("Required attribute 'var' missing.").into());
+        return Err(Error::Other("Required attribute 'var' missing."));
     }
 
     if !field.is_list() && field.options.len() > 0 {
-        return Err(Error::Other("Option element found in non-list field.").into());
+        return Err(Error::Other("Option element found in non-list field."));
     }
 
     Ok(())
@@ -239,7 +239,7 @@ fn patch_form(form: &mut DataForm) -> Result<(), Error> {
             }
 
             if field.values.len() != 1 {
-                return Err(Error::Other("Wrong number of values in FORM_TYPE.").into());
+                return Err(Error::Other("Wrong number of values in FORM_TYPE."));
             }
 
             form_type_index = Some(i);
@@ -274,7 +274,7 @@ impl DataForm {
     pub fn form_type(&self) -> Option<&str> {
         for field in self.fields.iter() {
             if field.is_form_type(&self.type_) {
-                return field.values.get(0).map(|x| x.as_str());
+                return field.values.first().map(|x| x.as_str());
             }
         }
         None

@@ -123,6 +123,7 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
       - Implement Default for Tune
       - Re-export xso::error::FromElementError.
       - Fix a few tests behind 'component' feature
+      - Fix some Clippy warnings
 
 Version 0.21.0:
 2024-07-25 Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>

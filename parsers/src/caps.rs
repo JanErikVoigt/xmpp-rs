@@ -97,7 +97,7 @@ fn compute_identities(identities: &[Identity]) -> Vec<u8> {
 fn compute_extensions(extensions: &[DataForm]) -> Vec<u8> {
     compute_items(extensions, |extension| {
         // TODO: maybe handle the error case?
-        let mut bytes = if let Some(ref form_type) = extension.form_type() {
+        let mut bytes = if let Some(form_type) = extension.form_type() {
             form_type.as_bytes().to_vec()
         } else {
             vec![]

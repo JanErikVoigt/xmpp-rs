@@ -92,7 +92,7 @@ fn compute_extensions(extensions: &[DataForm]) -> Result<Vec<u8>, Error> {
     Ok(compute_items(extensions, 0x1c, |extension| {
         let mut bytes = compute_item("FORM_TYPE");
         bytes.append(&mut compute_item(
-            if let Some(ref form_type) = extension.form_type() {
+            if let Some(form_type) = extension.form_type() {
                 form_type
             } else {
                 unreachable!()

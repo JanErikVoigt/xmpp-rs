@@ -71,7 +71,7 @@ impl DerefMut for Lang {
 }
 
 impl fmt::Display for Lang {
-    fn fmt<'f>(&self, f: &'f mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
     }
 }
