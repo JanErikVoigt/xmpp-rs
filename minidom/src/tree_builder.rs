@@ -85,7 +85,7 @@ impl TreeBuilder {
     /// Lookup XML namespace declaration for given prefix (or no prefix)
     #[must_use]
     fn lookup_prefix<'a>(
-        prefixes_stack: &'a Vec<Prefixes>,
+        prefixes_stack: &'a [Prefixes],
         prefix: &'a Option<String>,
     ) -> Option<&'a str> {
         for nss in prefixes_stack.iter().rev() {
@@ -149,11 +149,7 @@ impl TreeBuilder {
                                 .push((prefix.to_string(), name.to_string(), value));
                         }
                         (None, name) => {
-                            attrs.insert(
-                                Namespace::NONE,
-                                name.try_into().unwrap(),
-                                value.as_str().to_owned(),
-                            );
+                            attrs.insert(Namespace::NONE, name, value.as_str().to_owned());
                         }
                     }
                 }
@@ -179,7 +175,7 @@ impl TreeBuilder {
                                 &Some(prefix.to_string()),
                             )
                             .map(String::from)
-                            .map(|s| TryInto::<Namespace>::try_into(s).unwrap())
+                            .map(Into::<Namespace>::into)
                             .ok_or(Error::MissingNamespace)?
                             .to_owned()
                         };

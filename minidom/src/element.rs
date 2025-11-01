@@ -425,7 +425,7 @@ impl Element {
         writer.write(Item::ElementHeadStart(&namespace, (*self.name).try_into()?))?;
 
         for ((ns, key), value) in &self.attributes {
-            writer.write(Item::Attribute(&ns, key, value))?;
+            writer.write(Item::Attribute(ns, key, value))?;
         }
 
         if !self.children.is_empty() {
