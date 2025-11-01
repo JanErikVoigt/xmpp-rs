@@ -287,11 +287,11 @@ impl Compound {
                 // that in version 1.86, but that was rolled back.
                 let attr_a = attr_a.replace('{', "{{").replace('}', "}}");
                 let attr_b = attr_b.replace('{', "{{").replace('}', "}}");
-                let field_a = FieldName(&member_a)
+                let field_a = FieldName(member_a)
                     .to_string()
                     .replace('{', "{{")
                     .replace('}', "}}");
-                let field_b = FieldName(&member_b)
+                let field_b = FieldName(member_b)
                     .to_string()
                     .replace('{', "{{")
                     .replace('}', "}}");

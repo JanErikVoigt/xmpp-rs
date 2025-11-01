@@ -112,7 +112,7 @@ impl<'x> Context<'x> {
     /// Return the `xml:lang` value in effect at the end of the event which
     /// is currently being processed.
     pub fn language(&self) -> Option<&str> {
-        self.language.as_deref()
+        self.language
     }
 }
 

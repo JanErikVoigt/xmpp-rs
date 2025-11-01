@@ -1,4 +1,6 @@
 Version NEXT:
+    * Changes
+      - Fix some Clippy warnings
 
 Version 0.3.0, release 2025-10-28:
     * Changes

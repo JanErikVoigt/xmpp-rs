@@ -409,6 +409,13 @@ pub struct BuilderRegistry<T: ?Sized> {
 }
 
 #[cfg(feature = "std")]
+impl<T: ?Sized + 'static> Default for BuilderRegistry<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "std")]
 impl<T: ?Sized + 'static> BuilderRegistry<T> {
     /// Create an empty registry.
     pub const fn new() -> Self {
@@ -465,7 +472,7 @@ impl<T: ?Sized + 'static> BuilderRegistry<T> {
     }
 
     fn try_build(
-        inner: &mut Vec<BuilderRegistryEntry<T>>,
+        inner: &mut [BuilderRegistryEntry<T>],
         mut name: rxml::QName,
         mut attrs: rxml::AttrMap,
         ctx: &Context<'_>,
@@ -548,7 +555,7 @@ impl<T: ?Sized + 'static> DynXsoRegistryLookup<T> for BuilderRegistry<T> {
         ctx: &Context<'_>,
     ) -> Result<Box<dyn FromEventsBuilder<Output = Box<T>>>, FromEventsError> {
         let mut inner = self.inner.lock().unwrap();
-        let (name, attrs) = match Self::try_build(&mut *inner, name, attrs, ctx, |qname| {
+        let (name, attrs) = match Self::try_build(&mut inner, name, attrs, ctx, |qname| {
             XmlNameMatcher::Specific(qname.0.as_str(), qname.1.as_str())
         }) {
             Ok(v) => return Ok(v),
@@ -556,7 +563,7 @@ impl<T: ?Sized + 'static> DynXsoRegistryLookup<T> for BuilderRegistry<T> {
             Err(FromEventsError::Mismatch { name, attrs }) => (name, attrs),
         };
 
-        let (name, attrs) = match Self::try_build(&mut *inner, name, attrs, ctx, |qname| {
+        let (name, attrs) = match Self::try_build(&mut inner, name, attrs, ctx, |qname| {
             XmlNameMatcher::InNamespace(qname.0.as_str())
         }) {
             Ok(v) => return Ok(v),
@@ -564,7 +571,7 @@ impl<T: ?Sized + 'static> DynXsoRegistryLookup<T> for BuilderRegistry<T> {
             Err(FromEventsError::Mismatch { name, attrs }) => (name, attrs),
         };
 
-        Self::try_build(&mut *inner, name, attrs, ctx, |_| XmlNameMatcher::Any)
+        Self::try_build(&mut inner, name, attrs, ctx, |_| XmlNameMatcher::Any)
     }
 }
 
@@ -1298,7 +1305,7 @@ impl<T: DynXso + ?Sized + 'static> XsoVec<T> {
     {
         let iter = match self.inner.get(&TypeId::of::<U>()) {
             Some(v) => v.deref().iter(),
-            None => (&[]).iter(),
+            None => [].iter(),
         };
         // UNWRAP: We group the values by TypeId, so the downcast should never
         // fail, but I am too chicken to use the unchecked variants :).
@@ -1335,7 +1342,7 @@ impl<T: DynXso + ?Sized + 'static> XsoVec<T> {
     {
         let iter = match self.inner.get_mut(&TypeId::of::<U>()) {
             Some(v) => v.deref_mut().iter_mut(),
-            None => (&mut []).iter_mut(),
+            None => [].iter_mut(),
         };
         // UNWRAP: We group the values by TypeId, so the downcast should never
         // fail, but I am too chicken to use the unchecked variants :).
