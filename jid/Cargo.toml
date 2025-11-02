@@ -1,6 +1,6 @@
 [package]
 name = "jid"
-version = "0.12.0"
+version = "0.12.1"
 authors = [
   "lumi <lumi@pew.im>",
   "Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>",
