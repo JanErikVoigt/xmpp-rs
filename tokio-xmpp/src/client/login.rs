@@ -23,6 +23,11 @@ use crate::{
     },
 };
 
+/// Run the authentication handshake on a given stream.
+///
+/// Uses the given `sasl_mechanisms` and `creds` to perform the full
+/// authentication handshake. As authentication ends with a stream reset,
+/// this returns the `stream` as [`InitiatingStream`] on success.
 pub async fn auth<S: AsyncBufRead + AsyncWrite + Unpin>(
     mut stream: XmppStream<S>,
     sasl_mechanisms: &SaslMechanisms,

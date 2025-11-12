@@ -28,6 +28,7 @@ use crate::connect::TcpServerConnector;
 mod iq;
 pub(crate) mod login;
 mod stream;
+pub use login::auth;
 
 pub use iq::{IqFailure, IqRequest, IqResponse, IqResponseToken};
 
