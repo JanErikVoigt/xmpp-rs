@@ -38,7 +38,10 @@ pub async fn handle_presence(agent: &mut Agent, presence: Presence) -> Vec<Event
                         agent.rooms_joined.insert(from.clone(), nick.clone());
                         agent.rooms_joining.remove(&from);
                     } else {
-                        warn!("Received self-presence from {} while the room was not marked as joining.", presence.from.unwrap());
+                        warn!(
+                            "Received self-presence from {} while the room was not marked as joining.",
+                            presence.from.unwrap()
+                        );
                     }
                     events.push(Event::RoomJoined(from.clone()));
                 }
@@ -48,7 +51,10 @@ pub async fn handle_presence(agent: &mut Agent, presence: Presence) -> Vec<Event
                         agent.rooms_joined.remove(&from);
                         agent.rooms_leaving.remove(&from);
                     } else {
-                        warn!("Received self-presence unavailable from {} while the room was not marked as leaving.", presence.from.unwrap());
+                        warn!(
+                            "Received self-presence unavailable from {} while the room was not marked as leaving.",
+                            presence.from.unwrap()
+                        );
                     }
                     events.push(Event::RoomLeft(from.clone()));
                 }

@@ -12,15 +12,15 @@ use tokio::io;
 use tokio::sync::RwLock;
 
 use crate::{
-    event_loop,
+    Error, Event, RoomNick, event_loop,
     jid::{BareJid, Jid},
     message, muc,
     parsers::disco::DiscoInfoResult,
-    upload, Error, Event, RoomNick,
+    upload,
 };
 use tokio_xmpp::Client as TokioXmppClient;
 #[cfg(feature = "escape-hatch")]
-use tokio_xmpp::{stanzastream::StanzaToken, Stanza};
+use tokio_xmpp::{Stanza, stanzastream::StanzaToken};
 
 pub struct Agent {
     pub(crate) client: TokioXmppClient,

@@ -49,10 +49,10 @@ pub fn message_time_info(message: &Message) -> StanzaTimeInfo {
             match Delay::try_from(payload.clone()) {
                 Ok(delay) => delays.push(delay),
                 Err(e) => {
-                    error!("Wrong <delay> format in payload from {}:{}\n{:?}\nUsing received time only.",
-                    message.from.as_ref().unwrap().to_owned(),
-                    e,
-                    payload);
+                    error!(
+                        "Wrong <delay> format in payload from {}:{e}\n{payload:?}\nUsing received time only.",
+                        message.from.as_ref().unwrap().to_owned()
+                    );
                 }
             }
         }

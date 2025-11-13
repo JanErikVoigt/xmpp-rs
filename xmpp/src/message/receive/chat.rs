@@ -9,7 +9,7 @@ use tokio_xmpp::{
     parsers::{confirm::Confirm, message::Message, message_correct::Replace, muc::user::MucUser},
 };
 
-use crate::{delay::StanzaTimeInfo, Agent, Event, RoomNick};
+use crate::{Agent, Event, RoomNick, delay::StanzaTimeInfo};
 
 pub async fn handle_message_chat(
     agent: &mut Agent,
@@ -43,7 +43,9 @@ pub async fn handle_message_chat(
 
     if is_muc_pm {
         if from.resource().is_none() {
-            warn!("Received malformed MessageType::Chat in muc#user namespace from a bare JID:\n{:#?}", message);
+            warn!(
+                "Received malformed MessageType::Chat in muc#user namespace from a bare JID:\n{message:#?}"
+            );
         } else {
             let full_from = from.clone().try_into_full().unwrap();
 

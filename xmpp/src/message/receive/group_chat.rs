@@ -5,10 +5,10 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{
+    Agent, Event, RoomNick,
     delay::StanzaTimeInfo,
     jid::Jid,
     parsers::{message::Message, message_correct::Replace},
-    Agent, Event, RoomNick,
 };
 
 pub async fn handle_message_group_chat(

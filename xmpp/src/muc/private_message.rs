@@ -5,10 +5,10 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{
+    Agent, RoomNick,
     jid::{BareJid, Jid},
     message::send::RawMessageSettings,
     parsers::{message::MessageType, muc::user::MucUser},
-    Agent, RoomNick,
 };
 
 #[derive(Clone, Debug)]

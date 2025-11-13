@@ -14,9 +14,9 @@ use tokio_xmpp::parsers::{
     jid::Jid,
     ns,
     pubsub::{
+        NodeName,
         event::Item,
         pubsub::{Items, PubSub},
-        NodeName,
     },
 };
 

@@ -9,7 +9,7 @@ use tokio_xmpp::parsers::{
     ns,
 };
 
-use crate::{delay::message_time_info, pubsub, Agent, Event};
+use crate::{Agent, Event, delay::message_time_info, pubsub};
 
 pub mod chat;
 pub mod group_chat;

@@ -5,6 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{
+    Agent, Event, RoomNick,
     jid::{BareJid, Jid},
     minidom::Element,
     muc::room::{JoinRoomSettings, LeaveRoomSettings},
@@ -12,7 +13,6 @@ use crate::{
         bookmarks2, ns,
         pubsub::{self, pubsub::PubSub},
     },
-    Agent, Event, RoomNick,
 };
 
 use std::str::FromStr;

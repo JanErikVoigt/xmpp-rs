@@ -5,7 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use tokio_xmpp::parsers::{
-    caps::{compute_disco, hash_caps, Caps},
+    caps::{Caps, compute_disco, hash_caps},
     disco::DiscoInfoResult,
     hashes::Algo,
     presence::{Presence, Type as PresenceType},

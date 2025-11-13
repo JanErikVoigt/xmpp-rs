@@ -9,13 +9,13 @@ use crate::tokio_xmpp::connect::{DnsConfig, StartTlsServerConnector};
 use core::str::FromStr;
 
 use crate::{
+    Agent, ClientFeature, RoomNick,
     jid::{BareJid, Jid, ResourceRef},
     parsers::{
         disco::{DiscoInfoResult, Feature, Identity},
         ns,
     },
-    tokio_xmpp::{connect::ServerConnector, xmlstream::Timeouts, Client as TokioXmppClient},
-    Agent, ClientFeature, RoomNick,
+    tokio_xmpp::{Client as TokioXmppClient, connect::ServerConnector, xmlstream::Timeouts},
 };
 
 #[derive(Debug)]

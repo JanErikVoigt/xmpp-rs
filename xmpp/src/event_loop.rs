@@ -6,11 +6,11 @@
 
 use futures::StreamExt;
 use tokio_xmpp::{
-    parsers::{disco::DiscoInfoQuery, iq::Iq, roster::Roster},
     Event as TokioXmppEvent, Stanza,
+    parsers::{disco::DiscoInfoQuery, iq::Iq, roster::Roster},
 };
 
-use crate::{iq, message, presence, Agent, Event};
+use crate::{Agent, Event, iq, message, presence};
 
 /// Wait for new events, or Error::Disconnected when stream is closed and will not reconnect.
 pub async fn wait_for_events(agent: &mut Agent) -> Vec<Event> {

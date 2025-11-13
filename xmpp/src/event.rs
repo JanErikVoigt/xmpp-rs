@@ -12,7 +12,7 @@ use tokio_xmpp::parsers::roster::Item as RosterItem;
 use tokio_xmpp::parsers::{iq::Iq, message::Message, presence::Presence};
 
 use crate::parsers::confirm::Confirm;
-use crate::{delay::StanzaTimeInfo, Error, MessageId, RoomNick};
+use crate::{Error, MessageId, RoomNick, delay::StanzaTimeInfo};
 
 /// An Event notifying the client something has happened that may require attention.
 ///

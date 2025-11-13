@@ -5,12 +5,12 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{
-    disco,
+    Agent, Event, RoomNick, disco,
     jid::Jid,
     minidom::Element,
     muc::room::JoinRoomSettings,
     parsers::{disco::DiscoInfoResult, ns, private::Query as PrivateXMLQuery, roster::Roster},
-    pubsub, upload, Agent, Event, RoomNick,
+    pubsub, upload,
 };
 
 pub async fn handle_iq_result(

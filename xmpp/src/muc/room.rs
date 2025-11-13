@@ -5,6 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use crate::{
+    Agent, RoomNick,
     jid::{BareJid, ResourceRef},
     message::send::RawMessageSettings,
     parsers::{
@@ -12,7 +13,6 @@ use crate::{
         muc::Muc,
         presence::{Presence, Type as PresenceType},
     },
-    Agent, RoomNick,
 };
 
 #[derive(Clone, Debug)]

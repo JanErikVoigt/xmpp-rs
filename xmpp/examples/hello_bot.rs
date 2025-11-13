@@ -7,9 +7,9 @@
 #[cfg(feature = "rustls-any-backend")]
 use xmpp::tokio_xmpp::rustls;
 use xmpp::{
+    Agent, ClientBuilder, ClientFeature, ClientType, Event, RoomNick,
     jid::BareJid,
     muc::room::{JoinRoomSettings, RoomMessageSettings},
-    Agent, ClientBuilder, ClientFeature, ClientType, Event, RoomNick,
 };
 
 use tokio::signal::ctrl_c;
@@ -21,7 +21,9 @@ use std::str::FromStr;
     feature = "rustls-any-backend",
     not(any(feature = "aws_lc_rs", feature = "ring"))
 ))]
-compile_error!("using rustls (e.g. via the ktls feature) needs an enabled rustls backend feature (either aws_lc_rs or ring).");
+compile_error!(
+    "using rustls (e.g. via the ktls feature) needs an enabled rustls backend feature (either aws_lc_rs or ring)."
+);
 
 #[tokio::main]
 async fn main() -> Result<(), Option<()>> {

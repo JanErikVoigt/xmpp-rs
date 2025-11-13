@@ -5,7 +5,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use reqwest::{
-    header::HeaderMap as ReqwestHeaderMap, Body as ReqwestBody, Client as ReqwestClient,
+    Body as ReqwestBody, Client as ReqwestClient, header::HeaderMap as ReqwestHeaderMap,
 };
 use std::path::PathBuf;
 use tokio::fs::File;

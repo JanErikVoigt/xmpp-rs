@@ -42,6 +42,7 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
         is meant to stay behind a feature. Also allows directly receiving
         stanzas.
       - Added documentation on `Event` enum.
+      - Update to edition 2024
     * Fixes:
       - Use tokio::sync::RwLock not std::sync::RwLock (!432)
       - The default caps node has been shortened to https://xmpp.rs since we
