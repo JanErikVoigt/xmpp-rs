@@ -65,6 +65,7 @@ use parsers::message::Id as MessageId;
 
 pub mod agent;
 pub mod builder;
+pub mod config;
 pub mod delay;
 pub mod disco;
 pub mod event;
@@ -79,6 +80,7 @@ pub mod upload;
 
 pub use agent::Agent;
 pub use builder::{ClientBuilder, ClientType};
+pub use config::Config;
 pub use event::Event;
 pub use feature::ClientFeature;
 

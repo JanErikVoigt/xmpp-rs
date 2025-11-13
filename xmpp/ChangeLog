@@ -43,6 +43,7 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
         stanzas.
       - Added documentation on `Event` enum.
       - Update to edition 2024
+      - Add Config::Config struct as a user-facing Agent configuration method.
     * Fixes:
       - Use tokio::sync::RwLock not std::sync::RwLock (!432)
       - The default caps node has been shortened to https://xmpp.rs since we

@@ -12,7 +12,7 @@ use tokio::io;
 use tokio::sync::RwLock;
 
 use crate::{
-    Error, Event, RoomNick, event_loop,
+    Config, Error, Event, RoomNick, event_loop,
     jid::{BareJid, Jid},
     message, muc,
     parsers::disco::DiscoInfoResult,
@@ -24,6 +24,7 @@ use tokio_xmpp::{Stanza, stanzastream::StanzaToken};
 
 pub struct Agent {
     pub(crate) client: TokioXmppClient,
+    pub(crate) config: Arc<RwLock<Config>>,
     pub(crate) default_nick: Arc<RwLock<RoomNick>>,
     pub(crate) lang: Arc<Vec<String>>,
     pub(crate) disco: DiscoInfoResult,
@@ -39,6 +40,7 @@ pub struct Agent {
 impl Agent {
     pub fn new(
         client: TokioXmppClient,
+        config: Config,
         default_nick: RoomNick,
         lang: Vec<String>,
         disco: DiscoInfoResult,
@@ -46,6 +48,7 @@ impl Agent {
     ) -> Agent {
         Agent {
             client,
+            config: Arc::new(RwLock::new(config)),
             default_nick: Arc::new(RwLock::new(default_nick)),
             lang: Arc::new(lang),
             disco,
@@ -56,6 +59,13 @@ impl Agent {
             rooms_joining: HashMap::new(),
             rooms_leaving: HashMap::new(),
         }
+    }
+
+    /// Reset the agent configuration to the provided Config struct
+    // TODO: refresh everything that is affected by this reset?
+    pub async fn set_config(&mut self, config: Config) {
+        let mut c = self.config.write().await;
+        *c = config;
     }
 
     pub async fn disconnect(self) -> Result<(), Error> {

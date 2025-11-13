@@ -66,18 +66,22 @@ pub(crate) async fn handle_event(
                                                 status: None,
                                             })
                                             .await;
+                                    } else {
+                                        if agent.config.read().await.bookmarks_autojoin {
+                                            // So maybe another client of ours left the room... let's leave it too
+                                            agent.leave_room(LeaveRoomSettings::new(jid)).await;
+                                        }
                                     }
-                                } else {
-                                    // So maybe another client of ours left the room... let's leave it too
-                                    agent.leave_room(LeaveRoomSettings::new(jid)).await;
                                 }
                             }
                             Err(err) => println!("not bookmark: {}", err),
                         }
                     } else if let [item] = &retracted[..] {
-                        let jid = BareJid::from_str(&item.0).unwrap();
+                        if agent.config.read().await.bookmarks_autojoin {
+                            let jid = BareJid::from_str(&item.0).unwrap();
 
-                        agent.leave_room(LeaveRoomSettings::new(jid)).await;
+                            agent.leave_room(LeaveRoomSettings::new(jid)).await;
+                        }
                     } else {
                         error!("No published or retracted item in pubsub event!");
                     }
@@ -146,8 +150,10 @@ pub(crate) async fn handle_iq_result(
                                         .await;
                                 }
                             } else {
-                                // Leave the room that is no longer autojoin
-                                agent.leave_room(LeaveRoomSettings::new(jid)).await;
+                                if agent.config.read().await.bookmarks_autojoin {
+                                    // Leave the room that is no longer autojoin
+                                    agent.leave_room(LeaveRoomSettings::new(jid)).await;
+                                }
                             }
                         }
                         Err(err) => {
@@ -156,16 +162,18 @@ pub(crate) async fn handle_iq_result(
                     }
                 }
 
-                // Now we leave the rooms that are no longer in the bookmarks
-                let mut rooms_to_leave: Vec<BareJid> = Vec::new();
-                for (room, _nick) in &agent.rooms_joined {
-                    if !new_room_list.contains(&room) {
-                        rooms_to_leave.push(room.clone());
+                if agent.config.read().await.bookmarks_autojoin {
+                    // Now we leave the rooms that are no longer in the bookmarks
+                    let mut rooms_to_leave: Vec<BareJid> = Vec::new();
+                    for (room, _nick) in &agent.rooms_joined {
+                        if !new_room_list.contains(&room) {
+                            rooms_to_leave.push(room.clone());
+                        }
                     }
-                }
 
-                for room in rooms_to_leave {
-                    agent.leave_room(LeaveRoomSettings::new(room)).await;
+                    for room in rooms_to_leave {
+                        agent.leave_room(LeaveRoomSettings::new(room)).await;
+                    }
                 }
             }
             _ => unimplemented!(),

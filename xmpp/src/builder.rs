@@ -9,7 +9,7 @@ use crate::tokio_xmpp::connect::{DnsConfig, StartTlsServerConnector};
 use core::str::FromStr;
 
 use crate::{
-    Agent, ClientFeature, RoomNick,
+    Agent, ClientFeature, Config, RoomNick,
     jid::{BareJid, Jid, ResourceRef},
     parsers::{
         disco::{DiscoInfoResult, Feature, Identity},
@@ -43,6 +43,7 @@ pub struct ClientBuilder<'a, C: ServerConnector> {
     jid: BareJid,
     password: &'a str,
     server_connector: C,
+    config: Config,
     website: String,
     default_nick: RoomNick,
     lang: Vec<String>,
@@ -73,6 +74,7 @@ impl<C: ServerConnector> ClientBuilder<'_, C> {
             jid,
             password,
             server_connector,
+            config: Config::default(),
             website: String::from("https://gitlab.com/xmpp-rs/tokio-xmpp"),
             default_nick: RoomNick::from_str("xmpp-rs").unwrap(),
             lang: vec![String::from("en")],
@@ -86,6 +88,11 @@ impl<C: ServerConnector> ClientBuilder<'_, C> {
     /// Optionally set a resource associated to this device on the client
     pub fn set_resource(mut self, resource: &str) -> Self {
         self.resource = Some(resource.to_string());
+        self
+    }
+
+    pub fn set_config(mut self, config: Config) -> Self {
+        self.config = config;
         self
     }
 
@@ -169,6 +176,13 @@ impl<C: ServerConnector> ClientBuilder<'_, C> {
         let disco = self.make_disco();
         let node = self.website;
 
-        Agent::new(client, self.default_nick, self.lang, disco, node)
+        Agent::new(
+            client,
+            self.config,
+            self.default_nick,
+            self.lang,
+            disco,
+            node,
+        )
     }
 }
