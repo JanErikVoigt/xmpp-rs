@@ -79,8 +79,8 @@ pub mod pubsub;
 pub mod upload;
 
 pub use agent::Agent;
-pub use builder::{ClientBuilder, ClientType};
-pub use config::Config;
+pub use builder::ClientBuilder;
+pub use config::{ClientType, Config};
 pub use event::Event;
 pub use feature::ClientFeature;
 

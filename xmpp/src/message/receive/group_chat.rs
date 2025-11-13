@@ -18,7 +18,8 @@ pub async fn handle_message_group_chat(
     message: &mut Message,
     time_info: StanzaTimeInfo,
 ) {
-    let langs: Vec<&str> = agent.lang.iter().map(String::as_str).collect();
+    let config = agent.config.read().await;
+    let langs: Vec<&str> = config.lang.iter().map(String::as_str).collect();
     let mut found_subject = false;
 
     if let Some((_lang, subject)) = message.get_best_subject(langs.clone()) {

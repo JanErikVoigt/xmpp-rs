@@ -18,7 +18,8 @@ pub async fn handle_message_chat(
     message: &mut Message,
     time_info: StanzaTimeInfo,
 ) {
-    let langs: Vec<&str> = agent.lang.iter().map(String::as_str).collect();
+    let config = agent.config.read().await;
+    let langs: Vec<&str> = config.lang.iter().map(String::as_str).collect();
 
     let confirm = message.extract_valid_payload::<Confirm>();
     let is_muc_pm = message.extract_valid_payload::<MucUser>().is_some();

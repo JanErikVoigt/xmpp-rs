@@ -25,10 +25,7 @@ use tokio_xmpp::{Stanza, stanzastream::StanzaToken};
 pub struct Agent {
     pub(crate) client: TokioXmppClient,
     pub(crate) config: Arc<RwLock<Config>>,
-    pub(crate) default_nick: Arc<RwLock<RoomNick>>,
-    pub(crate) lang: Arc<Vec<String>>,
     pub(crate) disco: DiscoInfoResult,
-    pub(crate) node: String,
     pub(crate) uploads: Vec<(String, Jid, PathBuf)>,
     pub(crate) awaiting_disco_bookmarks_type: bool,
     // Mapping of room->nick
@@ -38,21 +35,11 @@ pub struct Agent {
 }
 
 impl Agent {
-    pub fn new(
-        client: TokioXmppClient,
-        config: Config,
-        default_nick: RoomNick,
-        lang: Vec<String>,
-        disco: DiscoInfoResult,
-        node: String,
-    ) -> Agent {
+    pub fn new(client: TokioXmppClient, config: Config, disco: DiscoInfoResult) -> Agent {
         Agent {
             client,
             config: Arc::new(RwLock::new(config)),
-            default_nick: Arc::new(RwLock::new(default_nick)),
-            lang: Arc::new(lang),
             disco,
-            node,
             uploads: Vec::new(),
             awaiting_disco_bookmarks_type: false,
             rooms_joined: HashMap::new(),

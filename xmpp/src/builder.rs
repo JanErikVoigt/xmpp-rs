@@ -6,10 +6,9 @@
 
 #[cfg(feature = "starttls")]
 use crate::tokio_xmpp::connect::{DnsConfig, StartTlsServerConnector};
-use core::str::FromStr;
 
 use crate::{
-    Agent, ClientFeature, Config, RoomNick,
+    Agent, ClientFeature, ClientType, Config, RoomNick,
     jid::{BareJid, Jid, ResourceRef},
     parsers::{
         disco::{DiscoInfoResult, Feature, Identity},
@@ -18,36 +17,11 @@ use crate::{
     tokio_xmpp::{Client as TokioXmppClient, connect::ServerConnector, xmlstream::Timeouts},
 };
 
-#[derive(Debug)]
-pub enum ClientType {
-    Bot,
-    Pc,
-}
-
-impl Default for ClientType {
-    fn default() -> Self {
-        ClientType::Bot
-    }
-}
-
-impl ToString for ClientType {
-    fn to_string(&self) -> String {
-        String::from(match self {
-            ClientType::Bot => "bot",
-            ClientType::Pc => "pc",
-        })
-    }
-}
-
 pub struct ClientBuilder<'a, C: ServerConnector> {
     jid: BareJid,
     password: &'a str,
     server_connector: C,
     config: Config,
-    website: String,
-    default_nick: RoomNick,
-    lang: Vec<String>,
-    disco: (ClientType, String),
     features: Vec<ClientFeature>,
     resource: Option<String>,
     timeouts: Timeouts,
@@ -75,10 +49,6 @@ impl<C: ServerConnector> ClientBuilder<'_, C> {
             password,
             server_connector,
             config: Config::default(),
-            website: String::from("https://gitlab.com/xmpp-rs/tokio-xmpp"),
-            default_nick: RoomNick::from_str("xmpp-rs").unwrap(),
-            lang: vec![String::from("en")],
-            disco: (ClientType::default(), String::from("tokio-xmpp")),
             features: vec![],
             resource: None,
             timeouts: Timeouts::default(),
@@ -97,22 +67,22 @@ impl<C: ServerConnector> ClientBuilder<'_, C> {
     }
 
     pub fn set_client(mut self, type_: ClientType, name: &str) -> Self {
-        self.disco = (type_, String::from(name));
+        self.config.disco = (type_, String::from(name));
         self
     }
 
     pub fn set_website(mut self, url: &str) -> Self {
-        self.website = String::from(url);
+        self.config.website = String::from(url);
         self
     }
 
     pub fn set_default_nick(mut self, nick: impl AsRef<ResourceRef>) -> Self {
-        self.default_nick = RoomNick::from_resource_ref(nick.as_ref());
+        self.config.default_nick = RoomNick::from_resource_ref(nick.as_ref());
         self
     }
 
     pub fn set_lang(mut self, lang: Vec<String>) -> Self {
-        self.lang = lang;
+        self.config.lang = lang;
         self
     }
 
@@ -133,9 +103,9 @@ impl<C: ServerConnector> ClientBuilder<'_, C> {
     fn make_disco(&self) -> DiscoInfoResult {
         let identities = vec![Identity::new(
             "client",
-            self.disco.0.to_string(),
+            self.config.disco.0.to_string(),
             "en",
-            self.disco.1.to_string(),
+            self.config.disco.1.to_string(),
         )];
         let mut features = vec![Feature::new(ns::DISCO_INFO)];
         #[cfg(feature = "avatars")]
@@ -174,15 +144,7 @@ impl<C: ServerConnector> ClientBuilder<'_, C> {
     // This function is meant to be used for testing build
     pub(crate) fn build_impl(self, client: TokioXmppClient) -> Agent {
         let disco = self.make_disco();
-        let node = self.website;
 
-        Agent::new(
-            client,
-            self.config,
-            self.default_nick,
-            self.lang,
-            disco,
-            node,
-        )
+        Agent::new(client, self.config, disco)
     }
 }
