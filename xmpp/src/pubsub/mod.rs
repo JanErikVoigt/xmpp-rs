@@ -50,6 +50,7 @@ pub(crate) async fn handle_event(
                     events.extend(new_events);
                 }
                 ref node if node == ns::BOOKMARKS2 => {
+                    let config = agent.get_config().await;
                     // TODO: Check that our bare JID is the sender.
                     if let [item] = &published[..] {
                         let jid = BareJid::from_str(&item.id.clone().unwrap().0).unwrap();
@@ -67,7 +68,7 @@ pub(crate) async fn handle_event(
                                             })
                                             .await;
                                     } else {
-                                        if agent.config.read().await.bookmarks_autojoin {
+                                        if config.bookmarks_autojoin {
                                             // So maybe another client of ours left the room... let's leave it too
                                             agent.leave_room(LeaveRoomSettings::new(jid)).await;
                                         }
@@ -77,7 +78,7 @@ pub(crate) async fn handle_event(
                             Err(err) => println!("not bookmark: {}", err),
                         }
                     } else if let [item] = &retracted[..] {
-                        if agent.config.read().await.bookmarks_autojoin {
+                        if config.bookmarks_autojoin {
                             let jid = BareJid::from_str(&item.0).unwrap();
 
                             agent.leave_room(LeaveRoomSettings::new(jid)).await;
@@ -125,6 +126,7 @@ pub(crate) async fn handle_iq_result(
                 events.extend(new_events);
             }
             ref node if node == ns::BOOKMARKS2 => {
+                let config = agent.get_config().await;
                 // Keep track of the new added/removed rooms in the bookmarks2 list.
                 // The rooms we joined which are no longer in the list should be left ASAP.
                 let mut new_room_list: Vec<BareJid> = Vec::new();
@@ -150,7 +152,7 @@ pub(crate) async fn handle_iq_result(
                                         .await;
                                 }
                             } else {
-                                if agent.config.read().await.bookmarks_autojoin {
+                                if config.bookmarks_autojoin {
                                     // Leave the room that is no longer autojoin
                                     agent.leave_room(LeaveRoomSettings::new(jid)).await;
                                 }
@@ -162,7 +164,7 @@ pub(crate) async fn handle_iq_result(
                     }
                 }
 
-                if agent.config.read().await.bookmarks_autojoin {
+                if config.bookmarks_autojoin {
                     // Now we leave the rooms that are no longer in the bookmarks
                     let mut rooms_to_leave: Vec<BareJid> = Vec::new();
                     for (room, _nick) in &agent.rooms_joined {

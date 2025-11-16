@@ -21,7 +21,7 @@ pub async fn wait_for_events(agent: &mut Agent) -> Vec<Event> {
             TokioXmppEvent::Online { resumed: false, .. } => {
                 let presence = presence::send::make_initial_presence(
                     &agent.disco,
-                    &agent.config.read().await.website,
+                    &agent.get_config().await.website,
                 )
                 .into();
                 let _ = agent.client.send_stanza(presence).await;

@@ -24,7 +24,7 @@ use tokio_xmpp::{Stanza, stanzastream::StanzaToken};
 
 pub struct Agent {
     pub(crate) client: TokioXmppClient,
-    pub(crate) config: Arc<RwLock<Config>>,
+    config: Arc<RwLock<Config>>,
     pub(crate) disco: DiscoInfoResult,
     pub(crate) uploads: Vec<(String, Jid, PathBuf)>,
     pub(crate) awaiting_disco_bookmarks_type: bool,
@@ -53,6 +53,10 @@ impl Agent {
     pub async fn set_config(&mut self, config: Config) {
         let mut c = self.config.write().await;
         *c = config;
+    }
+
+    pub async fn get_config(&self) -> Config {
+        self.config.read().await.clone()
     }
 
     pub async fn disconnect(self) -> Result<(), Error> {

@@ -78,8 +78,7 @@ pub async fn join_room<'a>(agent: &mut Agent, settings: JoinRoomSettings<'a>) {
     let nick = if let Some(nick) = nick {
         nick
     } else {
-        let config = agent.config.read().await;
-        config.default_nick.clone()
+        agent.get_config().await.default_nick
     };
 
     let room_jid = room.with_resource(&nick);

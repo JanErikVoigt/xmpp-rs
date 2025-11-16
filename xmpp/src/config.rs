@@ -8,7 +8,7 @@ use crate::RoomNick;
 use core::str::FromStr;
 
 /// [Disco](https://xmpp.org/registrar/disco-categories.html#client) identity type
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ClientType {
     Bot,
     Pc,
@@ -30,7 +30,7 @@ impl ToString for ClientType {
 }
 
 /// Store Agent configuration. Differs from state which is generated at runtime
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Config {
     /// Synchronize bookmarks based on autojoin flag.
     /// The client will join and leave based on the value of the `autojoin` flag on the (pubsub)
