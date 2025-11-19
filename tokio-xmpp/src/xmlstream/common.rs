@@ -876,10 +876,12 @@ impl StreamHeader<'static> {
                             }
                         }
                         None => {
-                            return Err(io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                "required `version` attribute missing",
-                            ))
+                            if cfg!(not(feature = "component")) {
+                                return Err(io::Error::new(
+                                    io::ErrorKind::InvalidData,
+                                    "required `version` attribute missing",
+                                ));
+                            }
                         }
                     }
 

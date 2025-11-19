@@ -1,5 +1,7 @@
 Version NEXT:
 0000-00-00 RELEASER <releaser@domain>
+    * Fixed:
+      - Ignore missing "version" stream attribute for 0114 components.
 
 Version 5.0.0:
 2025-10-28 pep <pep@bouah.net>
