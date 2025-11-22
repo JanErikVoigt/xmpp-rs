@@ -74,7 +74,7 @@ pub enum StanzaStage {
     /// means.
     ///
     /// **Note:** This state is only ever reached on streams where XEP-0198
-    /// was succesfully negotiated.
+    /// was successfully negotiated.
     Acked,
 
     /// Stanza transmission or serialisation failed.

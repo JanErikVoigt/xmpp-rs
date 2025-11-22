@@ -25,7 +25,7 @@ pub struct IqHeader {
     /// The sender JID.
     pub from: Option<Jid>,
 
-    /// The reciepient JID.
+    /// The recipient JID.
     pub to: Option<Jid>,
 
     /// The stanza's ID.

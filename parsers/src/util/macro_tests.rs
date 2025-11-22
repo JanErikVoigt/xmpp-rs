@@ -40,7 +40,7 @@ use self::helpers::{parse_str, roundtrip_full};
 use xso::exports::rxml;
 use xso::{AsXml, FromXml, PrintRawXml};
 
-// these are adverserial local names in order to trigger any issues with
+// these are adversarial local names in order to trigger any issues with
 // unqualified names in the macro expansions.
 #[allow(dead_code, non_snake_case)]
 fn Err() {}

@@ -274,7 +274,7 @@ impl<T: ?Sized> fmt::Debug for BuilderRegistryEntry<T> {
 /// assumptions are made:
 ///
 /// - Types are added only once at startup and a matching
-///   [`reserve`][`Self::reserve`] call is made beforehands.
+///   [`reserve`][`Self::reserve`] call is made beforehand.
 /// - There are many different types.
 /// - [`FromXml::xml_name_matcher`] returns a different value for most of the
 ///   types which are added.

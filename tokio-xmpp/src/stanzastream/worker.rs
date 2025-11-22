@@ -84,7 +84,7 @@ pub(super) enum WorkerEvent {
     /// Soft timeout noted by the underlying XmppStream.
     SoftTimeout,
 
-    /// Stream disonnected.
+    /// Stream disconnected.
     Disconnected {
         /// Slot for a new connection.
         slot: oneshot::Sender<Connection>,
@@ -106,7 +106,7 @@ enum WorkerStream {
         /// Receiver slot for the next connection.
         slot: oneshot::Receiver<Connection>,
 
-        /// Straem management state from a previous connection.
+        /// Stream management state from a previous connection.
         sm_state: Option<SmState>,
     },
 
@@ -245,7 +245,7 @@ impl WorkerStream {
 
                         Some(ConnectedEvent::LocalShutdownRequested) => {
                             // We don't switch to "terminated" here, but we
-                            // return "end of stream" nontheless.
+                            // return "end of stream" nonetheless.
                             return Poll::Ready(None);
                         }
                     }

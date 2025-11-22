@@ -136,7 +136,7 @@ impl Client {
 impl Client {
     /// Start a new XMPP client using DirectTLS transport and autoreconnect
     ///
-    /// It use RFC 7590 _xmpps-client._tcp loopup for connector details.
+    /// It use RFC 7590 _xmpps-client._tcp lookup for connector details.
     pub fn new_direct_tls<J: Into<Jid>, P: Into<String>>(jid: J, password: P) -> Self {
         let jid_ref = jid.into();
         let dns_config = DnsConfig::srv_xmpps(jid_ref.domain().as_ref());

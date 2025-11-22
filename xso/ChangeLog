@@ -63,7 +63,7 @@ Version 0.2.0, released 2025-09-17:
         library's `Display` and `FromStr` traits.
       - `AsXmlDyn`, a dyn-compatible variant of `AsXml` (!573).
       - `FromXml::xml_name_matcher()` and related types, which allow `FromXml`
-        implementors to provide cachable hints to callers about which XML
+        implementors to provide cacheable hints to callers about which XML
         elements are valid candidates for parsing (!573).
       - `Xso<dyn Trait>`, a Box-like struct which can hold a dynamically-typed
         XSO, alongside related traits and (declarative) macros (!573).

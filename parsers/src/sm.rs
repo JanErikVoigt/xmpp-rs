@@ -188,7 +188,7 @@ pub enum Nonza {
     #[xml(transparent)]
     Resume(Resume),
 
-    /// Sucessful SM resumption response
+    /// Successful SM resumption response
     #[xml(transparent)]
     Resumed(Resumed),
 

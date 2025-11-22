@@ -103,7 +103,7 @@ impl StanzaStream {
     /// `jid` and `password` must be the user account's credentials. `jid` may
     /// either be a bare JID (to let the server choose a resource) or a full
     /// JID (to request a specific resource from the server, with no guarantee
-    /// of succcess).
+    /// of success).
     ///
     /// `timeouts` controls the responsiveness to connection interruptions
     /// on the underlying transports. Please see the [`Timeouts`] struct's

@@ -19,7 +19,7 @@ pub struct Limits {
     #[xml(child(default))]
     pub max_bytes: Option<MaxBytes>,
 
-    /// Number of seconds without any traffic from the iniating entity after which the server may
+    /// Number of seconds without any traffic from the initiating entity after which the server may
     /// consider the stream idle, and either perform liveness checks or terminate the stream.
     // TODO: Replace that with a direct u32 once xso supports that.
     #[xml(child(default))]
@@ -36,7 +36,7 @@ pub struct MaxBytes {
     pub value: NonZeroU32,
 }
 
-/// Number of seconds without any traffic from the iniating entity after which the server may
+/// Number of seconds without any traffic from the initiating entity after which the server may
 /// consider the stream idle, and either perform liveness checks or terminate the stream.
 #[derive(FromXml, AsXml, Debug, Clone, PartialEq)]
 #[xml(namespace = ns::STREAM_LIMITS, name = "idle-seconds")]

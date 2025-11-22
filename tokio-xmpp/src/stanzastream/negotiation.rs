@@ -291,7 +291,7 @@ impl NegotiationState {
                         }))
                     }
 
-                    // Stream footer during negotation is really weird.
+                    // Stream footer during negotiation is really weird.
                     // We kill the stream immediately with an error
                     // (but allow preservation of the SM state).
                     Err(ReadError::StreamFooterReceived) => {
@@ -299,7 +299,7 @@ impl NegotiationState {
                             sm_state: None,
                             error: io::Error::new(
                                 io::ErrorKind::InvalidData,
-                                "stream footer received during negotation",
+                                "stream footer received during negotiation",
                             ),
                         }))
                     }
@@ -516,7 +516,7 @@ impl NegotiationState {
                         }))
                     }
 
-                    // Stream footer during negotation is really weird.
+                    // Stream footer during negotiation is really weird.
                     // We kill the stream immediately with an error
                     // (but allow preservation of the SM state).
                     Err(ReadError::StreamFooterReceived) => {
@@ -524,7 +524,7 @@ impl NegotiationState {
                             sm_state: sm_state.take(),
                             error: io::Error::new(
                                 io::ErrorKind::InvalidData,
-                                "stream footer received during negotation",
+                                "stream footer received during negotiation",
                             ),
                         }))
                     }
