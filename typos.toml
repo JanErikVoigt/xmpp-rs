@@ -1,0 +1,9 @@
+[files]
+extend-exclude = ["foo", "jingle"]
+
+[default.extend-words]
+ba = "ba"
+caf = "caf"
+muc = "muc"
+pn = "pn"
+thumnails = "thumnails"
