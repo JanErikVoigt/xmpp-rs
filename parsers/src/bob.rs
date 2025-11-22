@@ -26,26 +26,15 @@ impl FromStr for ContentId {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Error> {
-        let temp: Vec<_> = s.splitn(2, '@').collect();
-        let temp: Vec<_> = match temp[..] {
-            [lhs, rhs] => {
-                if rhs != "bob.xmpp.org" {
-                    return Err(Error::Other("Wrong domain for cid URI."));
-                }
-                lhs.splitn(2, '+').collect()
-            }
-            _ => return Err(Error::Other("Missing @ in cid URI.")),
-        };
-        let (algo, hex) = match temp[..] {
-            [lhs, rhs] => {
-                let algo = match lhs {
-                    "sha1" => Algo::Sha_1,
-                    "sha256" => Algo::Sha_256,
-                    _ => unimplemented!(),
-                };
-                (algo, rhs)
-            }
-            _ => return Err(Error::Other("Missing + in cid URI.")),
+        let (lhs, rhs) = s.split_once('@').ok_or(Error::Other("Missing @ in cid URI."))?;
+        if rhs != "bob.xmpp.org" {
+            return Err(Error::Other("Wrong domain for cid URI."));
+        }
+        let (algo, hex) = lhs.split_once('+').ok_or(Error::Other("Missing + in cid URI."))?;
+        let algo = match algo {
+            "sha1" => Algo::Sha_1,
+            "sha256" => Algo::Sha_256,
+            _ => unimplemented!(),
         };
         let hash = Hash::from_hex(algo, hex).map_err(Error::text_parse_error)?;
         Ok(ContentId { hash })

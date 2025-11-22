@@ -169,9 +169,7 @@ impl TryFrom<Element> for Body {
 
         Ok(Body {
             style: parse_css(elem.attr("style")),
-            xml_lang: elem
-                .attr_ns("xml", "lang")
-                .map(ToString::to_string),
+            xml_lang: elem.attr_ns("xml", "lang").map(ToString::to_string),
             children,
         })
     }
@@ -502,14 +500,12 @@ fn parse_css(style: Option<&str>) -> Css {
     let mut properties = vec![];
     if let Some(style) = style {
         // TODO: make that parser a bit more resilient to things.
-        for part in style.split(';') {
-            let mut part = part
-                .splitn(2, ':')
-                .map(ToString::to_string)
-                .collect::<Vec<_>>();
-            let key = part.pop().unwrap();
-            let value = part.pop().unwrap();
-            properties.push(Property { key, value });
+        for declaration in style.split(';') {
+            let (key, value) = declaration.split_once(':').unwrap();
+            properties.push(Property {
+                key: key.to_string(),
+                value: value.to_string(),
+            });
         }
     }
     properties
