@@ -171,7 +171,7 @@ impl TryFrom<Element> for Body {
             style: parse_css(elem.attr("style")),
             xml_lang: elem
                 .attr_ns("xml", "lang")
-                .map(|xml_lang| xml_lang.to_string()),
+                .map(ToString::to_string),
             children,
         })
     }
@@ -325,9 +325,9 @@ impl TryFrom<Element> for Tag {
 
         Ok(match elem.name() {
             "a" => Tag::A {
-                href: elem.attr("href").map(|href| href.to_string()),
+                href: elem.attr("href").map(ToString::to_string),
                 style: parse_css(elem.attr(rxml::xml_ncname!("style"))),
-                type_: elem.attr("type").map(|type_| type_.to_string()),
+                type_: elem.attr("type").map(ToString::to_string),
                 children,
             },
             "blockquote" => Tag::Blockquote {
@@ -341,8 +341,8 @@ impl TryFrom<Element> for Tag {
             },
             "em" => Tag::Em { children },
             "img" => Tag::Img {
-                src: elem.attr("src").map(|src| src.to_string()),
-                alt: elem.attr("alt").map(|alt| alt.to_string()),
+                src: elem.attr("src").map(ToString::to_string),
+                alt: elem.attr("alt").map(ToString::to_string),
             },
             "li" => Tag::Li {
                 style: parse_css(elem.attr("style")),
@@ -505,7 +505,7 @@ fn parse_css(style: Option<&str>) -> Css {
         for part in style.split(';') {
             let mut part = part
                 .splitn(2, ':')
-                .map(|a| a.to_string())
+                .map(ToString::to_string)
                 .collect::<Vec<_>>();
             let key = part.pop().unwrap();
             let value = part.pop().unwrap();
