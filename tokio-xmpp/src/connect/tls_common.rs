@@ -7,9 +7,22 @@
 //! Common TLS functionality shared between direct_tls and starttls modules
 
 use core::{error::Error as StdError, fmt};
-#[cfg(all(feature = "rustls-any-backend", not(feature = "native-tls")))]
+#[cfg(feature = "ktls")]
 use std::os::fd::AsRawFd;
 use tokio::io::{AsyncRead, AsyncWrite};
+
+/// Trait alias for async streams that can be used with TLS.
+// When the `ktls` feature is enabled, this additionally requires `AsRawFd`.
+#[cfg(feature = "ktls")]
+pub trait TlsAsyncStream: AsyncRead + AsyncWrite + Unpin + AsRawFd {}
+#[cfg(feature = "ktls")]
+impl<T: AsyncRead + AsyncWrite + Unpin + AsRawFd> TlsAsyncStream for T {}
+
+/// Trait alias for async streams that can be used with TLS.
+#[cfg(not(feature = "ktls"))]
+pub trait TlsAsyncStream: AsyncRead + AsyncWrite + Unpin {}
+#[cfg(not(feature = "ktls"))]
+impl<T: AsyncRead + AsyncWrite + Unpin> TlsAsyncStream for T {}
 
 #[cfg(feature = "native-tls")]
 use native_tls::Error as TlsError;
@@ -92,13 +105,10 @@ impl From<InvalidDnsNameError> for TlsConnectorError {
 
 /// Establish TLS connection using native-tls
 #[cfg(feature = "native-tls")]
-pub async fn establish_tls_connection<S>(
+pub async fn establish_tls_connection<S: TlsAsyncStream>(
     stream: S,
     domain: &str,
-) -> Result<(TlsStream<S>, ChannelBinding), Error>
-where
-    S: AsyncRead + AsyncWrite + Unpin,
-{
+) -> Result<(TlsStream<S>, ChannelBinding), Error> {
     let domain = domain.to_owned();
     let tls_stream = TlsConnector::from(NativeTlsConnector::builder().build().unwrap())
         .connect(&domain, stream)
@@ -112,13 +122,10 @@ where
 
 /// Establish TLS connection using rustls
 #[cfg(all(feature = "rustls-any-backend", not(feature = "native-tls")))]
-pub async fn establish_tls_connection<S>(
+pub async fn establish_tls_connection<S: TlsAsyncStream>(
     stream: S,
     domain: &str,
-) -> Result<(TlsStream<S>, ChannelBinding), Error>
-where
-    S: AsyncRead + AsyncWrite + Unpin + AsRawFd,
-{
+) -> Result<(TlsStream<S>, ChannelBinding), Error> {
     let domain =
         ServerName::try_from(domain.to_owned()).map_err(TlsConnectorError::DnsNameError)?;
     let mut root_store = RootCertStore::empty();

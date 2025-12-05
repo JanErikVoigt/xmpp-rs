@@ -2,14 +2,10 @@
 
 use alloc::borrow::Cow;
 use std::io;
-use std::os::fd::AsRawFd;
 
 use futures::{sink::SinkExt, stream::StreamExt};
 use sasl::common::ChannelBinding;
-use tokio::{
-    io::{AsyncRead, AsyncWrite, BufStream},
-    net::TcpStream,
-};
+use tokio::{io::BufStream, net::TcpStream};
 use xmpp_parsers::{
     jid::Jid,
     starttls::{self, Request},
@@ -17,7 +13,7 @@ use xmpp_parsers::{
 
 use crate::{
     connect::{
-        tls_common::{establish_tls_connection, TlsConnectorError, TlsStream},
+        tls_common::{establish_tls_connection, TlsAsyncStream, TlsConnectorError, TlsStream},
         DnsConfig, ServerConnector,
     },
     error::{Error, ProtocolError},
@@ -94,7 +90,7 @@ impl ServerConnector for StartTlsServerConnector {
 
 /// Performs `<starttls/>` on an XmppStream and returns a binary
 /// TlsStream.
-pub async fn starttls<S: AsyncRead + AsyncWrite + Unpin + AsRawFd>(
+pub async fn starttls<S: TlsAsyncStream>(
     mut stream: XmppStream<BufStream<S>>,
     domain: &str,
 ) -> Result<(TlsStream<S>, ChannelBinding), Error> {
