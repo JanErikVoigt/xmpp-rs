@@ -44,6 +44,39 @@ macro_rules! def_part_into_inner_doc {
     };
 }
 
+#[derive(Deserialize)]
+struct NodeDeserializer<'a>(&'a str);
+
+impl TryFrom<NodeDeserializer<'_>> for NodePart {
+    type Error = Error;
+
+    fn try_from(deserializer: NodeDeserializer) -> Result<NodePart, Self::Error> {
+        Ok(NodePart::new(deserializer.0)?.into_owned())
+    }
+}
+
+#[derive(Deserialize)]
+struct DomainDeserializer<'a>(&'a str);
+
+impl TryFrom<DomainDeserializer<'_>> for DomainPart {
+    type Error = Error;
+
+    fn try_from(deserializer: DomainDeserializer) -> Result<DomainPart, Self::Error> {
+        Ok(DomainPart::new(deserializer.0)?.into_owned())
+    }
+}
+
+#[derive(Deserialize)]
+struct ResourceDeserializer<'a>(&'a str);
+
+impl TryFrom<ResourceDeserializer<'_>> for ResourcePart {
+    type Error = Error;
+
+    fn try_from(deserializer: ResourceDeserializer) -> Result<ResourcePart, Self::Error> {
+        Ok(ResourcePart::new(deserializer.0)?.into_owned())
+    }
+}
+
 macro_rules! def_part_types {
     (
         $(#[$mainmeta:meta])*
@@ -203,6 +236,7 @@ def_part_types! {
     ///
     /// The corresponding slice type is [`NodeRef`].
     #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+    #[cfg_attr(feature = "serde", serde(try_from = "NodeDeserializer"))]
     pub struct NodePart(String) use node_check();
 
     /// `str`-like type which conforms to the requirements of [`NodePart`].
@@ -217,6 +251,7 @@ def_part_types! {
     /// (optional) `/` in any [`Jid`][crate::Jid], whether
     /// [`BareJid`][crate::BareJid] or [`FullJid`][crate::FullJid].
     #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+    #[cfg_attr(feature = "serde", serde(try_from = "DomainDeserializer"))]
     pub struct DomainPart(String) use domain_check();
 
     /// `str`-like type which conforms to the requirements of [`DomainPart`].
@@ -230,6 +265,7 @@ def_part_types! {
     /// The [`ResourcePart`] is the optional part after the `/` in a
     /// [`Jid`][crate::Jid]. It is mandatory in [`FullJid`][crate::FullJid].
     #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+    #[cfg_attr(feature = "serde", serde(try_from = "ResourceDeserializer"))]
     pub struct ResourcePart(String) use resource_check();
 
     /// `str`-like type which conforms to the requirements of
@@ -291,5 +327,101 @@ mod tests {
         let n3 = NodePart::new("foo").unwrap();
         assert_eq!(n1, n3);
         assert_ne!(n1, n2);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn nodepart_serde() {
+        serde_test::assert_de_tokens(
+            &NodePart(String::from("test")),
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "NodePart",
+                    len: 1,
+                },
+                serde_test::Token::BorrowedStr("test"),
+                serde_test::Token::TupleStructEnd,
+            ],
+        );
+
+        serde_test::assert_de_tokens_error::<NodePart>(
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "NodePart",
+                    len: 1,
+                },
+                serde_test::Token::BorrowedStr("invalid@domain"),
+                serde_test::Token::TupleStructEnd,
+            ],
+            "localpart doesn’t pass nodeprep validation",
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn domainpart_serde() {
+        serde_test::assert_de_tokens(
+            &DomainPart(String::from("[::1]")),
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "DomainPart",
+                    len: 1,
+                },
+                serde_test::Token::BorrowedStr("[::1]"),
+                serde_test::Token::TupleStructEnd,
+            ],
+        );
+
+        serde_test::assert_de_tokens(
+            &DomainPart(String::from("domain.example")),
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "DomainPart",
+                    len: 1,
+                },
+                serde_test::Token::BorrowedStr("domain.example"),
+                serde_test::Token::TupleStructEnd,
+            ],
+        );
+
+        serde_test::assert_de_tokens_error::<DomainPart>(
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "DomainPart",
+                    len: 1,
+                },
+                serde_test::Token::BorrowedStr("invalid@domain"),
+                serde_test::Token::TupleStructEnd,
+            ],
+            "domain doesn’t pass idna validation",
+        );
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn resourcepart_serde() {
+        serde_test::assert_de_tokens(
+            &ResourcePart(String::from("test")),
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "ResourcePart",
+                    len: 1,
+                },
+                serde_test::Token::BorrowedStr("test"),
+                serde_test::Token::TupleStructEnd,
+            ],
+        );
+
+        serde_test::assert_de_tokens_error::<ResourcePart>(
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "ResourcePart",
+                    len: 1,
+                },
+                serde_test::Token::BorrowedStr("🤖"),
+                serde_test::Token::TupleStructEnd,
+            ],
+            "resource doesn’t pass resourceprep validation",
+        );
     }
 }
