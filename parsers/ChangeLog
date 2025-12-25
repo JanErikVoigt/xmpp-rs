@@ -4,6 +4,9 @@ XXXX-YY-ZZ RELEASER <admin@example.com>
         - The type of jingle_rtp::Description::ssrc has been changed from
           Option<String> to Option<u32>, in accordance with XEP-0167 version
           1.2.3 and RFC 3550. (!602)
+    * Improvements:
+        - Make Priority’s inner i8 pub, which had been broken since the
+          conversion to xso. (!632)
 
 Version 0.22.0:
 2025-10-28 pep <pep@bouah.net>

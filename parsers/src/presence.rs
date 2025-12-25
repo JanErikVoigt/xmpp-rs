@@ -64,7 +64,7 @@ type Status = String;
 /// messages addressed to the bare JID.
 #[derive(FromXml, AsXml, Debug, Default, Clone, PartialEq)]
 #[xml(namespace = ns::DEFAULT_NS, name = "priority")]
-pub struct Priority(#[xml(text)] i8);
+pub struct Priority(#[xml(text)] pub i8);
 
 /// Accepted values for the 'type' attribute of a presence.
 #[derive(Debug, Default, Clone, PartialEq)]
