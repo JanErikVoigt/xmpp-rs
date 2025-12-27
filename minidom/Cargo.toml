@@ -21,7 +21,7 @@ edition = "2021"
 gitlab = { repository = "xmpp-rs/xmpp-rs" }
 
 [dependencies]
-rxml = { version = "0.13.1", default-features = false, features = [ "std", "compact_str" ] }
+rxml = { version = "0.13.3", default-features = false, features = [ "std", "compact_str" ] }
 thiserror = "2.0"
 
 [dev-dependencies]
