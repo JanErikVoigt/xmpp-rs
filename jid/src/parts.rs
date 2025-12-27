@@ -44,9 +44,11 @@ macro_rules! def_part_into_inner_doc {
     };
 }
 
+#[cfg(feature = "serde")]
 #[derive(Deserialize)]
 struct NodeDeserializer<'a>(&'a str);
 
+#[cfg(feature = "serde")]
 impl TryFrom<NodeDeserializer<'_>> for NodePart {
     type Error = Error;
 
@@ -55,9 +57,11 @@ impl TryFrom<NodeDeserializer<'_>> for NodePart {
     }
 }
 
+#[cfg(feature = "serde")]
 #[derive(Deserialize)]
 struct DomainDeserializer<'a>(&'a str);
 
+#[cfg(feature = "serde")]
 impl TryFrom<DomainDeserializer<'_>> for DomainPart {
     type Error = Error;
 
@@ -66,9 +70,11 @@ impl TryFrom<DomainDeserializer<'_>> for DomainPart {
     }
 }
 
+#[cfg(feature = "serde")]
 #[derive(Deserialize)]
 struct ResourceDeserializer<'a>(&'a str);
 
+#[cfg(feature = "serde")]
 impl TryFrom<ResourceDeserializer<'_>> for ResourcePart {
     type Error = Error;
 
