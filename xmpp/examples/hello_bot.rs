@@ -103,10 +103,8 @@ async fn handle_events(client: &mut Agent, event: Event, rooms: &Vec<BareJid>) {
                 log::info!("Joining room {} from CLI argument…", room);
                 client
                     .join_room(JoinRoomSettings {
-                        room: room.clone(),
-                        nick: None,
-                        password: None,
                         status: Some(("en", "Yet another bot!")),
+                        ..JoinRoomSettings::new(room.clone())
                     })
                     .await;
             }

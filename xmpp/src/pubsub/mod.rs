@@ -61,10 +61,9 @@ pub(crate) async fn handle_event(
                                     if !agent.rooms_joined.contains_key(&jid) {
                                         agent
                                             .join_room(JoinRoomSettings {
-                                                room: jid,
                                                 nick: conference.nick.map(RoomNick::new),
                                                 password: conference.password,
-                                                status: None,
+                                                ..JoinRoomSettings::new(jid)
                                             })
                                             .await;
                                     } else {
@@ -144,10 +143,9 @@ pub(crate) async fn handle_iq_result(
                                 if !agent.rooms_joined.contains_key(&jid) {
                                     agent
                                         .join_room(JoinRoomSettings {
-                                            room: jid,
                                             nick: conference.nick.map(RoomNick::new),
                                             password: conference.password,
-                                            status: None,
+                                            ..JoinRoomSettings::new(jid)
                                         })
                                         .await;
                                 }

@@ -21,6 +21,11 @@ pub struct JoinRoomSettings<'a> {
     pub nick: Option<RoomNick>,
     pub password: Option<String>,
     pub status: Option<(&'a str, &'a str)>,
+    /// Send the join payload again even though we're already supposedly joined.
+    /// This was made explicit in version 1.27 of XEP-0045 (cee524dbde4, 2016), that is just rejoin
+    /// with the standard MUC payload to force a resync of the client state (receive all occupants
+    /// and subject again).
+    pub force_resync: bool,
 }
 
 impl<'a> JoinRoomSettings<'a> {
@@ -30,6 +35,7 @@ impl<'a> JoinRoomSettings<'a> {
             nick: None,
             password: None,
             status: None,
+            force_resync: false,
         }
     }
 
@@ -47,6 +53,11 @@ impl<'a> JoinRoomSettings<'a> {
         self.status = Some((lang, content));
         self
     }
+
+    pub fn with_resync(mut self) -> Self {
+        self.force_resync = true;
+        self
+    }
 }
 
 /// TODO: this method should add bookmark and ensure autojoin is true
@@ -56,6 +67,7 @@ pub async fn join_room<'a>(agent: &mut Agent, settings: JoinRoomSettings<'a>) {
         nick,
         password,
         status,
+        force_resync,
     } = settings;
 
     if agent.rooms_joining.contains_key(&room) {
@@ -64,7 +76,7 @@ pub async fn join_room<'a>(agent: &mut Agent, settings: JoinRoomSettings<'a>) {
         return;
     }
 
-    if agent.rooms_joined.contains_key(&room) {
+    if !force_resync && agent.rooms_joined.contains_key(&room) {
         // We are already joined, cannot join
         warn!("Requesting to join room {room} which is already joined...");
         return;

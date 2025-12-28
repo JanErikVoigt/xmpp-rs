@@ -41,10 +41,9 @@ pub async fn handle_iq_result(
                     let (jid, room) = conf.into_bookmarks2();
                     agent
                         .join_room(JoinRoomSettings {
-                            room: jid,
                             nick: room.nick.map(RoomNick::new),
                             password: room.password,
-                            status: None,
+                            ..JoinRoomSettings::new(jid)
                         })
                         .await;
                 }
