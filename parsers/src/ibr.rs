@@ -4,134 +4,177 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use xso::{AsXml, FromXml};
+
 use crate::data_forms::DataForm;
 use crate::iq::{IqGetPayload, IqResultPayload, IqSetPayload};
 use crate::ns;
-use alloc::collections::BTreeMap;
-use minidom::Element;
-use xso::error::{Error, FromElementError};
 
-/// Query for registering against a service.
-#[derive(Debug, Clone)]
-pub struct Query {
-    /// Deprecated fixed list of possible fields to fill before the user can
-    /// register.
-    pub fields: BTreeMap<String, String>,
+/// Entity requests registration fields from host.
+#[derive(FromXml, AsXml, Debug, Clone)]
+#[xml(namespace = ns::REGISTER, name = "query")]
+pub struct FieldsQuery;
 
-    /// Whether this account is already registered.
+impl IqGetPayload for FieldsQuery {}
+
+/// Entity requests cancellation of existing registration.
+#[derive(FromXml, AsXml, Debug, Clone)]
+#[xml(namespace = ns::REGISTER, name = "query")]
+pub struct RemoveQuery {
+    /// Whether to remove that registration.
+    // TODO: we should be able to remove that flag and make this type a zero-sized type.
+    #[xml(flag)]
+    pub remove: bool,
+}
+
+impl IqSetPayload for RemoveQuery {}
+
+/// Query for registering against a service, the legacy way.
+#[derive(FromXml, AsXml, Debug, Clone)]
+#[xml(namespace = ns::REGISTER, name = "query")]
+pub struct LegacyQuery {
+    /// Whether this account is already registered
+    #[xml(flag)]
     pub registered: bool,
 
-    /// Whether to remove this account.
-    pub remove: bool,
+    /// Instructions to be presented to entities implementing this legacy element.
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub instructions: Option<String>,
+
+    /// Account name associated with the user
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub username: Option<String>,
+
+    /// Familiar name of the user
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub nick: Option<String>,
+
+    /// Password or secret for the user
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub password: Option<String>,
+
+    /// Full name of the user
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub name: Option<String>,
+
+    /// Given name of the user
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub first: Option<String>,
+
+    /// Family name of the user
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub last: Option<String>,
+
+    /// Email address of the user
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub email: Option<String>,
+
+    /// Street portion of a physical or mailing address
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub address: Option<String>,
+
+    /// Locality portion of a physical or mailing address
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub city: Option<String>,
+
+    /// Region portion of a physical or mailing address
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub state: Option<String>,
+
+    /// Postal code portion of a physical or mailing address
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub zip: Option<String>,
+
+    /// Telephone number of the user
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub phone: Option<String>,
+
+    /// URL to web page describing the user
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub url: Option<String>,
+
+    /// Some date (e.g., birth date, hire date, sign-up date)
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub date: Option<String>,
+
+    /// Free-form text field (obsolete)
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub misc: Option<String>,
+
+    /// Free-form text field (obsolete)
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub text: Option<String>,
+
+    /// Session key for transaction (obsolete)
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub key: Option<String>,
+}
+
+impl IqSetPayload for LegacyQuery {}
+impl IqResultPayload for LegacyQuery {}
+
+/// Query for registering against a service.
+#[derive(FromXml, AsXml, Debug, Clone)]
+#[xml(namespace = ns::REGISTER, name = "query")]
+pub struct FormQuery {
+    /// Legacy instructions fallback for entities which don’t understand the form.
+    #[xml(extract(default, fields(text(type_ = String))))]
+    pub instructions: Option<String>,
 
     /// A data form the user must fill before being allowed to register.
-    pub form: Option<DataForm>,
+    #[xml(child)]
+    pub form: DataForm,
     // Not yet implemented.
     //pub oob: Option<Oob>,
 }
 
-impl IqGetPayload for Query {}
-impl IqSetPayload for Query {}
-impl IqResultPayload for Query {}
-
-impl TryFrom<Element> for Query {
-    type Error = FromElementError;
-
-    fn try_from(elem: Element) -> Result<Query, FromElementError> {
-        check_self!(elem, "query", REGISTER, "IBR query");
-        let mut query = Query {
-            registered: false,
-            fields: BTreeMap::new(),
-            remove: false,
-            form: None,
-        };
-        for child in elem.children() {
-            let namespace = child.ns();
-            if namespace == ns::REGISTER {
-                let name = child.name();
-                let fields = vec![
-                    "address",
-                    "city",
-                    "date",
-                    "email",
-                    "first",
-                    "instructions",
-                    "key",
-                    "last",
-                    "misc",
-                    "name",
-                    "nick",
-                    "password",
-                    "phone",
-                    "state",
-                    "text",
-                    "url",
-                    "username",
-                    "zip",
-                ];
-                if fields.binary_search(&name).is_ok() {
-                    query.fields.insert(name.to_owned(), child.text());
-                } else if name == "registered" {
-                    query.registered = true;
-                } else if name == "remove" {
-                    query.remove = true;
-                } else {
-                    return Err(Error::Other("Wrong field in ibr element.").into());
-                }
-            } else if child.is("x", ns::DATA_FORMS) {
-                query.form = Some(DataForm::try_from(child.clone())?);
-            } else {
-                return Err(Error::Other("Unknown child in ibr element.").into());
-            }
-        }
-        Ok(query)
-    }
-}
-
-impl From<Query> for Element {
-    fn from(query: Query) -> Element {
-        Element::builder("query", ns::REGISTER)
-            .append_all(if query.registered {
-                Some(Element::builder("registered", ns::REGISTER))
-            } else {
-                None
-            })
-            .append_all(
-                query
-                    .fields
-                    .into_iter()
-                    .map(|(name, value)| Element::builder(name, ns::REGISTER).append(value)),
-            )
-            .append_all(if query.remove {
-                Some(Element::builder("remove", ns::REGISTER))
-            } else {
-                None
-            })
-            .append_all(query.form.map(Element::from))
-            .build()
-    }
-}
+impl IqSetPayload for FormQuery {}
+impl IqResultPayload for FormQuery {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::data_forms::DataFormType;
+    use minidom::Element;
 
     #[cfg(target_pointer_width = "32")]
     #[test]
     fn test_size() {
-        assert_size!(Query, 56);
+        assert_size!(RemoveQuery, 1);
+        assert_size!(LegacyQuery, 220);
+        assert_size!(FormQuery, 52);
     }
 
     #[cfg(target_pointer_width = "64")]
     #[test]
     fn test_size() {
-        assert_size!(Query, 112);
+        assert_size!(RemoveQuery, 1);
+        assert_size!(LegacyQuery, 440);
+        assert_size!(FormQuery, 104);
     }
 
     #[test]
     fn test_simple() {
         let elem: Element = "<query xmlns='jabber:iq:register'/>".parse().unwrap();
-        Query::try_from(elem).unwrap();
+        FieldsQuery::try_from(elem).unwrap();
+
+        let elem: Element = "<query xmlns='jabber:iq:register'><remove/></query>"
+            .parse()
+            .unwrap();
+        let query = RemoveQuery::try_from(elem).unwrap();
+        assert_eq!(query.remove, true);
+
+        let elem: Element = "<query xmlns='jabber:iq:register'/>".parse().unwrap();
+        let query = LegacyQuery::try_from(elem).unwrap();
+        assert_eq!(query.first, None);
+
+        let elem: Element =
+            "<query xmlns='jabber:iq:register'><x xmlns='jabber:x:data' type='submit'/></query>"
+                .parse()
+                .unwrap();
+        let query = FormQuery::try_from(elem).unwrap();
+        assert!(query.instructions.is_none());
+        assert!(query.form.fields.is_empty());
     }
 
     #[test]
@@ -148,13 +191,13 @@ mod tests {
 "#
         .parse()
         .unwrap();
-        let query = Query::try_from(elem).unwrap();
+        let query = LegacyQuery::try_from(elem).unwrap();
         assert_eq!(query.registered, false);
-        assert_eq!(query.fields["instructions"], "\n    Choose a username and password for use with this service.\n    Please also provide your email address.\n  ");
-        assert_eq!(query.fields["username"], "");
-        assert_eq!(query.fields["password"], "");
-        assert_eq!(query.fields["email"], "");
-        assert_eq!(query.fields.contains_key("name"), false);
+        assert_eq!(query.instructions.unwrap(), "\n    Choose a username and password for use with this service.\n    Please also provide your email address.\n  ");
+        assert_eq!(query.username.unwrap(), "");
+        assert_eq!(query.password.unwrap(), "");
+        assert_eq!(query.email.unwrap(), "");
+        assert_eq!(query.name, None);
 
         // FIXME: HashMap doesn’t keep the order right.
         //let elem2 = query.into();
@@ -167,11 +210,14 @@ mod tests {
         .parse()
         .unwrap();
         let elem1 = elem.clone();
-        let query = Query::try_from(elem).unwrap();
-        assert_eq!(query.registered, false);
-        assert!(!query.fields["instructions"].is_empty());
-        let form = query.form.clone().unwrap();
-        assert!(!form.instructions.unwrap().is_empty());
+        let query = FormQuery::try_from(elem).unwrap();
+        assert!(query.instructions.is_some());
+        let form = query.form.clone();
+        assert_eq!(
+            form.instructions.unwrap(),
+            "Please provide the following information to sign up for our special contests!"
+        );
+        assert_eq!(form.type_, DataFormType::Form);
         let elem2 = query.into();
         assert_eq!(elem1, elem2);
     }
@@ -182,11 +228,7 @@ mod tests {
         .parse()
         .unwrap();
         let elem1 = elem.clone();
-        let query = Query::try_from(elem).unwrap();
-        assert_eq!(query.registered, false);
-        for _ in &query.fields {
-            panic!();
-        }
+        let query = FormQuery::try_from(elem).unwrap();
         let elem2 = query.into();
         assert_eq!(elem1, elem2);
     }
