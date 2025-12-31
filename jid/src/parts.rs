@@ -46,40 +46,40 @@ macro_rules! def_part_into_inner_doc {
 
 #[cfg(feature = "serde")]
 #[derive(Deserialize)]
-struct NodeDeserializer<'a>(&'a str);
+struct NodeDeserializer<'a>(Cow<'a, str>);
 
 #[cfg(feature = "serde")]
 impl TryFrom<NodeDeserializer<'_>> for NodePart {
     type Error = Error;
 
     fn try_from(deserializer: NodeDeserializer) -> Result<NodePart, Self::Error> {
-        Ok(NodePart::new(deserializer.0)?.into_owned())
+        Ok(NodePart::new(&deserializer.0)?.into_owned())
     }
 }
 
 #[cfg(feature = "serde")]
 #[derive(Deserialize)]
-struct DomainDeserializer<'a>(&'a str);
+struct DomainDeserializer<'a>(Cow<'a, str>);
 
 #[cfg(feature = "serde")]
 impl TryFrom<DomainDeserializer<'_>> for DomainPart {
     type Error = Error;
 
     fn try_from(deserializer: DomainDeserializer) -> Result<DomainPart, Self::Error> {
-        Ok(DomainPart::new(deserializer.0)?.into_owned())
+        Ok(DomainPart::new(&deserializer.0)?.into_owned())
     }
 }
 
 #[cfg(feature = "serde")]
 #[derive(Deserialize)]
-struct ResourceDeserializer<'a>(&'a str);
+struct ResourceDeserializer<'a>(Cow<'a, str>);
 
 #[cfg(feature = "serde")]
 impl TryFrom<ResourceDeserializer<'_>> for ResourcePart {
     type Error = Error;
 
     fn try_from(deserializer: ResourceDeserializer) -> Result<ResourcePart, Self::Error> {
-        Ok(ResourcePart::new(deserializer.0)?.into_owned())
+        Ok(ResourcePart::new(&deserializer.0)?.into_owned())
     }
 }
 
@@ -350,6 +350,18 @@ mod tests {
             ],
         );
 
+        serde_test::assert_de_tokens(
+            &NodePart(String::from("test")),
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "NodePart",
+                    len: 1,
+                },
+                serde_test::Token::String("test"),
+                serde_test::Token::TupleStructEnd,
+            ],
+        );
+
         serde_test::assert_de_tokens_error::<NodePart>(
             &[
                 serde_test::Token::TupleStruct {
@@ -374,6 +386,18 @@ mod tests {
                     len: 1,
                 },
                 serde_test::Token::BorrowedStr("[::1]"),
+                serde_test::Token::TupleStructEnd,
+            ],
+        );
+
+        serde_test::assert_de_tokens(
+            &DomainPart(String::from("[::1]")),
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "DomainPart",
+                    len: 1,
+                },
+                serde_test::Token::String("[::1]"),
                 serde_test::Token::TupleStructEnd,
             ],
         );
@@ -414,6 +438,18 @@ mod tests {
                     len: 1,
                 },
                 serde_test::Token::BorrowedStr("test"),
+                serde_test::Token::TupleStructEnd,
+            ],
+        );
+
+        serde_test::assert_de_tokens(
+            &ResourcePart(String::from("test")),
+            &[
+                serde_test::Token::TupleStruct {
+                    name: "ResourcePart",
+                    len: 1,
+                },
+                serde_test::Token::String("test"),
                 serde_test::Token::TupleStructEnd,
             ],
         );
