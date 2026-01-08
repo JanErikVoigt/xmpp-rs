@@ -47,6 +47,10 @@ pub struct StreamFeatures {
     #[xml(child(default))]
     pub stream_management: Option<crate::sm::StreamManagement>,
 
+    /// Stream management feature
+    #[xml(flag(namespace = ns::REGISTER_FEATURE, name = "register"))]
+    pub in_band_registration: bool,
+
     /// Other stream features advertised
     ///
     /// If some features you use end up here, you may want to contribute

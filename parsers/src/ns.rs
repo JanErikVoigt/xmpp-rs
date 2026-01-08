@@ -78,6 +78,8 @@ pub const XHTML: &str = "http://www.w3.org/1999/xhtml";
 
 /// XEP-0077: In-Band Registration
 pub const REGISTER: &str = "jabber:iq:register";
+/// XEP-0077: In-Band Registration
+pub const REGISTER_FEATURE: &str = "http://jabber.org/features/iq-register";
 
 /// XEP-0084: User Avatar
 pub const AVATAR_DATA: &str = "urn:xmpp:avatar:data";
