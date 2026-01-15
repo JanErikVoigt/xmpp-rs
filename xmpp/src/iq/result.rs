@@ -49,7 +49,7 @@ pub async fn handle_iq_result(
                 }
             }
             Err(e) => {
-                panic!("Wrong XEP-0048 v1.0 Bookmark format: {}", e);
+                info!("Wrong XEP-0048 v1.0 Bookmark format: {}", e);
             }
         }
     } else if payload.is("query", ns::DISCO_INFO) {
@@ -58,7 +58,7 @@ pub async fn handle_iq_result(
                 disco::handle_disco_info_result(agent, disco, from).await;
             }
             Err(e) => match e {
-                _ => panic!("Wrong disco#info format: {}", e),
+                _ => info!("Wrong disco#info format: {}", e),
             },
         }
     }

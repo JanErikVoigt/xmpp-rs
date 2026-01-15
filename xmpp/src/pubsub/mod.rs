@@ -86,7 +86,7 @@ pub(crate) async fn handle_event(
                         error!("No published or retracted item in pubsub event!");
                     }
                 }
-                ref node => unimplemented!("node {}", node),
+                ref node => info!("Unhandled PubSub node {}", node),
             }
         }
         Ok(pubsub::Event {
@@ -95,12 +95,12 @@ pub(crate) async fn handle_event(
             ref node if node == ns::BOOKMARKS2 => {
                 warn!("The bookmarks2 PEP node was deleted!");
             }
-            ref node => unimplemented!("node {}", node),
+            ref node => info!("Unhandled PubSub node {}", node),
         },
         Err(e) => {
             error!("Error parsing PubSub event: {}", e);
         }
-        _ => unimplemented!("PubSub event: {:#?}", event),
+        _ => info!("Unhandled PubSub event: {:#?}", event),
     }
     events
 }
@@ -176,7 +176,7 @@ pub(crate) async fn handle_iq_result(
                     }
                 }
             }
-            _ => unimplemented!(),
+            ref node => info!("Unhandled PubSub node: {}", node),
         }
     }
     events

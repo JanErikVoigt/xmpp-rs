@@ -48,6 +48,6 @@ pub async fn handle_disco_info_result(agent: &mut Agent, disco: DiscoInfoResult,
             let _ = agent.client.send_stanza(iq).await;
         }
     } else {
-        unimplemented!("Ignored disco#info response from {}", from);
+        info!("Ignored disco#info response from {}", from);
     }
 }

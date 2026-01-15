@@ -58,7 +58,10 @@ pub async fn handle_presence(agent: &mut Agent, presence: Presence) -> Vec<Event
                     }
                     events.push(Event::RoomLeft(from.clone()));
                 }
-                _ => unimplemented!("Presence type {:?}", presence.type_), // TODO: What to do here?
+                _ => debug!(
+                    "Unhandled self-presence with type {:?} from {:?}",
+                    presence.type_, from
+                ),
             }
         }
     }

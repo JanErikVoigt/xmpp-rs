@@ -28,6 +28,8 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
         Please refer to the crate docs for details. (!581)
       - Allow joining an already joined room with `Agent::join_room` to enable
         resyncs. Adds a parameter to `muc::room::JoinRoomSettings`.
+    * Changed:
+      - Replaced unimplemented! with info! calls.
     * Added:
       - Agent::send_room_message takes RoomMessageSettings argument (!483)
       - Agent::send_raw_message takes RawMessageSettings for any message type (!487)
