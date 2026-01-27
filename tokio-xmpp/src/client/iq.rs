@@ -14,6 +14,7 @@ use core::pin::Pin;
 use core::task::{ready, Context, Poll};
 use std::io;
 use std::sync::Mutex;
+use xmpp_parsers::jid::BareJid;
 
 use futures::Stream;
 use tokio::sync::oneshot;
@@ -254,6 +255,7 @@ impl IqResponseSink {
 #[derive(Debug)]
 pub struct IqResponseTracker {
     map: Arc<Mutex<IqMap>>,
+    account_jid: Arc<Mutex<Option<BareJid>>>,
 }
 
 impl IqResponseTracker {
@@ -261,7 +263,14 @@ impl IqResponseTracker {
     pub fn new() -> Self {
         Self {
             map: Arc::new(Mutex::new(IqMap::new())),
+            account_jid: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Set the local JID the `IqResponseTracker` is handling IQs on behalf of.
+    pub fn set_account_jid(&self, jid: BareJid) {
+        let mut guard = self.account_jid.lock().unwrap();
+        *guard = Some(jid);
     }
 
     /// Attempt to handle an IQ stanza as IQ response.
@@ -305,9 +314,16 @@ impl IqResponseTracker {
     pub fn allocate_iq_handle(
         &self,
         from: Option<Jid>,
-        to: Option<Jid>,
+        mut to: Option<Jid>,
         req: IqRequest,
     ) -> (Iq, IqResponseToken) {
+        if to.is_none() {
+            // Implicitly setting None to the JID the tracker is active for, which the server
+            // should do as well. This ensures that the IQ can be matched in the map again.
+            let account_jid = self.account_jid.lock().unwrap();
+            to = account_jid.clone().map(Jid::from);
+        }
+
         let key = (to, make_id());
         let mut map = self.map.lock().unwrap();
         let (tx, rx) = oneshot::channel();
