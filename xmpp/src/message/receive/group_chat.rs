@@ -32,11 +32,6 @@ pub async fn handle_message_group_chat(
                 subject.clone(),
                 time_info.clone(),
             ));
-        } else {
-            debug!(
-                "Received groupchat message without body/subject:\n{:#?}",
-                message
-            );
         }
 
         return;

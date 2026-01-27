@@ -34,9 +34,8 @@ pub async fn handle_message_chat(
         return;
     }
 
-    // For other events, a message body is required, so stop here if there isn't one
     let Some((_lang, body)) = message.get_best_body_cloned(langs) else {
-        debug!("Received normal/chat message without body:\n{:#?}", message);
+        // We're not handling stuff without a body yet, skip.
         return;
     };
 
