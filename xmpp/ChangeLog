@@ -30,6 +30,7 @@ XXXX-YY-ZZ [ RELEASER <admin@localhost> ]
         resyncs. Adds a parameter to `muc::room::JoinRoomSettings`.
     * Changed:
       - Replaced unimplemented! with info! calls.
+      - Only send `Event::RoomSubject` when there's no body as per 0045.
     * Added:
       - Agent::send_room_message takes RoomMessageSettings argument (!483)
       - Agent::send_raw_message takes RawMessageSettings for any message type (!487)

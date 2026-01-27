@@ -20,25 +20,25 @@ pub async fn handle_message_group_chat(
 ) {
     let config = agent.get_config().await;
     let langs: Vec<&str> = config.lang.iter().map(String::as_str).collect();
-    let mut found_subject = false;
 
-    if let Some((_lang, subject)) = message.get_best_subject(langs.clone()) {
-        events.push(Event::RoomSubject(
-            from.to_bare(),
-            from.resource().map(RoomNick::from_resource_ref),
-            subject.clone(),
-            time_info.clone(),
-        ));
-        found_subject = true;
-    }
-
-    let Some((_lang, body)) = message.get_best_body_cloned(langs) else {
-        if !found_subject {
+    let Some((_lang, body)) = message.get_best_body_cloned(langs.clone()) else {
+        // 0045 §7.2.15
+        // a <message/> stanza from the room JID (or from the occupant JID of the entity that set
+        // the subject), with a <subject/> element but no <body/> element
+        if let Some((_lang, subject)) = message.get_best_subject(langs) {
+            events.push(Event::RoomSubject(
+                from.to_bare(),
+                from.resource().map(RoomNick::from_resource_ref),
+                subject.clone(),
+                time_info.clone(),
+            ));
+        } else {
             debug!(
                 "Received groupchat message without body/subject:\n{:#?}",
                 message
             );
         }
+
         return;
     };
 
