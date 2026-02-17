@@ -30,7 +30,7 @@ xmpp-parsers = { version = "0.22", path = "../parsers", features = [ "log" ] }
 xso = { version = "0.3", path = "../xso" }
 
 # these are only needed for starttls ServerConnector support
-hickory-resolver = { git = "git@github.com:JanErikVoigt/hickory-dns.git", branch = "main", package = "crates/resolver"}
+hickory-resolver = { git = "git@github.com:JanErikVoigt/hickory-dns.git", branch = "main", package = "resolver"}
 
 idna = { version = "1.0", optional = true}
 native-tls = { version = "0.2", optional = true }
