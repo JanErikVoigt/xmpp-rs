@@ -1,13 +1,15 @@
 use core::{fmt, net::SocketAddr};
+use hickory_resolver::config::LookupIpStrategy;
+
 #[cfg(feature = "dns")]
 use futures::{future::select_ok, FutureExt};
 #[cfg(feature = "dns")]
-use hickory_resolver::{config::LookupIpStrategy, IntoName, TokioResolver};
 #[cfg(feature = "dns")]
 use log::debug;
 use tokio::net::TcpStream;
 
 use crate::Error;
+use hickory_resolver::proto::rr::domain::IntoName;
 
 /// XMPP server connection configuration
 #[derive(Clone, Debug)]
@@ -121,6 +123,8 @@ impl DnsConfig {
 
     #[cfg(feature = "dns")]
     async fn resolve_srv(host: &str, srv: &str, fallback_port: u16) -> Result<TcpStream, Error> {
+        use hickory_resolver::{Resolver, TokioResolver};
+
         let ascii_domain = idna::domain_to_ascii(host)?;
 
         if let Ok(ip) = ascii_domain.parse() {
@@ -129,9 +133,9 @@ impl DnsConfig {
         }
 
         let (_config, options) = hickory_resolver::system_conf::read_system_conf()?;
-        let resolver = TokioResolver::builder_tokio()?
+        let resolver: Resolver<_> = TokioResolver::builder_tokio()?
             .with_options(options)
-            .build();
+            .build()?;
 
         let srv_domain = format!("{}.{}.", srv, ascii_domain).into_name()?;
         let srv_records = resolver.srv_lookup(srv_domain.clone()).await.ok();
@@ -139,7 +143,7 @@ impl DnsConfig {
         match srv_records {
             Some(lookup) => {
                 // TODO: sort lookup records by priority/weight
-                for srv in lookup.iter() {
+                for srv in lookup.answers() {
                     debug!("Attempting connection to {srv_domain} {srv}");
                     if let Ok(stream) =
                         Self::resolve_no_srv(&srv.target().to_ascii(), srv.port()).await
@@ -159,6 +163,8 @@ impl DnsConfig {
 
     #[cfg(feature = "dns")]
     async fn resolve_no_srv(host: &str, port: u16) -> Result<TcpStream, Error> {
+        use hickory_resolver::TokioResolver;
+
         let ascii_domain = idna::domain_to_ascii(host)?;
 
         if let Ok(ip) = ascii_domain.parse() {
@@ -169,14 +175,14 @@ impl DnsConfig {
         options.ip_strategy = LookupIpStrategy::Ipv4AndIpv6;
         let resolver = TokioResolver::builder_tokio()?
             .with_options(options)
-            .build();
+            .build()?;
 
         let ips = resolver.lookup_ip(ascii_domain).await?;
 
         // Happy Eyeballs: connect to all records in parallel, return the
         // first to succeed
         select_ok(
-            ips.into_iter()
+            ips.iter()
                 .map(|ip| TcpStream::connect(SocketAddr::new(ip, port)).boxed()),
         )
         .await

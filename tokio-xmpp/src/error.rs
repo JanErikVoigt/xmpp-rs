@@ -1,6 +1,6 @@
 use core::{fmt, net::AddrParseError, str::Utf8Error};
 #[cfg(feature = "dns")]
-use hickory_resolver::{proto::ProtoError as DnsProtoError, ResolveError as DnsResolveError};
+use hickory_resolver::{net::NetError, proto::ProtoError as DnsProtoError};
 use sasl::client::MechanismError as SaslMechanismError;
 use std::io;
 use thiserror::Error;
@@ -47,9 +47,15 @@ pub enum Error {
     #[error("{0:?}")]
     Dns(#[from] DnsProtoError),
     /// DNS resolution error
+
+    //#[cfg(feature = "dns")]
+    //#[error("{0:?}")]
+    //Resolve(#[from] ProtocolError),
+
     #[cfg(feature = "dns")]
     #[error("{0:?}")]
-    Resolve(#[from] DnsResolveError),
+    NamePending(#[from] NetError),
+
     /// DNS label conversion error, no details available from module
     /// `idna`
     #[cfg(feature = "dns")]
