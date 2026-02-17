@@ -1,15 +1,16 @@
 use core::{fmt, net::SocketAddr};
 use hickory_resolver::config::LookupIpStrategy;
+use hickory_resolver::proto::rr::RData;
 
 #[cfg(feature = "dns")]
 use futures::{future::select_ok, FutureExt};
 #[cfg(feature = "dns")]
 #[cfg(feature = "dns")]
 use log::debug;
-use tokio::net::TcpStream;
 
 use crate::Error;
 use hickory_resolver::proto::rr::domain::IntoName;
+use tokio::net::TcpStream;
 
 /// XMPP server connection configuration
 #[derive(Clone, Debug)]
@@ -143,12 +144,18 @@ impl DnsConfig {
         match srv_records {
             Some(lookup) => {
                 // TODO: sort lookup records by priority/weight
-                for srv in lookup.answers() {
-                    debug!("Attempting connection to {srv_domain} {srv}");
-                    if let Ok(stream) =
-                        Self::resolve_no_srv(&srv.target().to_ascii(), srv.port()).await
-                    {
-                        return Ok(stream);
+                for record in lookup.answers() {
+                    debug!("Attempting connection to {srv_domain} {record:?}");
+
+                    if let RData::SRV(srv) = record.data() {
+                        let port = srv.port();
+                        let target = srv.target().to_utf8(); // or to_ascii()
+
+                        println!("Target: {target}, Port: {port}");
+
+                        if let Ok(stream) = Self::resolve_no_srv(&target, port).await {
+                            return Ok(stream);
+                        }
                     }
                 }
                 Err(Error::Disconnected)
@@ -188,5 +195,26 @@ impl DnsConfig {
         .await
         .map(|(result, _)| result)
         .map_err(|_| Error::Disconnected)
+    }
+}
+
+#[cfg(test)]
+mod dns_tests {
+    use super::*;
+    use tokio::time::{timeout, Duration};
+
+    const TIMEOUT: Duration = Duration::from_secs(4);
+
+    //#[test]
+    #[tokio::test]
+    async fn resolve_not_using_srv() {
+        let config = DnsConfig::NoSrv {
+            host: "google.com".to_ascii_lowercase(),
+            port: 8080,
+        };
+        let res = timeout(TIMEOUT, config.resolve()).await;
+        println!("{:?}", res);
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_ok());
     }
 }
