@@ -138,7 +138,7 @@ impl DnsConfig {
             .with_options(options)
             .build()?;
 
-        let srv_domain = format!("{}.{}.", srv, ascii_domain).into_name()?;
+        let srv_domain = format!("{}.{}", srv, ascii_domain).into_name()?;
         let srv_records = resolver.srv_lookup(srv_domain.clone()).await.ok();
 
         match srv_records {
@@ -146,12 +146,13 @@ impl DnsConfig {
                 // TODO: sort lookup records by priority/weight
                 for record in lookup.answers() {
                     debug!("Attempting connection to {srv_domain} {record:?}");
+                    println!("Attempting connection to {srv_domain} {record:?}");
 
                     if let RData::SRV(srv) = record.data() {
                         let port = srv.port();
                         let target = srv.target().to_utf8(); // or to_ascii()
 
-                        println!("Target: {target}, Port: {port}");
+                        println!("try to connect to: Target={target}, Port={port}");
 
                         if let Ok(stream) = Self::resolve_no_srv(&target, port).await {
                             return Ok(stream);
