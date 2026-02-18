@@ -124,7 +124,7 @@ impl DnsConfig {
 
     #[cfg(feature = "dns")]
     async fn resolve_srv(host: &str, srv: &str, fallback_port: u16) -> Result<TcpStream, Error> {
-        use hickory_resolver::TokioResolver;
+        use hickory_resolver::{Resolver, TokioResolver};
 
         let ascii_domain = idna::domain_to_ascii(host)?;
 
