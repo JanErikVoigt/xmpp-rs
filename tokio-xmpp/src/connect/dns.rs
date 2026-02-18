@@ -124,7 +124,7 @@ impl DnsConfig {
 
     #[cfg(feature = "dns")]
     async fn resolve_srv(host: &str, srv: &str, fallback_port: u16) -> Result<TcpStream, Error> {
-        use hickory_resolver::{Resolver, TokioResolver};
+        use hickory_resolver::TokioResolver;
 
         let ascii_domain = idna::domain_to_ascii(host)?;
 
@@ -133,10 +133,7 @@ impl DnsConfig {
             return Ok(TcpStream::connect(&SocketAddr::new(ip, fallback_port)).await?);
         }
 
-        let (_config, options) = hickory_resolver::system_conf::read_system_conf()?;
-        let resolver: Resolver<_> = TokioResolver::builder_tokio()?
-            .with_options(options)
-            .build()?;
+        let resolver: Resolver<_> = TokioResolver::builder_tokio()?.build()?;
 
         let srv_domain = format!("{}.{}", srv, ascii_domain).into_name()?;
         let srv_records = resolver.srv_lookup(srv_domain.clone()).await.ok();
@@ -146,7 +143,7 @@ impl DnsConfig {
                 // TODO: sort lookup records by priority/weight
                 for record in lookup.answers() {
                     debug!("Attempting connection to {srv_domain} {record:?}");
-                    println!("Attempting connection to {srv_domain} {record:?}");
+                    println!("Attempting connection to {srv_domain} {record:?}\n {record}");
 
                     if let RData::SRV(srv) = record.data() {
                         let port = srv.port();
@@ -179,11 +176,9 @@ impl DnsConfig {
             return Ok(TcpStream::connect(&SocketAddr::new(ip, port)).await?);
         }
 
-        let (_config, mut options) = hickory_resolver::system_conf::read_system_conf()?;
-        options.ip_strategy = LookupIpStrategy::Ipv4AndIpv6;
-        let resolver = TokioResolver::builder_tokio()?
-            .with_options(options)
-            .build()?;
+        let mut builder = TokioResolver::builder_tokio()?;
+        builder.options_mut().ip_strategy = LookupIpStrategy::Ipv4AndIpv6;
+        let resolver = builder.build()?;
 
         let ips = resolver.lookup_ip(ascii_domain).await?;
 
