@@ -1,9 +1,9 @@
 use core::{fmt, net::AddrParseError, str::Utf8Error};
+use thiserror::Error;
 #[cfg(feature = "dns")]
 use hickory_resolver::{net::NetError, proto::ProtoError as DnsProtoError};
 use sasl::client::MechanismError as SaslMechanismError;
 use std::io;
-use thiserror::Error;
 
 use xmpp_parsers::stream_error::ReceivedStreamError;
 
